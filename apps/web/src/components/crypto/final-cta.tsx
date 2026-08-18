@@ -23,8 +23,8 @@ export function CryptoFinalCta() {
                 Ready to sell your crypto?
               </h2>
               <p className="text-primary-foreground/85 mt-4">
-                Pick your asset above, see your rate, and get paid the
-                moment we confirm your deposit.
+                Pick your asset above, see your rate, and get paid the moment we
+                confirm your deposit.
               </p>
             </div>
             <Button

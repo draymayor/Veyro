@@ -64,7 +64,8 @@ export function RateBrowser() {
             ease: "power2.out",
           },
         ),
-      onLeave: (els) => gsap.to(els, { opacity: 0, duration: 0.2, ease: "power1.out" }),
+      onLeave: (els) =>
+        gsap.to(els, { opacity: 0, duration: 0.2, ease: "power1.out" }),
     });
     flipState.current = null;
   }, [visibleAssets]);
@@ -92,7 +93,10 @@ export function RateBrowser() {
 
           <ScrollReveal direction="up" delay={120}>
             <label className="border-background/20 bg-background focus-within:border-background/50 relative flex h-11 w-full items-center gap-2 rounded-full border px-4 sm:w-72">
-              <Search className="text-ink/35 size-4 shrink-0" aria-hidden="true" />
+              <Search
+                className="text-ink/35 size-4 shrink-0"
+                aria-hidden="true"
+              />
               <span className="sr-only">Search assets</span>
               <input
                 type="text"
@@ -131,8 +135,7 @@ export function RateBrowser() {
         )}
 
         <p className="text-primary-foreground/60 mt-8 text-center text-xs">
-          Platform Rates shown are subject to confirmation at submission
-          time.
+          Platform Rates shown are subject to confirmation at submission time.
         </p>
       </div>
     </section>

@@ -23,7 +23,9 @@ export function SidebarNav() {
                 href={href}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm",
-                  active ? "bg-primary/10 text-primary" : "text-ink/70 hover:bg-black/5",
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : "text-ink/70 hover:bg-black/5",
                 )}
               >
                 <Icon size={18} strokeWidth={active ? 2.25 : 1.75} />

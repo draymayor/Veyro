@@ -45,7 +45,8 @@ function getLabelClass(score: number) {
 export function PasswordStrength({ password }: PasswordStrengthProps) {
   const requirements = useMemo(() => getRequirements(password), [password]);
   const score = requirements.filter((r) => r.met).length;
-  const label = password.length === 0 ? STRENGTH_LABELS[0] : STRENGTH_LABELS[score];
+  const label =
+    password.length === 0 ? STRENGTH_LABELS[0] : STRENGTH_LABELS[score];
 
   return (
     <div className="flex flex-col gap-3">

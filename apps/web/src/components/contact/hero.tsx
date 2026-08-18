@@ -22,7 +22,12 @@ export function ContactHero() {
   useEffect(() => {
     if (reducedMotion) {
       gsap.set(
-        [eyebrowRef.current, headlineRef.current, subRef.current, ringRef.current],
+        [
+          eyebrowRef.current,
+          headlineRef.current,
+          subRef.current,
+          ringRef.current,
+        ],
         { opacity: 1, y: 0, scale: 1 },
       );
       return;

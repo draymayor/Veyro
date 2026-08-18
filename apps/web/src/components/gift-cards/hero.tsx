@@ -46,8 +46,7 @@ export function GiftCardsHero() {
           </h1>
 
           <p className="text-ink/65 mt-5 max-w-lg text-base text-pretty sm:text-lg">
-            Pick your brand, see the rate, and get paid the moment we
-            confirm.
+            Pick your brand, see the rate, and get paid the moment we confirm.
           </p>
         </div>
       </div>

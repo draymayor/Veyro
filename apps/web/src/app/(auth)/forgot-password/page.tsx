@@ -95,8 +95,8 @@ export default function ForgotPasswordPage() {
                 Reset your password
               </h2>
               <p className="text-[15px] text-neutral-500">
-                Enter the email on your Veyro account. We&apos;ll send a code
-                to reset your password.
+                Enter the email on your Veyro account. We&apos;ll send a code to
+                reset your password.
               </p>
             </motion.div>
 
@@ -105,10 +105,7 @@ export default function ForgotPasswordPage() {
                 variants={itemVariants}
                 className="flex flex-col gap-1.5"
               >
-                <label
-                  htmlFor="email"
-                  className="text-ink text-sm font-medium"
-                >
+                <label htmlFor="email" className="text-ink text-sm font-medium">
                   Email
                 </label>
                 <input

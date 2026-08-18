@@ -52,9 +52,7 @@ export function PriceSparkline({
     const points: [number, number][] = history.map((value, i) => {
       const x = (i / (history.length - 1)) * WIDTH;
       const y =
-        HEIGHT -
-        PADDING_Y -
-        ((value - min) / range) * (HEIGHT - PADDING_Y * 2);
+        HEIGHT - PADDING_Y - ((value - min) / range) * (HEIGHT - PADDING_Y * 2);
       return [x, y];
     });
 

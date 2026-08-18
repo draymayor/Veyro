@@ -79,8 +79,12 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 export function ContactForm() {
   const [values, setValues] = useState<FormValues>(EMPTY_VALUES);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [touched, setTouched] = useState<Partial<Record<keyof FormValues, boolean>>>({});
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [touched, setTouched] = useState<
+    Partial<Record<keyof FormValues, boolean>>
+  >({});
+  const [status, setStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
   const reducedMotion = usePrefersReducedMotion();
   const successRef = useRef<HTMLDivElement>(null);
   const checkRef = useRef<SVGSVGElement>(null);
@@ -159,7 +163,11 @@ export function ContactForm() {
         className="border-border bg-card flex flex-col items-center rounded-2xl border px-8 py-16 text-center"
       >
         <span className="bg-success/15 flex size-14 items-center justify-center rounded-full">
-          <Check ref={checkRef} className="text-success size-7" strokeWidth={2.5} />
+          <Check
+            ref={checkRef}
+            className="text-success size-7"
+            strokeWidth={2.5}
+          />
         </span>
         <h3 className="font-heading text-ink mt-6 text-2xl font-semibold tracking-tight">
           Message sent
@@ -246,7 +254,7 @@ export function ContactForm() {
             aria-describedby={errors.subject ? "subject-error" : undefined}
             className={cn(
               fieldClasses,
-              "mt-2 flex items-center justify-between gap-2 data-[placeholder]:text-ink/35",
+              "data-[placeholder]:text-ink/35 mt-2 flex items-center justify-between gap-2",
             )}
           >
             <Select.Value placeholder="Choose a topic" />

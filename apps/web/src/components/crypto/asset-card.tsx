@@ -5,11 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { CryptoPriceCard } from "@/components/crypto/crypto-price-card";
 import { NetworkSelector } from "@/components/crypto/network-selector";
-import {
-  formatNgn,
-  payoutFor,
-  type CryptoAsset,
-} from "@/lib/crypto/data";
+import { formatNgn, payoutFor, type CryptoAsset } from "@/lib/crypto/data";
 import type { CryptoRate } from "@/lib/crypto/use-crypto-rates";
 
 interface AssetCardProps {

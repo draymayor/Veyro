@@ -98,7 +98,7 @@ export function CryptoPriceCard({
         )}
       </div>
 
-      <div className="relative h-16 -mx-1">
+      <div className="relative -mx-1 h-16">
         {hasRate ? (
           <PriceSparkline
             history={rate.history}

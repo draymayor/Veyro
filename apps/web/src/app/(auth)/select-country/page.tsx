@@ -52,17 +52,20 @@ export default function SelectCountryPage() {
       return;
     }
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/me`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        "Content-Type": "application/json",
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/users/me`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          country: selectedCountry.code,
+          currency: selectedCountry.currency,
+        }),
       },
-      body: JSON.stringify({
-        country: selectedCountry.code,
-        currency: selectedCountry.currency,
-      }),
-    });
+    );
 
     if (!res.ok) {
       setError("Something went wrong on our end. Please try again.");
@@ -86,8 +89,8 @@ export default function SelectCountryPage() {
             Where are you based?
           </h2>
           <p className="text-[15px] text-neutral-500">
-            Your country sets the currency your Veyro wallet holds and pays
-            out in.
+            Your country sets the currency your Veyro wallet holds and pays out
+            in.
           </p>
         </motion.div>
 

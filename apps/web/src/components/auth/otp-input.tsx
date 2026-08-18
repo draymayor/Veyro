@@ -18,7 +18,12 @@ export function emptyOtp(length = 6): string[] {
  * /reset-password, so the OTP interaction (auto-advance, backspace-to-prev,
  * paste-to-fill) and styling stay identical across both flows.
  */
-export function OtpInput({ length = 6, digits, onChange, disabled }: OtpInputProps) {
+export function OtpInput({
+  length = 6,
+  digits,
+  onChange,
+  disabled,
+}: OtpInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   function handleDigitChange(index: number, value: string) {
@@ -31,14 +36,20 @@ export function OtpInput({ length = 6, digits, onChange, disabled }: OtpInputPro
     }
   }
 
-  function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) {
     if (e.key === "Backspace" && !digits[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   }
 
   function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, length);
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, length);
     if (!pasted) return;
     e.preventDefault();
     const next = emptyOtp(length);

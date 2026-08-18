@@ -50,8 +50,9 @@ function LoginForm() {
     setSubmitting(true);
 
     const supabase = createClient();
-    const { data, error: signInError } =
-      await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: signInError } = await supabase.auth.signInWithPassword(
+      { email, password },
+    );
 
     if (signInError) {
       setError(signInError.message);
@@ -66,10 +67,9 @@ function LoginForm() {
       return;
     }
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     const me = res.ok ? await res.json() : null;
 
     if (me && !me.emailVerified) {
@@ -214,7 +214,10 @@ function LoginForm() {
             </motion.div>
 
             {error && (
-              <motion.p variants={itemVariants} className="text-sm text-[#C24E3D]">
+              <motion.p
+                variants={itemVariants}
+                className="text-sm text-[#C24E3D]"
+              >
                 {error}
               </motion.p>
             )}
@@ -230,7 +233,10 @@ function LoginForm() {
             </motion.div>
           </form>
 
-          <motion.div variants={itemVariants} className="mt-6 text-[13px] text-neutral-600">
+          <motion.div
+            variants={itemVariants}
+            className="mt-6 text-[13px] text-neutral-600"
+          >
             Don&apos;t have an account?{" "}
             <Link
               href="/signup"

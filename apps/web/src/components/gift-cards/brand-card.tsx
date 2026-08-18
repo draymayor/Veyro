@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { BrandMark } from "@/components/gift-cards/brand-mark";
-import { COUNTRIES, type CardType, type GiftCardBrand } from "@/lib/gift-cards/data";
+import {
+  COUNTRIES,
+  type CardType,
+  type GiftCardBrand,
+} from "@/lib/gift-cards/data";
 
 interface BrandCardProps {
   brand: GiftCardBrand;
@@ -38,7 +42,9 @@ export function BrandCard({
           {brand.name}
         </h3>
         <p className="text-ink/45 mt-0.5 flex items-center gap-1 text-xs">
-          {countryMeta.flag && <span aria-hidden="true">{countryMeta.flag}</span>}
+          {countryMeta.flag && (
+            <span aria-hidden="true">{countryMeta.flag}</span>
+          )}
           <span>
             {countryCount > 1
               ? `${countryMeta.label} + ${countryCount - 1} more`
@@ -57,7 +63,7 @@ export function BrandCard({
             <span className="text-ink/40 text-sm font-normal">/ $1</span>
           </p>
         </div>
-        <span className="text-ink/30 group-hover:text-primary group-hover:border-primary/40 flex size-8 items-center justify-center rounded-full border border-border transition-colors duration-300">
+        <span className="text-ink/30 group-hover:text-primary group-hover:border-primary/40 border-border flex size-8 items-center justify-center rounded-full border transition-colors duration-300">
           <ArrowUpRight className="size-4" />
         </span>
       </div>

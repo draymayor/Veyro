@@ -250,13 +250,14 @@ export default function SignupPage() {
               variants={itemVariants}
               className="flex flex-col gap-1.5"
             >
-              <label
-                htmlFor="country"
-                className="text-ink text-sm font-medium"
-              >
+              <label htmlFor="country" className="text-ink text-sm font-medium">
                 Country
               </label>
-              <CountrySelect id="country" value={country} onChange={setCountry} />
+              <CountrySelect
+                id="country"
+                value={country}
+                onChange={setCountry}
+              />
               <p className="text-xs text-neutral-400">
                 This sets your wallet currency.
               </p>
@@ -287,7 +288,10 @@ export default function SignupPage() {
             </motion.div>
 
             {error && (
-              <motion.p variants={itemVariants} className="text-sm text-[#C24E3D]">
+              <motion.p
+                variants={itemVariants}
+                className="text-sm text-[#C24E3D]"
+              >
                 {error}
               </motion.p>
             )}
@@ -303,7 +307,10 @@ export default function SignupPage() {
             </motion.div>
           </form>
 
-          <motion.div variants={itemVariants} className="mt-6 text-[13px] text-neutral-600">
+          <motion.div
+            variants={itemVariants}
+            className="mt-6 text-[13px] text-neutral-600"
+          >
             Already have an account?{" "}
             <Link
               href="/login"

@@ -22,9 +22,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={cn("h-full", "antialiased", spaceGrotesk.variable, inter.variable, "font-sans")}
+      className={cn(
+        "h-full",
+        "antialiased",
+        spaceGrotesk.variable,
+        inter.variable,
+        "font-sans",
+      )}
     >
-      <body className="min-h-full flex flex-col bg-background text-ink font-sans">
+      <body className="bg-background text-ink flex min-h-full flex-col font-sans">
         {children}
       </body>
     </html>

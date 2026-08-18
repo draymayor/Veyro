@@ -49,7 +49,10 @@ interface NetworkBadgeIconProps {
   className?: string;
 }
 
-export function NetworkBadgeIcon({ iconKey, className }: NetworkBadgeIconProps) {
+export function NetworkBadgeIcon({
+  iconKey,
+  className,
+}: NetworkBadgeIconProps) {
   if (!iconKey) return null;
   const Icon = NETWORK_ICONS[iconKey];
   return <Icon variant="mono" className={className} />;

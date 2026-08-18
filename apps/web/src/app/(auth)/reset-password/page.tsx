@@ -43,7 +43,8 @@ async function postJson(path: string, body: object) {
   if (!res.ok) {
     const responseBody = await res.json().catch(() => null);
     throw new Error(
-      responseBody?.message ?? "Something went wrong on our end. Please try again.",
+      responseBody?.message ??
+        "Something went wrong on our end. Please try again.",
     );
   }
   return res;
@@ -91,7 +92,11 @@ function ResetPasswordForm() {
       await postJson("/auth/password-reset/verify", { email, code });
       setStep("password");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong on our end. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong on our end. Please try again.",
+      );
       setDigits(emptyOtp(CODE_LENGTH));
     } finally {
       setSubmitting(false);
@@ -109,7 +114,11 @@ function ResetPasswordForm() {
       setSecondsLeft(EXPIRY_SECONDS);
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong on our end. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong on our end. Please try again.",
+      );
     } finally {
       setResending(false);
     }
@@ -133,7 +142,11 @@ function ResetPasswordForm() {
       await postJson("/auth/password-reset/confirm", { email, code, password });
       router.push("/login?reset=success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong on our end. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong on our end. Please try again.",
+      );
       setSubmitting(false);
     }
   }
@@ -174,7 +187,10 @@ function ResetPasswordForm() {
                 />
               </motion.div>
 
-              <motion.div variants={itemVariants} className="text-center text-sm">
+              <motion.div
+                variants={itemVariants}
+                className="text-center text-sm"
+              >
                 {expired ? (
                   <span className="text-[#C24E3D]">
                     This code has expired. Request a new one below.
@@ -239,7 +255,10 @@ function ResetPasswordForm() {
               </p>
             </motion.div>
 
-            <form onSubmit={handleResetPassword} className="flex flex-col gap-4">
+            <form
+              onSubmit={handleResetPassword}
+              className="flex flex-col gap-4"
+            >
               <motion.div
                 variants={itemVariants}
                 className="flex flex-col gap-1.5"

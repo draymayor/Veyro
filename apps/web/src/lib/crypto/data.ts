@@ -35,21 +35,10 @@ export interface CryptoAsset {
 }
 
 export type TokenIconKey =
-  | "BTC"
-  | "ETH"
-  | "USDT"
-  | "BNB"
-  | "SOL"
-  | "XRP"
-  | "DOGE";
+  "BTC" | "ETH" | "USDT" | "BNB" | "SOL" | "XRP" | "DOGE";
 
 export type NetworkIconKey =
-  | "Bitcoin"
-  | "Ethereum"
-  | "Tron"
-  | "BinanceSmartChain"
-  | "Solana"
-  | "Xrp";
+  "Bitcoin" | "Ethereum" | "Tron" | "BinanceSmartChain" | "Solana" | "Xrp";
 
 export const CRYPTO_ASSETS: CryptoAsset[] = [
   {

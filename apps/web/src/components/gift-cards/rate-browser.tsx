@@ -82,7 +82,9 @@ export function RateBrowser() {
       // the selected country if the default type has no match there.
       let typeMatches: typeof countryMatches;
       if (cardType !== "all") {
-        typeMatches = countryMatches.filter((rate) => rate.cardType === cardType);
+        typeMatches = countryMatches.filter(
+          (rate) => rate.cardType === cardType,
+        );
       } else {
         const defaultTypeMatches = countryMatches.filter(
           (rate) => rate.cardType === brand.defaultType,
@@ -134,7 +136,8 @@ export function RateBrowser() {
             ease: "power2.out",
           },
         ),
-      onLeave: (els) => gsap.to(els, { opacity: 0, duration: 0.2, ease: "power1.out" }),
+      onLeave: (els) =>
+        gsap.to(els, { opacity: 0, duration: 0.2, ease: "power1.out" }),
     });
     flipState.current = null;
   }, [visibleBrands]);
@@ -153,8 +156,7 @@ export function RateBrowser() {
           </ScrollReveal>
           <ScrollReveal direction="up" delay={80}>
             <p className="text-primary-foreground/80 mt-4">
-              Filter by country or card type, or search for your brand
-              directly.
+              Filter by country or card type, or search for your brand directly.
             </p>
           </ScrollReveal>
         </div>
@@ -184,7 +186,10 @@ export function RateBrowser() {
             </div>
 
             <label className="border-background/20 bg-background focus-within:border-background/50 relative flex h-11 w-full items-center gap-2 rounded-full border px-4 lg:w-64">
-              <Search className="text-ink/35 size-4 shrink-0" aria-hidden="true" />
+              <Search
+                className="text-ink/35 size-4 shrink-0"
+                aria-hidden="true"
+              />
               <span className="sr-only">Search brands</span>
               <input
                 type="text"
@@ -218,14 +223,13 @@ export function RateBrowser() {
 
         {visibleBrands.length === 0 && (
           <p className="text-primary-foreground/70 mt-10 text-center text-sm">
-            No brands match your filters. Try clearing a filter or searching
-            a different name.
+            No brands match your filters. Try clearing a filter or searching a
+            different name.
           </p>
         )}
 
         <p className="text-primary-foreground/60 mt-8 text-center text-xs">
-          Platform Rates shown are subject to confirmation at submission
-          time.
+          Platform Rates shown are subject to confirmation at submission time.
         </p>
       </div>
     </section>

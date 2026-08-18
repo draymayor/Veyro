@@ -30,11 +30,38 @@ type RateRow = GiftCardRateRow | CryptoRateRow;
 // Platform Rate combination shown on the /crypto rate browser, so this
 // section never falls out of sync with a second, hand-maintained number.
 const RATES: RateRow[] = [
-  { kind: "gift-card", asset: "Steam", detail: "USA, e-code", rate: "₦1,050 / $1" },
-  { kind: "gift-card", asset: "Apple", detail: "USA, physical", rate: "₦1,120 / $1" },
-  { kind: "gift-card", asset: "Google Play", detail: "USA, e-code", rate: "₦1,000 / $1" },
-  { kind: "crypto", asset: "USDT", detail: "TRC20", assetId: "usdt", networkId: "trc20" },
-  { kind: "crypto", asset: "Bitcoin", detail: "BTC", assetId: "btc", networkId: "bitcoin" },
+  {
+    kind: "gift-card",
+    asset: "Steam",
+    detail: "USA, e-code",
+    rate: "₦1,050 / $1",
+  },
+  {
+    kind: "gift-card",
+    asset: "Apple",
+    detail: "USA, physical",
+    rate: "₦1,120 / $1",
+  },
+  {
+    kind: "gift-card",
+    asset: "Google Play",
+    detail: "USA, e-code",
+    rate: "₦1,000 / $1",
+  },
+  {
+    kind: "crypto",
+    asset: "USDT",
+    detail: "TRC20",
+    assetId: "usdt",
+    networkId: "trc20",
+  },
+  {
+    kind: "crypto",
+    asset: "Bitcoin",
+    detail: "BTC",
+    assetId: "btc",
+    networkId: "bitcoin",
+  },
 ];
 
 export function RateShowcase() {
@@ -107,7 +134,9 @@ export function RateShowcase() {
                         <p className="text-background text-sm font-medium">
                           {row.asset}
                         </p>
-                        <p className="text-background/50 text-xs">{row.detail}</p>
+                        <p className="text-background/50 text-xs">
+                          {row.detail}
+                        </p>
                       </div>
                       <span className="font-heading text-primary tabular-nums">
                         {rateDisplay}

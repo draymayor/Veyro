@@ -37,9 +37,10 @@ export function PillFilter({
   const reducedMotion = usePrefersReducedMotion();
   const trackRef = useRef<HTMLDivElement>(null);
   const btnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const [highlight, setHighlight] = useState<{ x: number; width: number } | null>(
-    null,
-  );
+  const [highlight, setHighlight] = useState<{
+    x: number;
+    width: number;
+  } | null>(null);
 
   useEffect(() => {
     function measure() {
@@ -84,7 +85,7 @@ export function PillFilter({
       <div
         ref={trackRef}
         className={cn(
-          "border-border bg-card relative inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          "border-border bg-card relative inline-flex max-w-full [scrollbar-width:none] items-center gap-1 overflow-x-auto rounded-full border p-1 [&::-webkit-scrollbar]:hidden",
           collapseOnMobile && "hidden sm:inline-flex",
         )}
       >

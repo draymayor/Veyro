@@ -29,10 +29,11 @@ export function CryptoHero() {
 
   useEffect(() => {
     if (reducedMotion) {
-      gsap.set(
-        [...lineRefs.current, subRef.current, tickerRef.current],
-        { opacity: 1, y: 0, filter: "blur(0px)" },
-      );
+      gsap.set([...lineRefs.current, subRef.current, tickerRef.current], {
+        opacity: 1,
+        y: 0,
+        filter: "blur(0px)",
+      });
       return;
     }
 
@@ -41,7 +42,13 @@ export function CryptoHero() {
       tl.fromTo(
         lineRefs.current,
         { y: 34, opacity: 0, filter: "blur(10px)" },
-        { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.85, stagger: 0.14 },
+        {
+          y: 0,
+          opacity: 1,
+          filter: "blur(0px)",
+          duration: 0.85,
+          stagger: 0.14,
+        },
       )
         .fromTo(
           subRef.current,
@@ -108,8 +115,7 @@ export function CryptoHero() {
           ref={subRef}
           className="text-ink/65 mt-5 max-w-lg text-base text-pretty sm:text-lg"
         >
-          Pick your asset and network, see the rate, and send from any
-          wallet.
+          Pick your asset and network, see the rate, and send from any wallet.
         </p>
       </div>
 
@@ -156,7 +162,9 @@ export function CryptoHero() {
                     <span
                       className={cn(
                         "text-xs tabular-nums",
-                        rate.change24h >= 0 ? "text-success" : "text-destructive",
+                        rate.change24h >= 0
+                          ? "text-success"
+                          : "text-destructive",
                       )}
                     >
                       {rate.change24h >= 0 ? "+" : ""}

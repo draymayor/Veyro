@@ -18,7 +18,11 @@ interface NetworkSelectorProps {
  * tabindex keyboard behavior between TRC20 and ERC20, never implying the
  * networks are interchangeable rather than a deliberate, exclusive choice.
  */
-export function NetworkSelector({ networks, value, onChange }: NetworkSelectorProps) {
+export function NetworkSelector({
+  networks,
+  value,
+  onChange,
+}: NetworkSelectorProps) {
   if (networks.length === 1) {
     const network = networks[0];
     return (

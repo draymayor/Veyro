@@ -41,7 +41,10 @@ export function GiftCardFaq() {
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
       <div className="grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
-        <ScrollReveal direction="up" className="lg:sticky lg:top-28 lg:self-start">
+        <ScrollReveal
+          direction="up"
+          className="lg:sticky lg:top-28 lg:self-start"
+        >
           <span className="text-primary text-xs font-medium tracking-[0.2em] uppercase">
             FAQ
           </span>
@@ -67,7 +70,7 @@ export function GiftCardFaq() {
                     <Plus className="text-ink/40 size-4 shrink-0 transition-transform duration-300 group-data-[state=open]:rotate-45" />
                   </Accordion.Trigger>
                 </Accordion.Header>
-                <Accordion.Content className="motion-reduce:!animate-none text-ink/60 overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                <Accordion.Content className="text-ink/60 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden text-sm motion-reduce:!animate-none">
                   <p className="pb-5">{item.answer}</p>
                 </Accordion.Content>
               </Accordion.Item>

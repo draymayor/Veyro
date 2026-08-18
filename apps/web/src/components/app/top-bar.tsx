@@ -8,7 +8,11 @@ export function TopBar() {
         <UserRound size={22} strokeWidth={1.75} />
       </Link>
       <span className="font-heading text-ink text-base">Veyro</span>
-      <Link href="/notifications" aria-label="Notifications" className="text-ink/70">
+      <Link
+        href="/notifications"
+        aria-label="Notifications"
+        className="text-ink/70"
+      >
         <Bell size={22} strokeWidth={1.75} />
       </Link>
     </header>

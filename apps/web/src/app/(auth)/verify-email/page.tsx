@@ -92,7 +92,9 @@ function VerifyEmailForm() {
 
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      setError(body?.message ?? "Something went wrong on our end. Please try again.");
+      setError(
+        body?.message ?? "Something went wrong on our end. Please try again.",
+      );
       setDigits(emptyOtp(CODE_LENGTH));
       setSubmitting(false);
       return;
@@ -120,7 +122,9 @@ function VerifyEmailForm() {
 
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      setError(body?.message ?? "Something went wrong on our end. Please try again.");
+      setError(
+        body?.message ?? "Something went wrong on our end. Please try again.",
+      );
       setResending(false);
       return;
     }
