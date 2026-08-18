@@ -16,6 +16,7 @@ on:
       - "pnpm-workspace.yaml"
       - "pnpm-lock.yaml"
       - ".github/workflows/api-deploy.yml"
+  workflow_dispatch: {}
 
 env:
   SERVICE_NAME: veyro-api
