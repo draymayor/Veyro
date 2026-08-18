@@ -63,8 +63,9 @@ jobs:
       - name: Build image
         run: |
           docker build \
+            -f apps/api/Dockerfile \
             -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-            apps/api
+            .
 
       - name: Push image
         run: |
