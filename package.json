@@ -1,0 +1,30 @@
+{
+  "name": "veyro",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev:web": "turbo run dev --filter=web",
+    "dev:api": "turbo run dev --filter=api",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format:check": "turbo run format:check",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
+    "turbo": "^2.10.10"
+  },
+  "lint-staged": {
+    "apps/web/**/*.{ts,tsx,js,jsx}": [
+      "pnpm --filter web exec eslint --fix",
+      "pnpm --filter web exec prettier --write"
+    ],
+    "apps/web/**/*.{css,md,json}": ["pnpm --filter web exec prettier --write"],
+    "apps/api/**/*.ts": [
+      "pnpm --filter api exec eslint --fix",
+      "pnpm --filter api exec prettier --write"
+    ],
+    "apps/api/**/*.{json,md}": ["pnpm --filter api exec prettier --write"]
+  }
+}
