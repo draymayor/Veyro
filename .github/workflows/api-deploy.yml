@@ -4,8 +4,22 @@
 #   GCP_PROJECT_ID       - GCP project hosting the Cloud Run service
 #   GCP_REGION            - e.g. us-central1
 #   GCP_WORKLOAD_IDENTITY_PROVIDER - full resource name of the WIF provider
-#   GCP_SERVICE_ACCOUNT   - service account email used to deploy
+#   GCP_SERVICE_ACCOUNT   - service account CI authenticates as to deploy
+#   GCP_RUNTIME_SERVICE_ACCOUNT - service account the Cloud Run service
+#                                 itself runs as; deliberately narrower
+#                                 than GCP_SERVICE_ACCOUNT (only
+#                                 secretmanager.secretAccessor on the four
+#                                 secrets below, no run.admin) since this
+#                                 identity is what user-facing request
+#                                 handling executes as
 #   GCP_ARTIFACT_REPO      - Artifact Registry repo name (e.g. "veyro")
+#
+# Runtime config comes from GCP Secret Manager, not plain env vars, per
+# deployment.md's Secrets Management section. Each secret below must
+# already exist in Secret Manager with GCP_RUNTIME_SERVICE_ACCOUNT
+# granted secretmanager.secretAccessor on it:
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY,
+#   COINGECKO_API_KEY
 name: API Deploy
 
 on:
@@ -77,3 +91,9 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ secrets.GCP_REGION }}
           image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          service_account: ${{ secrets.GCP_RUNTIME_SERVICE_ACCOUNT }}
+          secrets: |
+            SUPABASE_URL=SUPABASE_URL:latest
+            SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest
+            RESEND_API_KEY=RESEND_API_KEY:latest
+            COINGECKO_API_KEY=COINGECKO_API_KEY:latest
