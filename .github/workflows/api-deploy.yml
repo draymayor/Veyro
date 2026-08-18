@@ -91,7 +91,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ secrets.GCP_REGION }}
           image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          service_account: ${{ secrets.GCP_RUNTIME_SERVICE_ACCOUNT }}
+          flags: --service-account=${{ secrets.GCP_RUNTIME_SERVICE_ACCOUNT }}
           secrets: |
             SUPABASE_URL=SUPABASE_URL:latest
             SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest
