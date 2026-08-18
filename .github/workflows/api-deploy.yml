@@ -98,6 +98,16 @@ jobs:
           region: ${{ secrets.GCP_REGION }}
           image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
           flags: --service-account=${{ secrets.GCP_RUNTIME_SERVICE_ACCOUNT }} --allow-unauthenticated
+          # CORS_ORIGIN is not sensitive, so it is set as a plain env var
+          # here rather than a Secret Manager secret. Without it, main.ts
+          # falls back to http://localhost:3000 and the browser blocks
+          # every request from the deployed frontend. Includes the
+          # production custom domain plus the stable Vercel project/branch
+          # aliases as a fallback (unique per-deploy URLs like
+          # veyro-<hash>-draymayor.vercel.app change every deploy and are
+          # SSO-protected anyway, so they don't need to be listed).
+          env_vars: |
+            CORS_ORIGIN=https://veyro.best,https://veyro-draymayor.vercel.app,https://veyro-git-main-draymayor.vercel.app
           secrets: |
             SUPABASE_URL=SUPABASE_URL:latest
             SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest
