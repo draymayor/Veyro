@@ -7,7 +7,7 @@
 | Frontend | Next.js + TypeScript + Tailwind + shadcn/ui | Hosted on Vercel. SSR used for public/SEO pages (gift card brand pages, `/sell-crypto`, `/rates`). |
 | Backend | NestJS (TypeScript) | Hosted on GCP Cloud Run. Same cloud as Monance — no new infra account. Autoscale-to-zero keeps early costs low. |
 | Database / Auth / Storage | Supabase (Postgres) | Ledger, rate tables, trades, and file storage (card images, deposit proof screenshots) all live here. |
-| Crypto price feed | Reused from Monance | CoinGecko REST + Binance WebSocket — no new integration. |
+| Crypto price feed | Standalone CoinGecko integration | Own COINGECKO_API_KEY, own caching layer (per api-spec.md's GET /crypto/rates). Originally planned as reusing Monance's feed, built standalone instead since Monance's backend deployment status wasn't confirmed live at the time. |
 | Rate source (gift cards) | Manual (V1) → Prestmit (pending) | Pluggable rate-source design so this swaps in later without touching frontend or schema. |
 | Email | Resend | Matches transactional templates in `email-templates.md`. |
 
@@ -27,8 +27,8 @@
         ┌──────────────────────┼──────────────────────┐
         │                      │                      │
 ┌───────▼────────┐   ┌─────────▼─────────┐   ┌─────────▼─────────┐
-│ Supabase        │   │ Monance Price Feed │   │ Resend (email)     │
-│ Postgres/Auth/  │   │ (CoinGecko +       │   │                    │
+│ Supabase        │   │ CoinGecko Feed     │   │ Resend (email)     │
+│ Postgres/Auth/  │   │ (standalone, own   │   │                    │
 │ Storage         │   │ Binance WS, reused)│   │                    │
 └─────────────────┘   └────────────────────┘   └────────────────────┘
 ```
@@ -55,7 +55,7 @@ src/
 ├── leaderboard/       # Aggregated trade/referral rankings
 ├── admin/             # Trade review, rate management, user management
 ├── notifications/     # Email trigger integration (Resend)
-└── crypto-price/      # Thin wrapper around Monance's existing price feed
+└── crypto-price/      # Standalone CoinGecko integration (own API key)
 ```
 
 ## Key Architectural Rules (from product-rules.md, reflected here)

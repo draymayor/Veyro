@@ -13,8 +13,11 @@ kyc_status        text            -- 'not_started' | 'manual_reviewed' (no autom
 account_status    text            -- 'active' | 'restricted' | 'banned'
 referral_code     text unique
 referred_by       uuid (FK -> users.id, nullable)
+email_verified_at timestamptz (nullable)  -- set once OTP verification completes (email/password signups); Google OAuth users are pre-verified by Google
 created_at        timestamptz
 ```
+
+**`handle_new_user` trigger:** fires `AFTER INSERT ON auth.users`, automatically creates the matching `public.users` row (with a generated `referral_code`, and `country`/`currency` copied from the signup form's metadata passed to Supabase Auth's signUp call) the moment Supabase Auth creates an account. This was written into an early migration but never actually deployed to the live project until a signup bug surfaced it — and even once deployed, an initial version missed copying country/currency (violating rule 13 below), fixed in a follow-up migration. Always verify migration files match what's actually applied to the live database, don't assume the file existing locally means it ran, and don't assume "deployed" means "complete," test the actual resulting data.
 
 ### `gift_card_brands`
 ```

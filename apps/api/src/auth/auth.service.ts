@@ -117,17 +117,25 @@ export class AuthService {
 
     const name = recipient.user_metadata?.full_name;
 
-    if (purpose === 'password_reset') {
-      await this.notificationsService.sendPasswordResetEmail(
-        recipient.email!,
-        code,
-        name,
-      );
-    } else {
-      await this.notificationsService.sendOtpEmail(
-        recipient.email!,
-        code,
-        name,
+    try {
+      if (purpose === 'password_reset') {
+        await this.notificationsService.sendPasswordResetEmail(
+          recipient.email!,
+          code,
+          name,
+        );
+      } else {
+        await this.notificationsService.sendOtpEmail(
+          recipient.email!,
+          code,
+          name,
+        );
+      }
+    } catch {
+      // notificationsService.send() already logged the real cause.
+      // Don't report { sent: true } when no email actually went out.
+      throw new BadRequestException(
+        'Could not send the verification email. Please try again.',
       );
     }
 
@@ -215,6 +223,18 @@ export class AuthService {
       .from('users')
       .update({ email_verified_at: new Date().toISOString() })
       .eq('id', user.id);
+
+    try {
+      await this.notificationsService.sendWelcomeEmail({
+        email: user.email!,
+        name: user.user_metadata?.full_name ?? 'there',
+      });
+    } catch {
+      // Verification itself succeeded (email_verified_at is already set
+      // above) — a failed welcome email is a non-critical side effect
+      // and must not fail the request or block the user from proceeding.
+      // notificationsService.send() already logged the real cause.
+    }
 
     return { verified: true };
   }

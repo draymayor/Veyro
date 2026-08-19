@@ -136,12 +136,12 @@ function VerifyEmailForm() {
   const expired = secondsLeft === 0;
 
   return (
-    <div className="bg-background flex min-h-screen w-full items-center justify-center p-6">
+    <div className="flex min-h-screen w-full items-center justify-center bg-white p-6">
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="w-full max-w-md rounded-2xl bg-white p-8 shadow-[0_20px_45px_rgba(28,27,41,0.08)] sm:p-10"
+        className="w-full max-w-md p-8 sm:p-10"
       >
         <motion.div variants={itemVariants} className="mb-6 text-center">
           <h2 className="font-heading text-ink mb-2 text-3xl font-medium tracking-tight">

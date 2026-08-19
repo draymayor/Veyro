@@ -45,6 +45,16 @@
 - Native mobile apps
 - Buying gift cards (two-sided marketplace, if validated)
 
+## Identified Gaps (not yet actioned)
+
+Surfaced while auditing available build tooling against Veyro's actual needs:
+
+- **Structured data / JSON-LD (schema.org)** — Product/Offer/FAQPage markup for Gift Cards and Crypto pages, would help rich snippets. Natural follow-on to the robots.txt/sitemap work, low effort.
+- **Real legal review** — /terms and /privacy are still marked as drafts needing lawyer review in code comments, this was flagged from the start and remains genuinely outstanding, not something further AI drafting can substitute for, given money transmission/gift card resale/crypto payout regulatory exposure.
+- **Core Web Vitals / performance audit** — Lighthouse-style LCP/CLS/INP profiling, matters for a motion-heavy site, worth doing as a pre-launch checklist item.
+- **i18n / localization** — Veyro is global by design, but full translation workflows are a Phase 2+ concern, English-only is fine for V1.
+- **Analytics / event tracking** — no event taxonomy or GA4/Segment wiring yet for the trade funnel (submit → verify → payout). Worth prioritizing before broad public launch so drop-off is actually measurable.
+
 ## Notes
 
 - Every phase boundary above is a deliberate V1 simplification, not a technical limitation — features move to Phase 2/3 as volume and validation justify the added complexity (payment gateway, KYC cost, custody risk).
