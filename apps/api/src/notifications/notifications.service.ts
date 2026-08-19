@@ -18,7 +18,11 @@ import {
 } from './emails/templates';
 
 const OTP_EXPIRY_MINUTES = 10;
-const FROM_ADDRESS = 'Veyro <noreply@veyro.com>';
+// veyro.com is not registered with Resend and was never verified — every
+// send silently failed with "domain is not verified" until the response
+// error-checking fix in send() below made that visible. veyro.best is the
+// actual verified sending domain (see Resend dashboard).
+const FROM_ADDRESS = 'Veyro <noreply@veyro.best>';
 
 @Injectable()
 export class NotificationsService {
