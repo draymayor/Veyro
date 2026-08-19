@@ -12,6 +12,7 @@ import {
   COUNTRIES,
   GIFT_CARD_BRANDS,
   countryOptions,
+  defaultBrandRate,
   ratesForBrand,
   type CardType,
   type GiftCardBrand,
@@ -70,6 +71,15 @@ export function RateBrowser() {
 
     for (const brand of GIFT_CARD_BRANDS) {
       if (q && !brand.name.toLowerCase().includes(q)) continue;
+
+      // Unfiltered view: delegate to the shared selection used for
+      // structured data too, so the two can never drift apart.
+      if (country === "all" && cardType === "all") {
+        const defaultRate = defaultBrandRate(brand);
+        if (!defaultRate) continue;
+        result.push({ id: brand.id, brand, ...defaultRate });
+        continue;
+      }
 
       const countryMatches = ratesForBrand(brand.id).filter(
         (rate) => country === "all" || rate.country === country,

@@ -328,6 +328,44 @@ export function ratesForBrand(brandId: string): GiftCardRate[] {
   return GIFT_CARD_RATES.filter((rate) => rate.brandId === brandId);
 }
 
+export interface DefaultBrandRate {
+  rate: number;
+  country: string;
+  cardType: CardType;
+  countryCount: number;
+}
+
+/**
+ * The rate a brand's card shows on first load, before any country or card
+ * type filter is applied. Mirrors RateBrowser's unfiltered selection (leads
+ * with the brand's default card type, falls back to whatever is available,
+ * picks the highest rate among matches) so structured data built from this
+ * never drifts from what the rate browser grid actually renders by default.
+ */
+export function defaultBrandRate(
+  brand: GiftCardBrand,
+): DefaultBrandRate | null {
+  const countryMatches = ratesForBrand(brand.id);
+  if (!countryMatches.length) return null;
+
+  const defaultTypeMatches = countryMatches.filter(
+    (rate) => rate.cardType === brand.defaultType,
+  );
+  const typeMatches = defaultTypeMatches.length
+    ? defaultTypeMatches
+    : countryMatches;
+
+  const best = typeMatches.reduce((a, b) => (b.rate > a.rate ? b : a));
+  const countries = new Set(typeMatches.map((m) => m.country));
+
+  return {
+    rate: best.rate,
+    country: best.country,
+    cardType: best.cardType,
+    countryCount: countries.size,
+  };
+}
+
 export function countryOptions(): string[] {
   const seen = new Set<string>();
   for (const rate of GIFT_CARD_RATES) seen.add(rate.country);

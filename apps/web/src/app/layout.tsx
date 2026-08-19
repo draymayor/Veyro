@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { SITE_URL } from "@/lib/seo/public-pages";
+import { SITE_DESCRIPTION, SITE_URL } from "@/lib/seo/public-pages";
+import { organizationAndWebsiteSchema } from "@/lib/seo/site-schema";
+import { JsonLd } from "@/components/seo/json-ld";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -14,16 +16,13 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-const DESCRIPTION =
-  "Veyro lets you sell gift cards and crypto for instant cash. See your rate up front, submit your card or crypto, and get paid the moment we confirm.";
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Veyro",
-  description: DESCRIPTION,
+  description: SITE_DESCRIPTION,
   openGraph: {
     title: "Veyro",
-    description: DESCRIPTION,
+    description: SITE_DESCRIPTION,
     siteName: "Veyro",
     type: "website",
   },
@@ -42,6 +41,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       )}
     >
       <body className="bg-background text-ink flex min-h-full flex-col font-sans">
+        {organizationAndWebsiteSchema().map((schema) => (
+          <JsonLd key={schema["@type"]} data={schema} />
+        ))}
         {children}
       </body>
     </html>

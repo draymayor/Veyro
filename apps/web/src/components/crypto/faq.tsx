@@ -3,6 +3,7 @@
 import { Accordion } from "radix-ui";
 import { Plus } from "lucide-react";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
+import { JsonLd } from "@/components/seo/json-ld";
 
 const FAQS = [
   {
@@ -37,6 +38,19 @@ const FAQS = [
   },
 ];
 
+const FAQ_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer,
+    },
+  })),
+};
+
 /**
  * Two-column split (heading beside accordion) instead of the gift cards
  * FAQ's centered single column, so the two FAQ sections don't read as the
@@ -45,6 +59,7 @@ const FAQS = [
 export function CryptoFaq() {
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+      <JsonLd data={FAQ_SCHEMA} />
       <div className="grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
         <ScrollReveal
           direction="up"
