@@ -13,9 +13,18 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const DESCRIPTION =
+  "Veyro lets you sell gift cards and crypto for instant cash. See your rate up front, submit your card or crypto, and get paid the moment we confirm.";
+
 export const metadata: Metadata = {
   title: "Veyro",
-  description: "Sell gift cards and crypto for instant wallet credit.",
+  description: DESCRIPTION,
+  openGraph: {
+    title: "Veyro",
+    description: DESCRIPTION,
+    siteName: "Veyro",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
