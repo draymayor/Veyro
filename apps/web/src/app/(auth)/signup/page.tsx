@@ -13,6 +13,7 @@ import { CountrySelect } from "@/components/auth/country-select";
 import { PasswordInput } from "@/components/auth/password-input";
 import { PasswordStrength } from "@/components/auth/password-strength";
 import { GiftCardFan } from "@/components/home/gift-card-fan";
+import { getApiBaseUrl } from "@/lib/api-base-url";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -94,13 +95,10 @@ export default function SignupPage() {
       return;
     }
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/otp/send`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-      },
-    );
+    const res = await fetch(`${getApiBaseUrl()}/auth/otp/send`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
 
     if (!res.ok) {
       setError("Something went wrong on our end. Please try again.");

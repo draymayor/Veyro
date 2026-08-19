@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, type Variants } from "motion/react";
+import { getApiBaseUrl } from "@/lib/api-base-url";
 
 const REDIRECT_DELAY_MS = 1600;
 
@@ -44,14 +45,11 @@ export default function ForgotPasswordPage() {
     setError(null);
     setSubmitting(true);
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/password-reset/request`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      },
-    );
+    const res = await fetch(`${getApiBaseUrl()}/auth/password-reset/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
 
     if (!res.ok) {
       setError("Something went wrong on our end. Please try again.");

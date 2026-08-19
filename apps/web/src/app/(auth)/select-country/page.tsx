@@ -6,6 +6,7 @@ import { motion, type Variants } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
 import { findCountry } from "@/lib/countries";
 import { CountrySelect } from "@/components/auth/country-select";
+import { getApiBaseUrl } from "@/lib/api-base-url";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -52,20 +53,17 @@ export default function SelectCountryPage() {
       return;
     }
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/users/me`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          country: selectedCountry.code,
-          currency: selectedCountry.currency,
-        }),
+    const res = await fetch(`${getApiBaseUrl()}/users/me`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        country: selectedCountry.code,
+        currency: selectedCountry.currency,
+      }),
+    });
 
     if (!res.ok) {
       setError("Something went wrong on our end. Please try again.");

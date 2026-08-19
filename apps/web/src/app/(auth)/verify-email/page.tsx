@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, type Variants } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
 import { OtpInput, emptyOtp } from "@/components/auth/otp-input";
+import { getApiBaseUrl } from "@/lib/api-base-url";
 
 const CODE_LENGTH = 6;
 const EXPIRY_SECONDS = 10 * 60;
@@ -78,17 +79,14 @@ function VerifyEmailForm() {
       return;
     }
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/otp/verify`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ code }),
+    const res = await fetch(`${getApiBaseUrl()}/auth/otp/verify`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({ code }),
+    });
 
     if (!res.ok) {
       const body = await res.json().catch(() => null);
@@ -115,10 +113,10 @@ function VerifyEmailForm() {
       return;
     }
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/otp/resend`,
-      { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } },
-    );
+    const res = await fetch(`${getApiBaseUrl()}/auth/otp/resend`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
 
     if (!res.ok) {
       const body = await res.json().catch(() => null);

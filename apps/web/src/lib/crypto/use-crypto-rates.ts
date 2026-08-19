@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getApiBaseUrl } from "@/lib/api-base-url";
 
 export interface CryptoRate {
   priceUsd: number;
@@ -33,9 +34,7 @@ export function useCryptoRates(): UseCryptoRatesResult {
 
     async function load() {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/crypto/rates`,
-        );
+        const res = await fetch(`${getApiBaseUrl()}/crypto/rates`);
         if (!res.ok) throw new Error("Request failed");
         const data = (await res.json()) as CryptoRatesMap;
         if (!cancelled) {

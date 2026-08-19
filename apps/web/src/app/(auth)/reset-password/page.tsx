@@ -6,6 +6,7 @@ import { motion, type Variants } from "motion/react";
 import { OtpInput, emptyOtp } from "@/components/auth/otp-input";
 import { PasswordInput } from "@/components/auth/password-input";
 import { PasswordStrength } from "@/components/auth/password-strength";
+import { getApiBaseUrl } from "@/lib/api-base-url";
 
 const CODE_LENGTH = 6;
 const EXPIRY_SECONDS = 10 * 60;
@@ -35,7 +36,7 @@ function formatTime(seconds: number) {
 }
 
 async function postJson(path: string, body: object) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}${path}`, {
+  const res = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { AuthCryptoVisual } from "@/components/auth/auth-crypto-visual";
 import { PasswordInput } from "@/components/auth/password-input";
+import { getApiBaseUrl } from "@/lib/api-base-url";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -67,7 +68,7 @@ function LoginForm() {
       return;
     }
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+    const res = await fetch(`${getApiBaseUrl()}/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const me = res.ok ? await res.json() : null;

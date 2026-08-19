@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getApiBaseUrl } from "@/lib/api-base-url";
 
 // Handles the redirect back from Supabase Auth after Google OAuth. Google
 // accounts are pre-verified by Google, so this exchanges the code for a
@@ -25,13 +26,10 @@ export async function GET(request: Request) {
 
       if (session) {
         try {
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/oauth/bootstrap`,
-            {
-              method: "POST",
-              headers: { Authorization: `Bearer ${session.access_token}` },
-            },
-          );
+          const res = await fetch(`${getApiBaseUrl()}/auth/oauth/bootstrap`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
 
           if (res.ok) {
             const data = await res.json();
