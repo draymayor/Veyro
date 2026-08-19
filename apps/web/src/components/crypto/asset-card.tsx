@@ -5,8 +5,10 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { CryptoPriceCard } from "@/components/crypto/crypto-price-card";
 import { NetworkSelector } from "@/components/crypto/network-selector";
-import { formatNgn, payoutFor, type CryptoAsset } from "@/lib/crypto/data";
+import { payoutFor, type CryptoAsset } from "@/lib/crypto/data";
 import type { CryptoRate } from "@/lib/crypto/use-crypto-rates";
+import { useDisplayCurrency } from "@/lib/display-currency/context";
+import { formatDisplayAmount } from "@/lib/display-currency/format";
 
 interface AssetCardProps {
   asset: CryptoAsset;
@@ -20,6 +22,7 @@ export function AssetCard({ asset, rate, loading, error }: AssetCardProps) {
   const network =
     asset.networks.find((n) => n.id === networkId) ?? asset.networks[0];
   const payout = rate ? payoutFor(rate.priceUsd, network) : null;
+  const displayCurrency = useDisplayCurrency();
 
   return (
     <CryptoPriceCard
@@ -46,7 +49,7 @@ export function AssetCard({ asset, rate, loading, error }: AssetCardProps) {
           </p>
           <p className="font-heading text-primary text-xl font-semibold tabular-nums">
             {payout !== null ? (
-              formatNgn(payout)
+              formatDisplayAmount(payout, displayCurrency)
             ) : (
               <span className="text-background/30">Unavailable</span>
             )}{" "}

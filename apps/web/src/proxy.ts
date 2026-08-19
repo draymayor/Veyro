@@ -1,5 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  DISPLAY_CURRENCY_COOKIE,
+  resolveDisplayCurrency,
+} from "@/lib/display-currency/constants";
 
 const PROTECTED_PATHS = [
   "/home",
@@ -42,12 +46,29 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path),
   );
 
+  // Display-only currency preference for public pages, derived fresh from
+  // Vercel's edge geolocation on every request. This never touches wallet
+  // currency (set explicitly at signup) or trade rate logic.
+  const displayCurrency = resolveDisplayCurrency(
+    request.headers.get("x-vercel-ip-country"),
+  );
+
   if (!user && isProtectedPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect_to", request.nextUrl.pathname);
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    redirectResponse.cookies.set(DISPLAY_CURRENCY_COOKIE, displayCurrency, {
+      path: "/",
+      sameSite: "lax",
+    });
+    return redirectResponse;
   }
+
+  supabaseResponse.cookies.set(DISPLAY_CURRENCY_COOKIE, displayCurrency, {
+    path: "/",
+    sameSite: "lax",
+  });
 
   return supabaseResponse;
 }

@@ -182,13 +182,3 @@ export function splitPriceUsd(value: number): {
   const [whole, decimals] = formatted.split(".");
   return { whole, decimals: decimals ?? "00" };
 }
-
-export function formatNgn(value: number): string {
-  if (value >= 100_000) {
-    return `\u{20A6}${new Intl.NumberFormat("en-US", {
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(value)}`;
-  }
-  return `\u{20A6}${Math.round(value).toLocaleString("en-US")}`;
-}

@@ -4,14 +4,17 @@ import Link from "next/link";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { OrbitRings } from "@/components/home/orbit-rings";
 import { Button } from "@/components/ui/button";
-import { CRYPTO_ASSETS, formatNgn, payoutFor } from "@/lib/crypto/data";
+import { CRYPTO_ASSETS, payoutFor } from "@/lib/crypto/data";
 import { useCryptoRates } from "@/lib/crypto/use-crypto-rates";
+import { useDisplayCurrency } from "@/lib/display-currency/context";
+import { formatDisplayAmount } from "@/lib/display-currency/format";
 
 interface GiftCardRateRow {
   kind: "gift-card";
   asset: string;
   detail: string;
-  rate: string;
+  /** Platform Rate, NGN per $1 of card value. */
+  rateNgn: number;
 }
 
 interface CryptoRateRow {
@@ -34,19 +37,19 @@ const RATES: RateRow[] = [
     kind: "gift-card",
     asset: "Steam",
     detail: "USA, e-code",
-    rate: "₦1,050 / $1",
+    rateNgn: 1050,
   },
   {
     kind: "gift-card",
     asset: "Apple",
     detail: "USA, physical",
-    rate: "₦1,120 / $1",
+    rateNgn: 1120,
   },
   {
     kind: "gift-card",
     asset: "Google Play",
     detail: "USA, e-code",
-    rate: "₦1,000 / $1",
+    rateNgn: 1000,
   },
   {
     kind: "crypto",
@@ -66,6 +69,7 @@ const RATES: RateRow[] = [
 
 export function RateShowcase() {
   const { rates, loading, error } = useCryptoRates();
+  const displayCurrency = useDisplayCurrency();
   return (
     <section className="bg-secondary/60 py-20 sm:py-28">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -94,7 +98,7 @@ export function RateShowcase() {
                 {RATES.map((row, i) => {
                   let rateDisplay: React.ReactNode = null;
                   if (row.kind === "gift-card") {
-                    rateDisplay = row.rate;
+                    rateDisplay = `${formatDisplayAmount(row.rateNgn, displayCurrency)} / $1`;
                   } else {
                     const cryptoAsset = CRYPTO_ASSETS.find(
                       (a) => a.id === row.assetId,
@@ -117,7 +121,7 @@ export function RateShowcase() {
                         </span>
                       );
                     } else {
-                      rateDisplay = `${formatNgn(payoutFor(liveRate.priceUsd, network))} / ${cryptoAsset!.symbol}`;
+                      rateDisplay = `${formatDisplayAmount(payoutFor(liveRate.priceUsd, network), displayCurrency)} / ${cryptoAsset!.symbol}`;
                     }
                   }
 

@@ -6,6 +6,8 @@ import {
   type CardType,
   type GiftCardBrand,
 } from "@/lib/gift-cards/data";
+import { useDisplayCurrency } from "@/lib/display-currency/context";
+import { formatDisplayAmount } from "@/lib/display-currency/format";
 
 interface BrandCardProps {
   brand: GiftCardBrand;
@@ -23,6 +25,7 @@ export function BrandCard({
   cardType,
 }: BrandCardProps) {
   const countryMeta = COUNTRIES[country];
+  const displayCurrency = useDisplayCurrency();
 
   return (
     <Link
@@ -59,7 +62,7 @@ export function BrandCard({
             Up to
           </p>
           <p className="font-heading text-primary text-xl font-semibold tabular-nums">
-            &#8358;{rate.toLocaleString()}{" "}
+            {formatDisplayAmount(rate, displayCurrency)}{" "}
             <span className="text-ink/40 text-sm font-normal">/ $1</span>
           </p>
         </div>
