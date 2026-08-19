@@ -227,7 +227,7 @@ export class AuthService {
     try {
       await this.notificationsService.sendWelcomeEmail({
         email: user.email!,
-        name: user.user_metadata?.full_name ?? 'there',
+        name: (user.user_metadata?.full_name as string | undefined) ?? 'there',
       });
     } catch {
       // Verification itself succeeded (email_verified_at is already set

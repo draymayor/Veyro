@@ -91,7 +91,10 @@ export class NotificationsService {
   // AuthService.verifyOtp). getStartedUrl is built here rather than
   // passed in since WEB_APP_URL is API-side config the caller shouldn't
   // need to know about.
-  async sendWelcomeEmail(params: { email: string; name: string }): Promise<void> {
+  async sendWelcomeEmail(params: {
+    email: string;
+    name: string;
+  }): Promise<void> {
     const webAppUrl = (
       this.configService.get<string>('WEB_APP_URL') ?? 'http://localhost:3000'
     ).replace(/\/+$/, '');
