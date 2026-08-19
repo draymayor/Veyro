@@ -11,11 +11,17 @@
 // is used as a binding policy in production.
 
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Nav } from "@/components/site/nav";
 import { Footer } from "@/components/site/footer";
 import { LegalPageShell } from "@/components/legal/page-shell";
 import { LegalSection } from "@/components/legal/section";
 import type { TocItem } from "@/components/legal/toc";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/privacy" },
+  robots: { index: true, follow: true },
+};
 
 const TOC_ITEMS: TocItem[] = [
   { id: "introduction", label: "1. Introduction and Scope" },

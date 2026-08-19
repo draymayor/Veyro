@@ -1,7 +1,14 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app/app-shell";
+
+// Every route under this group requires a signed-in session, so none of
+// it should ever appear in search results, no matter what links to it.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 // Gate order mirrors apps/api/src/auth/auth.service.ts (bootstrapOAuth/me):
 // no session -> /login, unverified email -> /verify-email (email/password

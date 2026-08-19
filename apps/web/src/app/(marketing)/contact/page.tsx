@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import { Nav } from "@/components/site/nav";
 import { Footer } from "@/components/site/footer";
 import { ContactHero } from "@/components/contact/hero";
 import { ContactForm } from "@/components/contact/form";
 import { ContactInfoPanel } from "@/components/contact/info-panel";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/contact" },
+  robots: { index: true, follow: true },
+};
 
 export default function ContactPage() {
   return (

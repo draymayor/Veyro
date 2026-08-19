@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { SITE_URL } from "@/lib/seo/public-pages";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -17,6 +18,7 @@ const DESCRIPTION =
   "Veyro lets you sell gift cards and crypto for instant cash. See your rate up front, submit your card or crypto, and get paid the moment we confirm.";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Veyro",
   description: DESCRIPTION,
   openGraph: {
