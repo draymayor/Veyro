@@ -1,5 +1,7 @@
 # Veyro
 
+<!-- temp: verifying Migration Drift Check skip path, PR to be closed unmerged -->
+
 Veyro is a web platform where users sell their gift cards and crypto directly to the platform (not a peer-to-peer marketplace). The user submits a card or crypto, sees a quoted rate up front, and — once verified — is paid instantly to their in-app wallet.
 
 For full product, architecture, and design context, see the [`docs/`](./docs) folder:
