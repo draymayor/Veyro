@@ -6,10 +6,16 @@
 # gate, not an informational step.
 #
 # Trigger points:
-#   - pull_request touching supabase/migrations/: forces the migration to
-#     already be applied to the live project before its PR can merge,
-#     instead of "merge now, remember to push later" (the pattern that
-#     caused the repeat failures).
+#   - pull_request, every PR, unconditionally (no paths: filter): this is
+#     a required status check in branch protection, and a required check
+#     that's path-filtered structurally never reports on PRs outside
+#     that filter - GitHub then shows it as permanently absent rather
+#     than passing, which blocks the merge button and forces a manual
+#     "bypass rules" override on every such PR (confirmed happening on
+#     PR #2 and would have on PR #3). Running unconditionally and
+#     skipping the real work internally when nothing migration-related
+#     changed (see the "Determine..." step below) keeps this required
+#     check meaningful without needing a bypass for unrelated PRs.
 #   - schedule: catches drift introduced outside a PR entirely, e.g. a
 #     migration that was merged and forgotten, or a manual dashboard
 #     change on the live project.
@@ -22,11 +28,7 @@
 name: Migration Drift Check
 
 on:
-  pull_request:
-    paths:
-      - "supabase/migrations/**"
-      - "scripts/check-migration-drift.mjs"
-      - ".github/workflows/migration-drift-check.yml"
+  pull_request: {}
   schedule:
     - cron: "0 */6 * * *"
   workflow_dispatch: {}
@@ -37,16 +39,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Only meaningful on pull_request (base/head SHAs aren't available
+      # on schedule/workflow_dispatch, which always run the real check
+      # below regardless). Mirrors the same path set the old paths:
+      # filter used, so a change to the check script or this workflow
+      # file still forces a real run against the live project, not just
+      # migration file changes themselves.
+      - name: Determine whether migration-related files changed
+        id: changed
+        if: github.event_name == 'pull_request'
+        run: |
+          if git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" \
+              | grep -qE '^(supabase/migrations/|scripts/check-migration-drift\.mjs$|\.github/workflows/migration-drift-check\.yml$)'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip (no migration-related changes in this PR)
+        if: github.event_name == 'pull_request' && steps.changed.outputs.relevant == 'false'
+        run: echo "No changes under supabase/migrations/ or the drift-check script/workflow - skipping the live drift check."
 
       - uses: actions/setup-node@v4
+        if: github.event_name != 'pull_request' || steps.changed.outputs.relevant == 'true'
         with:
           node-version: 22
 
       - uses: supabase/setup-cli@v1
+        if: github.event_name != 'pull_request' || steps.changed.outputs.relevant == 'true'
         with:
           version: latest
 
       - name: Check migration drift
+        if: github.event_name != 'pull_request' || steps.changed.outputs.relevant == 'true'
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: node scripts/check-migration-drift.mjs
