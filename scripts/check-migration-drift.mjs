@@ -52,13 +52,16 @@ if (cli.status !== 0) {
 }
 
 // The CLI renders a LOCAL | REMOTE | TIME (UTC) table using box-drawing
-// characters. Pull out any row where the first two cells look like
-// migration timestamps (14 digits, e.g. 20240115093000) rather than
-// depending on exact border/header formatting, which the CLI has changed
-// across versions.
+// characters, with each cell's value wrapped in backticks (at least in CLI
+// versions that render it as markdown). Pull out any row where the first
+// two cells look like migration timestamps (14 digits, e.g.
+// 20240115093000) rather than depending on exact border/header formatting
+// or backtick-wrapping, both of which the CLI has changed across versions.
 const rows = [];
 for (const line of cli.stdout.split("\n")) {
-  const cells = line.split(/[│|]/).map((cell) => cell.trim());
+  const cells = line
+    .split(/[│|]/)
+    .map((cell) => cell.trim().replace(/^`+|`+$/g, ""));
   if (cells.length < 2) continue;
   const [local, remote] = cells;
   if (TIMESTAMP.test(local) || TIMESTAMP.test(remote)) {
