@@ -4,8 +4,7 @@ import Link from "next/link";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { OrbitRings } from "@/components/home/orbit-rings";
 import { Button } from "@/components/ui/button";
-import { CRYPTO_ASSETS, payoutFor } from "@/lib/crypto/data";
-import { useCryptoRates } from "@/lib/crypto/use-crypto-rates";
+import { useCryptoPayout } from "@/lib/crypto/use-crypto-payout";
 import { useDisplayCurrency } from "@/lib/display-currency/context";
 import { formatDisplayAmount } from "@/lib/display-currency/format";
 
@@ -21,17 +20,20 @@ interface CryptoRateRow {
   kind: "crypto";
   asset: string;
   detail: string;
-  /** Looked up in CRYPTO_ASSETS for the live price and Platform Rate multiplier. */
-  assetId: string;
-  networkId: string;
+  /** Matched against crypto_assets.symbol for the payout quote. */
+  symbol: string;
+  /** Matched against crypto_assets.network for the payout quote. */
+  networkLabel: string;
 }
 
 type RateRow = GiftCardRateRow | CryptoRateRow;
 
 // Gift card rows are manually set Platform Rates (no live source exists for
-// them, per docs/product-rules.md). Crypto rows use the same live price +
-// Platform Rate combination shown on the /crypto rate browser, so this
-// section never falls out of sync with a second, hand-maintained number.
+// them, per docs/product-rules.md). Crypto rows show Veyro's actual payout
+// quote (GET /crypto/payout: live price marked down by margin and
+// converted to the display currency), the same figure the /crypto rate
+// browser shows, so this section never falls out of sync with a second,
+// hand-maintained number.
 const RATES: RateRow[] = [
   {
     kind: "gift-card",
@@ -55,21 +57,28 @@ const RATES: RateRow[] = [
     kind: "crypto",
     asset: "USDT",
     detail: "TRC20",
-    assetId: "usdt",
-    networkId: "trc20",
+    symbol: "USDT",
+    networkLabel: "TRC20",
   },
   {
     kind: "crypto",
     asset: "Bitcoin",
     detail: "BTC",
-    assetId: "btc",
-    networkId: "bitcoin",
+    symbol: "BTC",
+    networkLabel: "Bitcoin",
   },
 ];
 
 export function RateShowcase() {
-  const { rates, loading, error } = useCryptoRates();
   const displayCurrency = useDisplayCurrency();
+
+  // RATES has a fixed, known set of crypto rows, so these are called
+  // directly rather than inside the render loop below (hooks can't be
+  // called conditionally or a variable number of times per render).
+  const usdtQuote = useCryptoPayout("USDT", "TRC20", 1, displayCurrency);
+  const btcQuote = useCryptoPayout("BTC", "Bitcoin", 1, displayCurrency);
+  const quotesBySymbol = { USDT: usdtQuote, BTC: btcQuote };
+
   return (
     <section className="bg-secondary/60 py-20 sm:py-28">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -100,29 +109,14 @@ export function RateShowcase() {
                   if (row.kind === "gift-card") {
                     rateDisplay = `${formatDisplayAmount(row.rateNgn, displayCurrency)} / $1`;
                   } else {
-                    const cryptoAsset = CRYPTO_ASSETS.find(
-                      (a) => a.id === row.assetId,
-                    );
-                    const network = cryptoAsset?.networks.find(
-                      (n) => n.id === row.networkId,
-                    );
-                    const liveRate = cryptoAsset
-                      ? rates?.[cryptoAsset.symbol]
-                      : undefined;
+                    const { quote, loading } =
+                      quotesBySymbol[row.symbol as keyof typeof quotesBySymbol];
 
-                    if (loading) {
-                      rateDisplay = (
-                        <span className="bg-background/10 inline-block h-4 w-20 animate-pulse rounded" />
-                      );
-                    } else if (error || !liveRate || !network) {
-                      rateDisplay = (
-                        <span className="text-background/40 text-sm font-normal">
-                          Rate unavailable
-                        </span>
-                      );
-                    } else {
-                      rateDisplay = `${formatDisplayAmount(payoutFor(liveRate.priceUsd, network), displayCurrency)} / ${cryptoAsset!.symbol}`;
-                    }
+                    rateDisplay = loading ? (
+                      <span className="bg-background/10 inline-block h-4 w-20 animate-pulse rounded" />
+                    ) : (
+                      `${formatDisplayAmount(quote?.payout ?? 0, displayCurrency)} / ${row.symbol}`
+                    );
                   }
 
                   return (

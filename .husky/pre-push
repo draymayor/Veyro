@@ -1,0 +1,14 @@
+# Early, advisory warning for the "migration file exists locally but was
+# never applied to the live database" bug (see the Supabase section of
+# docs/deployment.md). CI's Migration Drift Check workflow is the actual
+# blocking gate; this hook is just a chance to catch it before a push.
+
+changed=$(git diff --name-only "@{u}" HEAD 2>/dev/null || git diff --name-only origin/main HEAD 2>/dev/null)
+
+if echo "$changed" | grep -q '^supabase/migrations/'; then
+  if [ -z "$SUPABASE_DB_URL" ]; then
+    echo "Note: this push touches supabase/migrations/. SUPABASE_DB_URL isn't set locally, so the migration drift check was skipped here, it still runs in CI. Set SUPABASE_DB_URL and run 'pnpm db:check-drift' to catch drift sooner."
+  else
+    pnpm db:check-drift || exit 1
+  fi
+fi

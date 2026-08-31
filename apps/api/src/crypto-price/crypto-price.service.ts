@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { fetchWithTimeout } from '../common/fetch-with-timeout';
 
 export interface CryptoRate {
   priceUsd: number;
@@ -13,21 +14,38 @@ type CryptoRatesMap = Record<string, CryptoRate>;
 const COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3';
 
 // Maps the symbols shown across the app (homepage carousel, /crypto rate
-// browser) to CoinGecko coin ids. Keep in sync with lib/crypto/data.ts on
-// the frontend if the supported asset list ever changes.
+// browser) to CoinGecko coin ids. Mirrors the 17 Tier 1/2 coins in
+// apps/api/src/crypto-addresses/coins.config.ts and lib/crypto/data.ts on
+// the frontend - keep all three in sync if the supported asset list ever
+// changes. One entry per SYMBOL (not per network): USDT/USDC/ETH each get
+// one price regardless of which of their networks a user picks.
 const ASSETS: Record<string, string> = {
   BTC: 'bitcoin',
   ETH: 'ethereum',
   USDT: 'tether',
   BNB: 'binancecoin',
-  SOL: 'solana',
-  XRP: 'ripple',
   DOGE: 'dogecoin',
+  POL: 'polygon-ecosystem-token',
+  AVAX: 'avalanche-2',
+  CELO: 'celo',
+  FLR: 'flare-networks',
+  FTM: 'fantom',
+  CRO: 'crypto-com-chain',
+  ETC: 'ethereum-classic',
+  KAIA: 'kaia',
+  XDC: 'xdce-crowd-sale',
+  LTC: 'litecoin',
+  USDC: 'usd-coin',
+  TRX: 'tron',
 };
+// NOTE: verify POL/AVAX/FLR/CRO/KAIA/XDC ids against CoinGecko's
+// /coins/list before relying on this in production - these newer/rebranded
+// listings are the ones most likely to have shifted their id string.
 
 const CACHE_TTL_MS = 60_000;
 const HISTORY_DAYS = 7;
 const HISTORY_POINTS = 48;
+const REQUEST_TIMEOUT_MS = 8_000;
 
 @Injectable()
 export class CryptoPriceService {
@@ -80,9 +98,10 @@ export class CryptoPriceService {
 
   private async fetchRates(): Promise<CryptoRatesMap> {
     const ids = Object.values(ASSETS).join(',');
-    const marketsRes = await fetch(
+    const marketsRes = await fetchWithTimeout(
       `${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&ids=${ids}&price_change_percentage=24h`,
       { headers: this.headers() },
+      REQUEST_TIMEOUT_MS,
     );
 
     if (!marketsRes.ok) {
@@ -113,9 +132,10 @@ export class CryptoPriceService {
   }
 
   private async fetchHistory(coinId: string): Promise<number[]> {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${COINGECKO_BASE_URL}/coins/${coinId}/market_chart?vs_currency=usd&days=${HISTORY_DAYS}`,
       { headers: this.headers() },
+      REQUEST_TIMEOUT_MS,
     );
 
     if (!res.ok) {

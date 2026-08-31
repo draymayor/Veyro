@@ -6,6 +6,10 @@ import { motion, type Variants } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
 import { OtpInput, emptyOtp } from "@/components/auth/otp-input";
 import { getApiBaseUrl } from "@/lib/api-base-url";
+import {
+  ADMIN_ENTRY_PATH,
+  POST_AUTH_ENTRY_PATH,
+} from "@/lib/auth/post-auth-redirect";
 
 const CODE_LENGTH = 6;
 const EXPIRY_SECONDS = 10 * 60;
@@ -45,6 +49,14 @@ function VerifyEmailForm() {
   const [error, setError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(EXPIRY_SECONDS);
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
+  // This page has no server-side gate of its own (it's a plain client
+  // component reached by URL), so it's the one place that can be landed on
+  // via a stale tab/bookmark/back-button long after the account was
+  // actually verified elsewhere. Without this check it would just sit
+  // there showing an OTP form for an already-verified user, with nothing
+  // having ever triggered a code to be sent for this visit. Gate on a
+  // fresh /auth/me read rather than trusting anything cached client-side.
+  const [checkingStatus, setCheckingStatus] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -61,6 +73,52 @@ function VerifyEmailForm() {
     } = await supabase.auth.getSession();
     return session?.access_token ?? null;
   }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        if (!cancelled) router.replace("/login");
+        return;
+      }
+
+      let me: { emailVerified?: boolean; isAdmin?: boolean } | null = null;
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/auth/me`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        me = res.ok ? await res.json() : null;
+      } catch {
+        // Network hiccup: fall through and just show the form rather than
+        // leaving the page stuck on a blank screen.
+      }
+
+      if (cancelled) return;
+
+      // Admin accounts never go through email OTP verification at all
+      // (docs/context.md's Admin Authentication Architecture), so a
+      // direct/stale visit here must bounce straight to the dashboard
+      // rather than showing a code-entry form nothing ever sent a code for.
+      if (me?.isAdmin) {
+        router.replace(ADMIN_ENTRY_PATH);
+        return;
+      }
+
+      if (me?.emailVerified) {
+        router.replace(POST_AUTH_ENTRY_PATH);
+        return;
+      }
+
+      setCheckingStatus(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,7 +156,7 @@ function VerifyEmailForm() {
       return;
     }
 
-    router.push("/home");
+    router.push(POST_AUTH_ENTRY_PATH);
   }
 
   async function handleResend() {
@@ -134,6 +192,10 @@ function VerifyEmailForm() {
   }
 
   const expired = secondsLeft === 0;
+
+  if (checkingStatus) {
+    return null;
+  }
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-white p-6">

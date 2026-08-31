@@ -9,7 +9,7 @@ const config: Config = {
         primary: "#E8674A",
         background: "#FAF7F2",
         ink: "#1C1B29",
-        success: "#8A9B7E",
+        success: "#0ECB81",
         error: "#C24E3D",
       },
       fontFamily: {

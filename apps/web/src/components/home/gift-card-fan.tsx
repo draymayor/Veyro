@@ -32,13 +32,13 @@ const CARDS: CardFace[] = [
     brand: "Apple",
     denom: "$100",
     logo: "/logos/apple.svg",
-    gradient: "linear-gradient(135deg,#3a3a3c 0%,#1c1c1e 55%,#8A9B7E 150%)",
+    gradient: "linear-gradient(135deg,#3a3a3c 0%,#1c1c1e 55%,#0ECB81 150%)",
   },
   {
     brand: "Google Play",
     denom: "$50",
     logo: "/logos/googleplay.svg",
-    gradient: "linear-gradient(135deg,#FAF7F2 0%,#F0EAE1 55%,#8A9B7E 150%)",
+    gradient: "linear-gradient(135deg,#FAF7F2 0%,#F0EAE1 55%,#0ECB81 150%)",
     textClass: "text-ink",
     badgeClass: "bg-ink/5",
   },
@@ -58,7 +58,7 @@ const CARDS: CardFace[] = [
     brand: "Spotify",
     denom: "$25",
     logo: "/logos/spotify.svg",
-    gradient: "linear-gradient(135deg,#0d2818 0%,#123524 55%,#8A9B7E 150%)",
+    gradient: "linear-gradient(135deg,#0d2818 0%,#123524 55%,#0ECB81 150%)",
   },
 ];
 

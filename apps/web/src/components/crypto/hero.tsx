@@ -25,7 +25,7 @@ export function CryptoHero() {
   const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const subRef = useRef<HTMLParagraphElement>(null);
   const tickerRef = useRef<HTMLDivElement>(null);
-  const { rates, loading, error } = useCryptoRates();
+  const { rates, loading } = useCryptoRates();
 
   useEffect(() => {
     if (reducedMotion) {
@@ -80,7 +80,7 @@ export function CryptoHero() {
           !reducedMotion && "animate-[spin_60s_linear_infinite]",
         )}
         stroke="currentColor"
-        dot="#8A9B7E"
+        dot="#0ECB81"
       />
       <div
         className="pointer-events-none absolute inset-0"
@@ -151,24 +151,21 @@ export function CryptoHero() {
                 {loading && (
                   <span className="bg-ink/10 h-4 w-14 animate-pulse rounded" />
                 )}
-                {!loading && error && (
-                  <span className="text-ink/30 text-xs">Unavailable</span>
-                )}
-                {!loading && !error && rate && (
+                {!loading && (
                   <>
                     <span className="text-ink tabular-nums">
-                      {formatUsd(rate.priceUsd)}
+                      {formatUsd(rate?.priceUsd ?? 0)}
                     </span>
                     <span
                       className={cn(
                         "text-xs tabular-nums",
-                        rate.change24h >= 0
+                        (rate?.change24h ?? 0) >= 0
                           ? "text-success"
                           : "text-destructive",
                       )}
                     >
-                      {rate.change24h >= 0 ? "+" : ""}
-                      {rate.change24h.toFixed(1)}%
+                      {(rate?.change24h ?? 0) >= 0 ? "+" : ""}
+                      {(rate?.change24h ?? 0).toFixed(1)}%
                     </span>
                   </>
                 )}

@@ -66,13 +66,13 @@ body {
   --muted-foreground: #6b6875;
   --accent: #f0eae1;
   --accent-foreground: #1c1b29;
-  --success: #8a9b7e;
+  --success: #0ecb81;
   --destructive: #c24e3d;
   --border: #e4ddd0;
   --input: #e4ddd0;
   --ring: #e8674a;
   --chart-1: #e8674a;
-  --chart-2: #8a9b7e;
+  --chart-2: #0ecb81;
   --chart-3: #1c1b29;
   --chart-4: #c24e3d;
   --chart-5: #6b6875;
@@ -105,5 +105,18 @@ body {
   }
   to {
     transform: translateX(-50%);
+  }
+}
+
+/* Hides the scrollbar on an overflow-x-auto container (e.g. a
+   horizontally-scrollable number that's too wide for its card) while
+   keeping it touch/drag-scrollable. */
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }

@@ -43,9 +43,9 @@ Copy `.env.local.example` to `.env.local` in `apps/web`, and `.env.example` to `
 
 Schema lives entirely in [`supabase/migrations/`](./supabase/migrations), applied in order:
 
-1. `0001_initial_schema.sql` — tables + indexes
-2. `0002_rls_policies.sql` — Row-Level Security policies
-3. `0003_storage_buckets.sql` — private storage buckets (`card-images`, `receipts`, `deposit-proofs`) + per-user access policies
+1. `20260812233350_initial_schema.sql` — tables + indexes
+2. `20260812233403_rls_policies.sql` — Row-Level Security policies
+3. `20260812233415_storage_buckets.sql` — private storage buckets (`card-images`, `receipts`, `deposit-proofs`) + per-user access policies
 
 Apply with the Supabase CLI: `supabase db push` (see [`supabase-setup.md`](./docs/supabase-setup.md)).
 

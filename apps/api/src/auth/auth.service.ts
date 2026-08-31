@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { randomInt, createHash } from 'crypto';
+import { randomInt, randomBytes, createHash } from 'crypto';
 import { User } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -7,10 +7,22 @@ import { NotificationsService } from '../notifications/notifications.service';
 const OTP_EXPIRY_MINUTES = 10;
 const OTP_RESEND_COOLDOWN_SECONDS = 60;
 const OTP_MAX_ATTEMPTS = 5;
+const BACKUP_CODE_COUNT = 10;
 
-// Distinguishes a signup-verification code from a password-reset code so one
-// can never be used to satisfy the other, per database-schema.md.
-type OtpPurpose = 'signup_verification' | 'password_reset';
+// Distinguishes a signup-verification code from a password-reset code from a
+// withdrawal-PIN-reset code so none can ever be used to satisfy another, per
+// database-schema.md. 'withdrawal_confirmation' is the PIN-reset path only,
+// never a per-withdrawal fallback (product-rules.md rule 18a).
+type OtpPurpose =
+  'signup_verification' | 'password_reset' | 'withdrawal_confirmation';
+
+interface BackupCodeRow {
+  id: string;
+  user_id: string;
+  code_hash: string;
+  used_at: string | null;
+  created_at: string;
+}
 
 interface EmailOtpRow {
   id: string;
@@ -120,6 +132,12 @@ export class AuthService {
     try {
       if (purpose === 'password_reset') {
         await this.notificationsService.sendPasswordResetEmail(
+          recipient.email!,
+          code,
+          name,
+        );
+      } else if (purpose === 'withdrawal_confirmation') {
+        await this.notificationsService.sendWithdrawalPinResetEmail(
           recipient.email!,
           code,
           name,
@@ -239,6 +257,32 @@ export class AuthService {
     return { verified: true };
   }
 
+  // --- Duplicate-signup check (email/password form, pre-submit) ---
+  //
+  // Same email, different auth method: per docs/product-rules.md rule 13b,
+  // the signup form must give a clear, specific error rather than letting
+  // the form proceed only to fail later (or, worse, silently succeed into
+  // an ambiguous state that depends on whether Supabase's account-linking
+  // setting is on). Called by the frontend before supabase.auth.signUp(),
+  // so a duplicate email never reaches signUp() at all.
+  async checkEmailAvailability(
+    email: string,
+  ): Promise<{ available: true } | { available: false; message: string }> {
+    const providers =
+      await this.supabaseService.findUserProvidersByEmail(email);
+
+    if (providers === null) {
+      return { available: true };
+    }
+
+    const signedUpWithGoogle = providers.includes('google');
+    const message = signedUpWithGoogle
+      ? 'This email already has an account. Log in instead, or use Sign in with Google if that is how you originally signed up.'
+      : 'This email already has an account. Log in instead.';
+
+    return { available: false, message };
+  }
+
   // --- Password reset ---
   //
   // None of these expose whether an email is registered: unknown emails are
@@ -324,11 +368,13 @@ export class AuthService {
     return { reset: true };
   }
 
-  async me(user: User): Promise<{ emailVerified: boolean; provider: string }> {
+  async me(
+    user: User,
+  ): Promise<{ emailVerified: boolean; provider: string; isAdmin: boolean }> {
     const { data } = await this.supabaseService
       .getClient()
       .from('users')
-      .select('email_verified_at')
+      .select('email_verified_at, is_admin')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -337,6 +383,7 @@ export class AuthService {
     return {
       emailVerified: !!data?.email_verified_at,
       provider,
+      isAdmin: !!data?.is_admin,
     };
   }
 
@@ -344,31 +391,240 @@ export class AuthService {
   // table at all, per the OTP flow's scope (email/password signups only).
   // Also reports whether the profile has a country set, since Google
   // signups skip the signup form's country field (see /select-country).
+  //
+  // This is only ever called right after a successful Google OAuth code
+  // exchange (auth/callback/route.ts), so the session is guaranteed to be a
+  // Google sign-in regardless of what user.app_metadata.provider says.
+  // That field is NOT "how did you just sign in", it's whichever provider
+  // was used at original account creation, so a user who first signed up
+  // with email/password and later signed in with Google on the same email
+  // (Supabase auto-links these into one auth.users row, adding "google" to
+  // app_metadata.providers) still has provider === 'email'. Branching on it
+  // here previously short-circuited to a hardcoded { country: null } for
+  // that exact case, sending an already-onboarded user with a real country
+  // back through /select-country every time they used the Google button,
+  // even though their profile already had one. Always read the real value
+  // instead of trusting that field.
   async bootstrapOAuth(
     user: User,
-  ): Promise<{ emailVerified: boolean; country: string | null }> {
-    const provider = user.app_metadata?.provider;
-    if (provider !== 'google') {
-      const result = await this.me(user);
-      return { emailVerified: result.emailVerified, country: null };
-    }
-
-    const { data } = await this.supabaseService
-      .getClient()
+    referredByCode?: string,
+  ): Promise<{
+    emailVerified: boolean;
+    country: string | null;
+    isAdmin: boolean;
+  }> {
+    const client = this.supabaseService.getClient();
+    const { data } = await client
       .from('users')
-      .select('email_verified_at, country')
+      .select('email_verified_at, country, referred_by, is_admin')
       .eq('id', user.id)
       .maybeSingle();
 
     if (!data?.email_verified_at) {
-      await this.supabaseService
-        .getClient()
+      await client
         .from('users')
         .update({ email_verified_at: new Date().toISOString() })
         .eq('id', user.id);
     }
 
+    // Google's OAuth metadata can never carry our own referred_by_code
+    // field the way email/password signUp()'s options.data can
+    // (raw_user_meta_data is whatever Google returns), so the
+    // handle_new_user() trigger's referral attribution never fires for
+    // this provider (see supabase/migrations/20260824160228_referral_attribution.sql).
+    // This runs server-side instead, right after the account is confirmed
+    // to exist, using the ref code the client stashed in a cookie before
+    // redirecting to Google (google-auth-button.tsx, auth/callback/route.ts).
+    // Guarded on referred_by still being null so a returning Google user's
+    // later login never re-attributes.
+    if (referredByCode && !data?.referred_by) {
+      const { data: referrer } = await client
+        .from('users')
+        .select('id')
+        .eq('referral_code', referredByCode)
+        .maybeSingle();
+
+      if (referrer && referrer.id !== user.id) {
+        await client
+          .from('users')
+          .update({ referred_by: referrer.id })
+          .eq('id', user.id);
+
+        await client
+          .from('referrals')
+          .insert({ referrer_id: referrer.id, referred_id: user.id });
+      }
+    }
+
     const country = (data?.country as string | null | undefined) ?? null;
-    return { emailVerified: true, country };
+    return { emailVerified: true, country, isAdmin: !!data?.is_admin };
+  }
+
+  // --- Withdrawal PIN reset (email_otps, purpose='withdrawal_confirmation') ---
+  //
+  // This purpose exists solely to let a user prove account ownership before
+  // setting a *new* withdrawal PIN when they've forgotten the current one.
+  // It is never a per-withdrawal confirmation step (see product-rules.md
+  // rule 18a). WithdrawalPinService is the only caller, and only from its
+  // forgot-PIN flow.
+
+  async sendWithdrawalPinResetOtp(user: User): Promise<{ sent: true }> {
+    return this.sendOtp(user, 'withdrawal_confirmation');
+  }
+
+  async resendWithdrawalPinResetOtp(user: User): Promise<{ sent: true }> {
+    return this.resendOtp(user, 'withdrawal_confirmation');
+  }
+
+  async verifyWithdrawalPinResetOtp(
+    user: User,
+    code: string,
+  ): Promise<{ verified: true }> {
+    await this.verifyOtpCode(user.id, code, 'withdrawal_confirmation');
+    return { verified: true };
+  }
+
+  // Consumes an already-verified withdrawal-PIN-reset code, mirroring
+  // resetPassword's verify-then-confirm shape. Burns the code afterwards so
+  // it can't be replayed to reset the PIN a second time. Throws (rather than
+  // silently no-op-ing) if the code isn't valid, so WithdrawalPinService
+  // never sets a new PIN off an unconfirmed code.
+  async consumeWithdrawalPinResetOtp(user: User, code: string): Promise<void> {
+    const otp = await this.matchingVerifiedOtp(
+      user.id,
+      'withdrawal_confirmation',
+      code,
+    );
+    if (!otp) {
+      throw new BadRequestException(
+        'Please verify your code again before continuing.',
+      );
+    }
+
+    if (new Date(otp.expires_at).getTime() < Date.now()) {
+      throw new BadRequestException(
+        'This code has expired. Please request a new one.',
+      );
+    }
+
+    await this.supabaseService
+      .getClient()
+      .from('email_otps')
+      .update({ expires_at: new Date(0).toISOString() })
+      .eq('id', otp.id);
+  }
+
+  // --- TOTP account-recovery backup codes (backup_codes table) ---
+  //
+  // Scoped strictly to account recovery at login when the authenticator app
+  // is unavailable, never usable as a withdrawal confirmation method (see
+  // product-rules.md and database-schema.md's backup_codes note).
+
+  private generateBackupCode(): string {
+    // 10 hex chars (~40 bits) grouped for readability, e.g. "A1B2C-D3E4F".
+    // Not digits-only on purpose, so it's visually distinct from a 6-digit
+    // TOTP code and can't be confused with one at the MFA challenge screen.
+    const raw = randomBytes(5).toString('hex').toUpperCase();
+    return `${raw.slice(0, 5)}-${raw.slice(5)}`;
+  }
+
+  // Called once, right after a TOTP factor is verified during enrollment.
+  // Clears out any still-unused codes from a prior enrollment first, so
+  // re-enrolling (after a disable) always leaves the user with exactly one
+  // valid set rather than accumulating stale ones.
+  async generateBackupCodes(user: User): Promise<{ codes: string[] }> {
+    const codes = Array.from({ length: BACKUP_CODE_COUNT }, () =>
+      this.generateBackupCode(),
+    );
+
+    const client = this.supabaseService.getClient();
+
+    await client
+      .from('backup_codes')
+      .delete()
+      .eq('user_id', user.id)
+      .is('used_at', null);
+
+    const { error } = await client.from('backup_codes').insert(
+      codes.map((code) => ({
+        user_id: user.id,
+        code_hash: this.hashCode(code),
+      })),
+    );
+
+    if (error) {
+      throw new BadRequestException('Could not generate backup codes.');
+    }
+
+    // Two-Factor Authentication Enabled email (docs/email-templates.md
+    // #12): this method is called once, right after the client's own
+    // supabase.auth.mfa.verify() succeeds, so it's the one backend hook
+    // that actually fires exactly when enrollment completes. A failed
+    // send is non-critical, the codes are already generated.
+    try {
+      await this.notificationsService.sendTwoFactorEnabledEmail({
+        email: user.email!,
+        name: (user.user_metadata?.full_name as string | undefined) ?? 'there',
+      });
+    } catch {
+      // Already logged by NotificationsService.send().
+    }
+
+    return { codes };
+  }
+
+  // Redeems a backup code to recover account access when the authenticator
+  // app is lost. Since backup codes aren't a Supabase Auth MFA factor
+  // themselves, "recovery" means removing the user's TOTP factor(s) via the
+  // admin API, dropping the account back to aal1 (no MFA challenge required),
+  // letting them log in with just their password and re-enroll a fresh
+  // authenticator from Settings afterward.
+  async recoverWithBackupCode(
+    user: User,
+    code: string,
+  ): Promise<{ recovered: true }> {
+    const client = this.supabaseService.getClient();
+    const codeHash = this.hashCode(code.trim().toUpperCase());
+
+    const result = await client
+      .from('backup_codes')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('code_hash', codeHash)
+      .is('used_at', null)
+      .maybeSingle();
+
+    const backupCode = result.data as BackupCodeRow | null;
+    if (!backupCode) {
+      throw new BadRequestException('Invalid or already-used backup code.');
+    }
+
+    await client
+      .from('backup_codes')
+      .update({ used_at: new Date().toISOString() })
+      .eq('id', backupCode.id);
+
+    const { data: fullUser } = await client.auth.admin.getUserById(user.id);
+    const factors = fullUser?.user?.factors ?? [];
+
+    for (const factor of factors) {
+      await client.auth.admin.mfa.deleteFactor({
+        id: factor.id,
+        userId: user.id,
+      });
+    }
+
+    try {
+      await this.notificationsService.sendTwoFactorRecoveryEmail({
+        email: user.email!,
+        name: (user.user_metadata?.full_name as string | undefined) ?? 'there',
+      });
+    } catch {
+      // Recovery itself already succeeded; a failed alert email is a
+      // non-critical side effect and must not fail the request.
+      // notificationsService.send() already logged the real cause.
+    }
+
+    return { recovered: true };
   }
 }

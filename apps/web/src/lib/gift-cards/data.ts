@@ -164,6 +164,15 @@ export const GIFT_CARD_RATES: GiftCardRate[] = [
   },
   {
     brandId: "steam",
+    country: "US",
+    cardType: "physical",
+    minDenomination: 10,
+    maxDenomination: 100,
+    rate: 1000,
+    currency: "NGN",
+  },
+  {
+    brandId: "steam",
     country: "GB",
     cardType: "e-code",
     minDenomination: 5,
@@ -207,6 +216,15 @@ export const GIFT_CARD_RATES: GiftCardRate[] = [
     minDenomination: 10,
     maxDenomination: 200,
     rate: 1000,
+    currency: "NGN",
+  },
+  {
+    brandId: "google-play",
+    country: "US",
+    cardType: "physical",
+    minDenomination: 15,
+    maxDenomination: 200,
+    rate: 950,
     currency: "NGN",
   },
   {
@@ -263,6 +281,15 @@ export const GIFT_CARD_RATES: GiftCardRate[] = [
     minDenomination: 10,
     maxDenomination: 100,
     rate: 1015,
+    currency: "NGN",
+  },
+  {
+    brandId: "xbox",
+    country: "US",
+    cardType: "physical",
+    minDenomination: 15,
+    maxDenomination: 100,
+    rate: 965,
     currency: "NGN",
   },
   {
@@ -374,4 +401,53 @@ export function countryOptions(): string[] {
     if (b === "Global") return -1;
     return COUNTRIES[a].label.localeCompare(COUNTRIES[b].label);
   });
+}
+
+export interface BrandCountrySummary {
+  country: string;
+  rates: GiftCardRate[];
+  bestRate: number;
+  minDenomination: number;
+  maxDenomination: number;
+}
+
+/**
+ * Groups a brand's rates by country for the sell flow's list page. A brand
+ * row expands into one line per country (not per physical/e-code row,
+ * that split happens on the details page via tabs) since country is the
+ * next dimension down from brand in gift_card_rates' brand -> country ->
+ * type -> denomination shape.
+ */
+export function brandCountrySummaries(brandId: string): BrandCountrySummary[] {
+  const byCountry = new Map<string, GiftCardRate[]>();
+  for (const rate of ratesForBrand(brandId)) {
+    const existing = byCountry.get(rate.country);
+    if (existing) existing.push(rate);
+    else byCountry.set(rate.country, [rate]);
+  }
+
+  return Array.from(byCountry.entries())
+    .map(([country, rates]) => ({
+      country,
+      rates,
+      bestRate: Math.max(...rates.map((r) => r.rate)),
+      minDenomination: Math.min(...rates.map((r) => r.minDenomination)),
+      maxDenomination: Math.max(...rates.map((r) => r.maxDenomination)),
+    }))
+    .sort((a, b) => {
+      if (a.country === "Global") return 1;
+      if (b.country === "Global") return -1;
+      return COUNTRIES[a.country].label.localeCompare(
+        COUNTRIES[b.country].label,
+      );
+    });
+}
+
+export function ratesForBrandCountry(
+  brandId: string,
+  country: string,
+): GiftCardRate[] {
+  return GIFT_CARD_RATES.filter(
+    (rate) => rate.brandId === brandId && rate.country === country,
+  );
 }

@@ -1,0 +1,96 @@
+# Builds apps/sweeper into a Docker image and updates the sweeper's Cloud
+# Run JOB (not a service - see apps/sweeper/README.md). Requires
+# scripts/gcp/bootstrap-sweeper-iam.sh to have been run once by hand first,
+# so the job resource, its dedicated service account, and its 7 secrets
+# already exist.
+#
+# Deliberately a separate workflow from api-deploy.yml: different trigger
+# path filter, different deploy action (`jobs deploy`, not
+# `deploy-cloudrun`), different service account
+# (GCP_SWEEPER_SERVICE_ACCOUNT, distinct from GCP_RUNTIME_SERVICE_ACCOUNT -
+# apps/api's runtime identity must never be the sweeper's runtime identity).
+#
+# Additional repo secrets this workflow needs beyond api-deploy.yml's:
+#   GCP_SWEEPER_SERVICE_ACCOUNT - the sweeper's dedicated runtime SA,
+#                                 created by the bootstrap script
+#
+# Runtime config: GCP_PROJECT_ID is passed as a plain env var (not
+# sensitive - it's a public identifier, and the sweeper needs it to know
+# which project's Secret Manager to read from). Master seeds are read
+# directly from Secret Manager by the running job itself
+# (src/secret-manager.ts) - none are injected via `--set-secrets` here,
+# since only this job's own service account should ever load them, not
+# CI's deploy identity.
+name: Sweeper Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/sweeper/**"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/sweeper-deploy.yml"
+  workflow_dispatch: {}
+
+env:
+  JOB_NAME: veyro-sweeper
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter sweeper lint
+
+      - name: Build (typecheck)
+        run: pnpm --filter sweeper build
+
+      - id: auth
+        name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build image
+        run: |
+          docker build \
+            -f apps/sweeper/Dockerfile \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.JOB_NAME }}:${{ github.sha }} \
+            .
+
+      - name: Push image
+        run: |
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.JOB_NAME }}:${{ github.sha }}
+
+      - name: Update Cloud Run Job
+        run: |
+          gcloud run jobs update ${{ env.JOB_NAME }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --region ${{ secrets.GCP_REGION }} \
+            --image ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.JOB_NAME }}:${{ github.sha }} \
+            --service-account ${{ secrets.GCP_SWEEPER_SERVICE_ACCOUNT }} \
+            --set-env-vars GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},SWEEP_DRY_RUN=false

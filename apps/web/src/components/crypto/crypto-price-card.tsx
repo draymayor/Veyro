@@ -87,9 +87,7 @@ export function CryptoPriceCard({
         {loading && (
           <div className="h-7 w-28 animate-pulse rounded-md bg-white/10" />
         )}
-        {!loading && error && (
-          <span className="text-background/40 text-sm">Price unavailable</span>
-        )}
+        {!loading && !hasRate && <PriceDisplay value={0} />}
         {hasRate && (
           <>
             <PriceDisplay value={rate.priceUsd} />

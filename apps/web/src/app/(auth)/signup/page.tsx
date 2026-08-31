@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, type Variants } from "motion/react";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -39,8 +39,10 @@ const itemVariants: Variants = {
   },
 };
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const referredByCode = searchParams.get("ref");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -68,6 +70,26 @@ export default function SignupPage() {
     }
 
     setSubmitting(true);
+
+    // Checked before signUp() so a same-email different-auth-method
+    // attempt gets a clear, specific error instead of proceeding into
+    // signUp()'s ambiguous existing-user response (docs/product-rules.md
+    // rule 13b).
+    const checkRes = await fetch(`${getApiBaseUrl()}/auth/signup/check-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    if (checkRes.ok) {
+      const check = await checkRes.json();
+      if (!check.available) {
+        setError(check.message as string);
+        setSubmitting(false);
+        return;
+      }
+    }
+
     const supabase = createClient();
 
     const { data, error: signUpError } = await supabase.auth.signUp({
@@ -78,12 +100,40 @@ export default function SignupPage() {
           full_name: name,
           country: selectedCountry.code,
           currency: selectedCountry.currency,
+          // Resolved to the referrer's user id by the handle_new_user
+          // trigger (supabase/migrations/20260824160228_referral_attribution.sql),
+          // which also inserts the referrals row. Only applies here
+          // (email/password); Google OAuth signup goes through a separate
+          // cookie-based path instead (see google-auth-button.tsx and
+          // auth/callback/route.ts), since Google's metadata can't carry
+          // this field.
+          ...(referredByCode ? { referred_by_code: referredByCode } : {}),
         },
       },
     });
 
     if (signUpError) {
-      setError(signUpError.message);
+      const duplicate =
+        /already registered|already exists|already in use/i.test(
+          signUpError.message,
+        );
+      setError(
+        duplicate
+          ? "This email already has an account. Log in instead."
+          : signUpError.message,
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    // Belt-and-suspenders: when email confirmations are required, Supabase
+    // signals "this email already exists" not with an error but with a user
+    // object whose identities array is empty, to avoid leaking existence
+    // via error responses. The check-email call above should already have
+    // caught this, but a same-email different-auth-method signup must never
+    // silently proceed here even if that check somehow missed it.
+    if (data.user && data.user.identities?.length === 0) {
+      setError("This email already has an account. Log in instead.");
       setSubmitting(false);
       return;
     }
@@ -173,7 +223,10 @@ export default function SignupPage() {
           </motion.div>
 
           <motion.div variants={itemVariants} className="mb-6">
-            <GoogleAuthButton label="Sign up with Google" />
+            <GoogleAuthButton
+              label="Sign up with Google"
+              referredByCode={referredByCode}
+            />
           </motion.div>
 
           <motion.div
@@ -320,5 +373,13 @@ export default function SignupPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
   );
 }

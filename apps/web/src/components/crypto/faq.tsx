@@ -9,7 +9,7 @@ const FAQS = [
   {
     question: "Which crypto assets and networks do you support?",
     answer:
-      "We accept Bitcoin, Ethereum, Tether (USDT), BNB, Solana, XRP, and Dogecoin. Where an asset supports more than one network, like USDT on TRC20 or ERC20, you'll choose the exact network above before you see your deposit address.",
+      "We accept 17 coins including Bitcoin, Ethereum, Tether (USDT), USD Coin (USDC), BNB, Dogecoin, Litecoin, Tron, and more. Where an asset supports more than one network, like USDT on TRC20, ERC20, or a Layer 2 such as Arbitrum, Optimism, or Base, you'll choose the exact network above before you see your deposit address.",
   },
   {
     question: "How long does confirmation take?",

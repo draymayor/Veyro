@@ -35,4 +35,21 @@ export class UsersController {
     }
     return this.usersService.setCountry(req.user, country, currency);
   }
+
+  // Called by the Profile page after a direct-to-storage upload to the
+  // `avatars` bucket completes (or after "Remove photo"). The file bytes
+  // never pass through this API, only the resulting public URL (or null)
+  // to persist on the user's row, same service-role write pattern as
+  // updateMe above rather than relying on a client-side Supabase write.
+  @UseGuards(SupabaseAuthGuard)
+  @Patch('me/avatar')
+  updateAvatar(
+    @Req() req: AuthenticatedRequest,
+    @Body('profileImageUrl') profileImageUrl: string | null,
+  ) {
+    if (profileImageUrl !== null && typeof profileImageUrl !== 'string') {
+      throw new BadRequestException('Invalid photo URL.');
+    }
+    return this.usersService.setProfileImage(req.user, profileImageUrl);
+  }
 }

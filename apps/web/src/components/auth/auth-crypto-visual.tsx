@@ -6,7 +6,7 @@ const FLOATING_ASSETS: { iconKey: TokenIconKey; className: string }[] = [
   { iconKey: "BTC", className: "top-[10%] left-[18%] size-12" },
   { iconKey: "ETH", className: "top-[22%] right-[14%] size-10" },
   { iconKey: "USDT", className: "bottom-[30%] left-[10%] size-11" },
-  { iconKey: "SOL", className: "right-[20%] bottom-[16%] size-10" },
+  { iconKey: "LTC", className: "right-[20%] bottom-[16%] size-10" },
   { iconKey: "BNB", className: "top-[46%] left-[42%] size-14" },
 ];
 
