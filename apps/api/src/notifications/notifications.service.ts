@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import { withTimeout } from '../common/fetch-with-timeout';
 import type { ReactElement } from 'react';
 import { render } from '@react-email/render';
 import {
@@ -14,7 +15,18 @@ import {
   WithdrawalRequested,
   WithdrawalCompleted,
   ReferralEarned,
+  WithdrawalPinReset,
+  TwoFactorRecoveryUsed,
+  WalletCredited,
+  CryptoDepositCredited,
+  WithdrawalFailed,
+  TwoFactorEnabled,
+  WithdrawalPinChanged,
+  SecurityResetByAdmin,
+  SupportTicketResolved,
+  CryptoWithdrawalProcessing,
   type TradeAssetType,
+  type SecurityResetType,
 } from './emails/templates';
 
 const OTP_EXPIRY_MINUTES = 10;
@@ -23,6 +35,7 @@ const OTP_EXPIRY_MINUTES = 10;
 // error-checking fix in send() below made that visible. veyro.best is the
 // actual verified sending domain (see Resend dashboard).
 const FROM_ADDRESS = 'Veyro <noreply@veyro.best>';
+const SEND_TIMEOUT_MS = 10_000;
 
 @Injectable()
 export class NotificationsService {
@@ -49,17 +62,39 @@ export class NotificationsService {
       render(template, { plainText: true }),
     ]);
 
-    const { error } = await this.resend.emails.send({
-      from: FROM_ADDRESS,
-      to,
-      subject,
-      html,
-      text,
-    });
+    // The Resend SDK doesn't expose a way to pass our own AbortSignal
+    // through, so this races the call itself rather than the underlying
+    // fetch. A slow Resend response must not hang the request indefinitely
+    // (per the earlier bug where a silently-failed send still reported
+    // success to the user) - a timeout here throws, same as an API-level
+    // error below, so callers never report success when no email actually
+    // went out.
+    let result: Awaited<ReturnType<typeof this.resend.emails.send>>;
+    try {
+      result = await withTimeout(
+        this.resend.emails.send({
+          from: FROM_ADDRESS,
+          to,
+          subject,
+          html,
+          text,
+        }),
+        SEND_TIMEOUT_MS,
+        `Resend send("${subject}")`,
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Failed to send "${subject}" email to ${to}: ${message}`,
+      );
+      throw new Error(`Failed to send "${subject}" email: ${message}`);
+    }
+
+    const { error } = result;
 
     if (error) {
       this.logger.error(
-        `Failed to send "${subject}" email to ${to}: ${error.name} — ${error.message}`,
+        `Failed to send "${subject}" email to ${to}: ${error.name} - ${error.message}`,
       );
       throw new Error(`Failed to send "${subject}" email: ${error.message}`);
     }
@@ -211,6 +246,163 @@ export class NotificationsService {
       email,
       'You just earned a referral bonus',
       ReferralEarned(props),
+    );
+  }
+
+  // Withdrawal-PIN-reset code (email_otps, purpose='withdrawal_confirmation').
+  async sendWithdrawalPinResetEmail(
+    email: string,
+    code: string,
+    name?: string,
+  ): Promise<void> {
+    await this.send(
+      email,
+      'Reset your Veyro withdrawal PIN',
+      WithdrawalPinReset({ name, code, expiryMinutes: OTP_EXPIRY_MINUTES }),
+    );
+  }
+
+  // Sent when a TOTP backup code is redeemed at login (AuthService.recoverWithBackupCode).
+  async sendTwoFactorRecoveryEmail(params: {
+    email: string;
+    name: string;
+  }): Promise<void> {
+    const webAppUrl = (
+      this.configService.get<string>('WEB_APP_URL') ?? 'http://localhost:3000'
+    ).replace(/\/+$/, '');
+    await this.send(
+      params.email,
+      'A backup code was used on your Veyro account',
+      TwoFactorRecoveryUsed({
+        name: params.name,
+        settingsUrl: `${webAppUrl}/settings`,
+      }),
+    );
+  }
+
+  // Manual fiat Deposit (docs/admin-guide.md, AdminDepositsService.execute).
+  async sendWalletCreditedEmail(params: {
+    email: string;
+    name: string;
+    amount: string;
+    balance: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      'Your Veyro wallet has been credited',
+      WalletCredited(props),
+    );
+  }
+
+  // Manual crypto deposit confirmation (AdminDepositsService.execute,
+  // the admin-manual-check half of the hybrid deposit-confirmation model,
+  // docs/product-rules.md rule 16) - credits crypto_wallets directly, never
+  // the fiat wallet, so this is a separate template from WalletCredited
+  // rather than a variant of it. `amount`/`balance` are crypto figures
+  // (e.g. "0.005 BTC" / "0.015 BTC"), not fiat.
+  async sendCryptoDepositCreditedEmail(params: {
+    email: string;
+    name: string;
+    amount: string;
+    balance: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      'Your Veyro crypto balance has been credited',
+      CryptoDepositCredited(props),
+    );
+  }
+
+  // Sent alongside the compensating credit-back in
+  // admin-withdrawals.service.ts's markFailed, never instead of it.
+  async sendWithdrawalFailedEmail(params: {
+    email: string;
+    name: string;
+    amount: string;
+    reason: string;
+    contactSupportUrl: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      "Your withdrawal couldn't be completed",
+      WithdrawalFailed(props),
+    );
+  }
+
+  // Sent on successful TOTP enrollment (the opposite event from
+  // sendTwoFactorRecoveryEmail, which fires when 2FA gets turned back off).
+  async sendTwoFactorEnabledEmail(params: {
+    email: string;
+    name: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      'Two-factor authentication enabled on your account',
+      TwoFactorEnabled(props),
+    );
+  }
+
+  // Sent on both initial withdrawal PIN setup and any later change.
+  async sendWithdrawalPinChangedEmail(params: {
+    email: string;
+    name: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      'Your withdrawal PIN was updated',
+      WithdrawalPinChanged(props),
+    );
+  }
+
+  // Sent from the User Management security-override actions
+  // (admin-users.service.ts's resetTotp / resetWithdrawalPin).
+  async sendSecurityResetByAdminEmail(params: {
+    email: string;
+    name: string;
+    resetType: SecurityResetType;
+    date: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      'A security setting on your account was reset',
+      SecurityResetByAdmin(props),
+    );
+  }
+
+  // Sent when admin marks a support_threads row resolved.
+  async sendSupportTicketResolvedEmail(params: {
+    email: string;
+    name: string;
+    category: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      'Your support ticket has been resolved',
+      SupportTicketResolved(props),
+    );
+  }
+
+  // Sent when a crypto withdrawal is created and skips straight to
+  // 'processing' (product-rules.md rule 18b) - this is the user's actual
+  // first notice for that withdrawal, not Withdrawal Requested.
+  async sendCryptoWithdrawalProcessingEmail(params: {
+    email: string;
+    name: string;
+    amount: string;
+    asset: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      'Your crypto withdrawal is on its way',
+      CryptoWithdrawalProcessing(props),
     );
   }
 }

@@ -2,17 +2,18 @@
 
 Transactional emails only for V1 — no marketing sequences yet. Tone matches UI copy: warm, clear, confidence-building. Sent via Resend from support@veyro.best.
 
-## Shared Shell
+## Shared Email Shell (applies to every template below)
 
-Every template below wraps a single base layout, built with React Email (`@react-email/components`), so header/footer/button markup lives in one place, not copied per template.
-
-- **Header band:** terracotta (#E8674A) background, full width, centered text-based "Veyro" wordmark.
-- **Content area:** white background, Inter font, #1C1B29 text, 600px max width, comfortable padding.
-- **CTA button:** pill-shaped, terracotta fill, white text. Used by every template with a button.
-- **Security note:** small, calm text block used on the OTP, password reset, and trade approved/rejected templates, stating Veyro will never ask for a password or verification code and pointing to support if the email is unexpected.
-- **Divider**, then **footer:** support@veyro.best as a mailto link, "This is an automated message, please do not reply", copyright line with the current year. No app store badges, no social icons.
-
-The two OTP-code templates (Verify Your Email, Password Reset) additionally share an inner layout for the greeting, code display, and expiry line, since their structure is otherwise identical.
+Every transactional email uses the same shell, styled per design-principles.md:
+- **Header band:** background color `#1C1B29` (ink, NOT the terracotta primary), logo icon placed beside the "Veyro" wordmark (not just text alone)
+- **Greeting:** "Hi [Name]," or "Hi there," if name isn't available
+- **Body:** left-aligned, Inter, #1C1B29 text on white
+- **No redundant title:** the subject line and an in-body heading should never restate the same thing, go straight from greeting into the actual message, don't repeat the subject as a big heading in the body
+- **CTA button** (where applicable): pill-shaped, terracotta fill, white text
+- **OTP/verification code display:** moderate size, NOT oversized, legible and easy to read/copy but not dominating the email visually
+- **Security note** (where applicable, e.g. OTP/password reset/trade emails): a short line noting Veyro will never ask for their password or OTP code, and to contact support if they didn't request this action
+- **Divider**
+- **Footer:** support@veyro.best link, a line noting "This is an automated message, please do not reply," copyright line. No app store badges (no native app in V1). No social links until Veyro's social accounts exist, don't fabricate placeholder links.
 
 ## 0. Verify Your Email (Signup OTP)
 
@@ -20,11 +21,13 @@ The two OTP-code templates (Verify Your Email, Password Reset) additionally shar
 **Body:**
 > Hi [Name],
 >
-> Enter this code to verify your email and activate your Veyro account:
+> Your verification code is:
 >
-> [Code]
+> **[6-digit code]**
 >
-> This code expires in [X] minutes.
+> This code expires in 10 minutes. Enter it on the verification page to activate your account.
+>
+> Didn't sign up for Veyro? You can safely ignore this email.
 
 ## 1. Welcome / Signup Confirmation
 
@@ -128,12 +131,83 @@ The two OTP-code templates (Verify Your Email, Password Reset) additionally shar
 
 ## 9. Password Reset
 
-**Subject:** Reset your Veyro password
+**Subject:** Your Veyro password reset code
 **Body:**
 > Hi [Name],
 >
-> Click below to reset your password. This link expires in [X] minutes.
+> Your password reset code is:
 >
-> [Reset Password button]
+> **[6-digit code]**
 >
-> Didn't request this? You can safely ignore this email.
+> This code expires in 10 minutes. Enter it on the reset password page to continue.
+>
+> Didn't request this? You can safely ignore this email, your password won't be changed.
+
+## 10. Wallet Credited (Manual Deposit)
+
+**Subject:** Your Veyro wallet has been credited
+**Body:**
+> Hi [Name],
+>
+> Veyro has credited your wallet: **[amount] [currency]**
+>
+> New balance: [balance]
+>
+> If you have questions about this credit, contact Support.
+
+## 11. Withdrawal Failed
+
+**Subject:** Your withdrawal couldn't be completed
+**Body:**
+> Hi [Name],
+>
+> Your withdrawal of [amount] couldn't be completed: [reason].
+>
+> The funds have been returned to your wallet. Please check your details and try again, or contact Support if you need help.
+
+## 12. Two-Factor Authentication Enabled
+
+**Subject:** Two-factor authentication enabled on your account
+**Body:**
+> Hi [Name],
+>
+> Two-factor authentication was just turned on for your Veyro account.
+>
+> Didn't do this? Contact Support immediately.
+
+## 13. Withdrawal PIN Set/Changed
+
+**Subject:** Your withdrawal PIN was updated
+**Body:**
+> Hi [Name],
+>
+> Your withdrawal PIN was just changed.
+>
+> Didn't do this? Contact Support immediately.
+
+## 14. Security Reset by Support (admin-initiated)
+
+**Subject:** A security setting on your account was reset
+**Body:**
+> Hi [Name],
+>
+> At your request (or as part of an account recovery), Veyro Support reset your [2FA / withdrawal PIN] on [date]. Please set it up again the next time you log in.
+>
+> Didn't request this? Contact Support immediately.
+
+## 15. Support Ticket Resolved
+
+**Subject:** Your support ticket has been resolved
+**Body:**
+> Hi [Name],
+>
+> Your recent support conversation about [category] has been marked resolved. If you need anything else, just reply here and it'll reopen automatically.
+
+## 16. Crypto Withdrawal Processing
+
+**Subject:** Your crypto withdrawal is on its way
+**Body:**
+> Hi [Name],
+>
+> Your withdrawal of [amount] [asset] is being processed to the address you provided. You'll be notified once it's complete.
+

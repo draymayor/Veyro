@@ -16,12 +16,13 @@ export function BottomNav() {
           <Link
             key={href}
             href={href}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "flex flex-1 flex-col items-center gap-1 py-2.5 text-xs",
-              active ? "text-primary" : "text-ink/50",
+              "flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium",
+              active ? "text-primary" : "text-ink/40",
             )}
           >
-            <Icon size={20} strokeWidth={active ? 2.25 : 1.75} />
+            <Icon className="size-5" aria-hidden="true" />
             {label}
           </Link>
         );

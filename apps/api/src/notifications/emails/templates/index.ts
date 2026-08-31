@@ -21,3 +21,41 @@ export {
   type WithdrawalCompletedProps,
 } from './withdrawal-completed';
 export { ReferralEarned, type ReferralEarnedProps } from './referral-earned';
+export {
+  WithdrawalPinReset,
+  type WithdrawalPinResetProps,
+} from './withdrawal-pin-reset';
+export {
+  TwoFactorRecoveryUsed,
+  type TwoFactorRecoveryUsedProps,
+} from './two-factor-recovery-used';
+export { WalletCredited, type WalletCreditedProps } from './wallet-credited';
+export {
+  CryptoDepositCredited,
+  type CryptoDepositCreditedProps,
+} from './crypto-deposit-credited';
+export {
+  WithdrawalFailed,
+  type WithdrawalFailedProps,
+} from './withdrawal-failed';
+export {
+  TwoFactorEnabled,
+  type TwoFactorEnabledProps,
+} from './two-factor-enabled';
+export {
+  WithdrawalPinChanged,
+  type WithdrawalPinChangedProps,
+} from './withdrawal-pin-changed';
+export {
+  SecurityResetByAdmin,
+  type SecurityResetByAdminProps,
+  type SecurityResetType,
+} from './security-reset-by-support';
+export {
+  SupportTicketResolved,
+  type SupportTicketResolvedProps,
+} from './support-ticket-resolved';
+export {
+  CryptoWithdrawalProcessing,
+  type CryptoWithdrawalProcessingProps,
+} from './crypto-withdrawal-processing';

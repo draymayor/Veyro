@@ -11,6 +11,10 @@ import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { AuthCryptoVisual } from "@/components/auth/auth-crypto-visual";
 import { PasswordInput } from "@/components/auth/password-input";
 import { getApiBaseUrl } from "@/lib/api-base-url";
+import {
+  ADMIN_ENTRY_PATH,
+  POST_AUTH_ENTRY_PATH,
+} from "@/lib/auth/post-auth-redirect";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -40,6 +44,9 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const resetSuccess = searchParams.get("reset") === "success";
+  const recovered = searchParams.get("recovered") === "1";
+  const oauthError = searchParams.get("error") === "oauth";
+  const oauthErrorReason = searchParams.get("reason");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -68,17 +75,35 @@ function LoginForm() {
       return;
     }
 
+    // TOTP is account-recovery only (docs/product-rules.md rule 18a), but it
+    // still gates entry to the app itself: if this account has a verified
+    // factor, the password alone only earns aal1.
+    const { data: aal } =
+      await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+      router.push("/mfa-challenge");
+      return;
+    }
+
     const res = await fetch(`${getApiBaseUrl()}/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const me = res.ok ? await res.json() : null;
+
+    // Admin routing takes priority over every consumer onboarding gate: an
+    // admin identity never goes through email verification or country
+    // selection (docs/context.md's Admin Authentication Architecture).
+    if (me?.isAdmin) {
+      router.push(ADMIN_ENTRY_PATH);
+      return;
+    }
 
     if (me && !me.emailVerified) {
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       return;
     }
 
-    router.push("/home");
+    router.push(POST_AUTH_ENTRY_PATH);
   }
 
   return (
@@ -151,6 +176,27 @@ function LoginForm() {
               className="border-success/30 bg-success/10 text-success mb-6 rounded-lg border px-4 py-3 text-sm font-medium"
             >
               Your password has been reset. Log in with your new password.
+            </motion.div>
+          )}
+
+          {recovered && (
+            <motion.div
+              variants={itemVariants}
+              className="mb-6 rounded-lg border border-[#C24E3D]/30 bg-[#C24E3D]/10 px-4 py-3 text-sm font-medium text-[#C24E3D]"
+            >
+              Two-factor authentication was turned off using a backup code. Log
+              in and re-enable it in Settings if this was you.
+            </motion.div>
+          )}
+
+          {oauthError && (
+            <motion.div
+              variants={itemVariants}
+              className="mb-6 rounded-lg border border-[#C24E3D]/30 bg-[#C24E3D]/10 px-4 py-3 text-sm font-medium text-[#C24E3D]"
+            >
+              Google sign-in didn&apos;t go through
+              {oauthErrorReason ? `: ${oauthErrorReason}` : "."} Please try
+              again.
             </motion.div>
           )}
 

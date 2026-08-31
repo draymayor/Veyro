@@ -1,0 +1,52 @@
+# Fails loudly when supabase/migrations/ and the live Supabase project are
+# out of sync (a local migration file never applied live, or a migration
+# applied live with no matching local file), per the Supabase section of
+# docs/deployment.md. This exact drift has silently broken features 6
+# separate times on this project, so this check is a required, blocking
+# gate, not an informational step.
+#
+# Trigger points:
+#   - pull_request touching supabase/migrations/: forces the migration to
+#     already be applied to the live project before its PR can merge,
+#     instead of "merge now, remember to push later" (the pattern that
+#     caused the repeat failures).
+#   - schedule: catches drift introduced outside a PR entirely, e.g. a
+#     migration that was merged and forgotten, or a manual dashboard
+#     change on the live project.
+#   - workflow_dispatch: run on demand.
+#
+# Requires one repo secret:
+#   SUPABASE_DB_URL - the live project's direct database connection
+#     string (Supabase dashboard -> Project Settings -> Database ->
+#     Connection string -> URI, port 5432, not the pooler).
+name: Migration Drift Check
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/check-migration-drift.mjs"
+      - ".github/workflows/migration-drift-check.yml"
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  check-drift:
+    name: Migration Drift Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Check migration drift
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/check-migration-drift.mjs

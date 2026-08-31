@@ -6,9 +6,9 @@ interface PriceChangeBadgeProps {
   className?: string;
 }
 
-// Market-data convention (not the brand palette): green for up, red for
-// down, so this reads instantly as gain/loss regardless of Veyro's usual
-// terracotta/sage colors.
+// Up uses the same vibrant green as the app's success color, one
+// consistent green across the whole app (docs/design-principles.md). Down
+// stays a market-convention red, distinct from the brand's brick red.
 export function PriceChangeBadge({ change, className }: PriceChangeBadgeProps) {
   const positive = change >= 0;
 
@@ -17,7 +17,7 @@ export function PriceChangeBadge({ change, className }: PriceChangeBadgeProps) {
       className={cn(
         "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
         positive
-          ? "bg-[#22C55E]/15 text-[#22C55E]"
+          ? "bg-[#0ECB81]/15 text-[#0ECB81]"
           : "bg-[#EF4444]/15 text-[#EF4444]",
         className,
       )}

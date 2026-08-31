@@ -1,0 +1,21 @@
+-- Same class of bug as 20260825095757_restore_users_column_grants.sql:
+-- is_admin was added to public.users directly against the live database
+-- (no migration ever created it), and never got a SELECT grant for
+-- `authenticated`, only the automatic REFERENCES privilege. AppLayout and
+-- /select-country and /verify-email all added is_admin to their
+-- RLS-scoped profile reads (to route admin sessions away from consumer
+-- routes), and Postgres rejects a select naming a column the caller has
+-- no privilege on for the WHOLE row, not just that column - so every one
+-- of those reads started returning nothing at all, which made
+-- email_verified_at look unset regardless of its real value. That is the
+-- exact redirect-loop failure mode restore_users_column_grants.sql
+-- describes, just triggered by a different column this time.
+--
+-- Deliberately `authenticated` only, not `anon`: unlike the profile
+-- fields granted in that earlier migration, there's no legitimate reason
+-- for an unauthenticated request to ever read this column, RLS would
+-- block it anyway. Also deliberately SELECT only - insert/update on
+-- is_admin must stay service-role-only forever, a user must never be able
+-- to grant themselves admin access via a client-side write.
+
+grant select (is_admin) on public.users to authenticated;

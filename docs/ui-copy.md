@@ -59,10 +59,18 @@ Reference copy for consistent tone across the app. Tone: warm, clear, confidence
 
 - No transactions yet: "You haven't sold anything yet. Ready to turn a card or coin into cash?"
 - No referrals yet: "Invite friends and earn when they trade."
+- No notifications yet (All tab): "You're all caught up. We'll let you know when something changes."
+- No trade notifications yet: "No trade notifications yet. We'll let you know when a submission's status changes."
+- No wallet notifications yet: "No wallet notifications yet. We'll let you know when a withdrawal's status changes."
+- No referral notifications yet: "No referral notifications yet. Invite friends and earn when they trade."
+- No account notifications yet: "No account notifications yet. We'll let you know about anything security-related here."
+- No support messages yet: "Have a question? Send us a message and our team will get back to you." (Support page's live chat, first-visit state)
 
 ## Errors
 
 - Generic submission error: "Something went wrong on our end. Please try again."
+- 404 page: "Page not found" / "The page you're looking for doesn't exist or may have moved."
+- Route error boundary (error.tsx, global-error.tsx): reuses the generic submission error copy above, paired with a "Try Again" button.
 - Card/crypto rejected: paired with specific reason, e.g. "This card's balance couldn't be verified." / "We couldn't confirm this deposit — please check the transaction hash."
 - Rate expired/changed: "This rate has changed. Please review the updated rate before continuing."
 
@@ -119,7 +127,11 @@ Reference copy for consistent tone across the app. Tone: warm, clear, confidence
 
 - Referral page headline: "Earn by inviting others."
 - Referral CTA: "Share your link"
-- Leaderboard headline: "Top Traders This Week"
+- Leaderboard Trading panel headline: "Top Traders"
+- Leaderboard Referrals panel headline: "Top Referrers"
+- Leaderboard ranking period label: "This Week"
+- Leaderboard teaser card button: "View Referrals"
+- Viewer's own row, when pinned outside the visible ranked list: "You: #[rank]"
 
 ## Homepage (below the fold)
 

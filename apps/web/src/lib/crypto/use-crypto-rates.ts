@@ -16,6 +16,8 @@ interface UseCryptoRatesResult {
   rates: CryptoRatesMap | null;
   loading: boolean;
   error: boolean;
+  /** Timestamp (Date.now()) of the last successful fetch, for driving a refresh countdown. */
+  refreshedAt: number | null;
 }
 
 /**
@@ -23,11 +25,17 @@ interface UseCryptoRatesResult {
  * server-cached). Used wherever the app shows a crypto price, so there is
  * a single fetch shape and a single loading/error contract for callers to
  * handle instead of each screen inventing its own.
+ *
+ * @param pollMs When provided, refetches on this interval (e.g. 30_000 for
+ * the sell flow's live payout preview) instead of fetching once on mount.
+ * Refetch failures don't clear already-loaded rates, since a stale price
+ * is more useful to a mid-entry user than a blank/error state.
  */
-export function useCryptoRates(): UseCryptoRatesResult {
+export function useCryptoRates(pollMs?: number): UseCryptoRatesResult {
   const [rates, setRates] = useState<CryptoRatesMap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [refreshedAt, setRefreshedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +48,8 @@ export function useCryptoRates(): UseCryptoRatesResult {
         if (!cancelled) {
           setRates(data);
           setLoading(false);
+          setError(false);
+          setRefreshedAt(Date.now());
         }
       } catch {
         if (!cancelled) {
@@ -50,10 +60,18 @@ export function useCryptoRates(): UseCryptoRatesResult {
     }
 
     void load();
+
+    if (!pollMs)
+      return () => {
+        cancelled = true;
+      };
+
+    const interval = setInterval(() => void load(), pollMs);
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
-  }, []);
+  }, [pollMs]);
 
-  return { rates, loading, error };
+  return { rates, loading, error, refreshedAt };
 }

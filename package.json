@@ -8,6 +8,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "format:check": "turbo run format:check",
+    "db:check-drift": "node scripts/check-migration-drift.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

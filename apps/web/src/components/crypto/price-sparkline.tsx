@@ -12,10 +12,10 @@ const WIDTH = 300;
 const HEIGHT = 80;
 const PADDING_Y = 6;
 
-// Market-data convention (not the brand palette): green for up, red for
-// down, so this reads instantly as gain/loss regardless of Veyro's usual
-// terracotta/sage colors.
-const UP_COLOR = "#22C55E";
+// Up uses the same vibrant green as the app's success color, one
+// consistent green across the whole app (docs/design-principles.md). Down
+// stays a market-convention red, distinct from the brand's brick red.
+const UP_COLOR = "#0ECB81";
 const DOWN_COLOR = "#EF4444";
 
 function buildLinePath(points: [number, number][]): string {
