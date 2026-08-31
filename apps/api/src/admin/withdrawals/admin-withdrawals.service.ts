@@ -288,7 +288,12 @@ export class AdminWithdrawalsService {
         'This withdrawal has already been resolved or does not exist.',
       );
     }
-    const withdrawal = withdrawalData as WithdrawalWithUserRow;
+    // users!withdrawals_user_id_fkey(...) is a to-one FK relation, so
+    // PostgREST returns a single object at runtime - but this untyped
+    // client (no generated Database type) infers embedded relations as
+    // arrays regardless of cardinality, so the direct cast below doesn't
+    // structurally overlap and needs the unknown step.
+    const withdrawal = withdrawalData as unknown as WithdrawalWithUserRow;
 
     // Critical: debitStandaloneWallet reserved these funds the moment the
     // withdrawal was requested (withdrawals.service.ts), so marking it
