@@ -19,7 +19,19 @@
 # already exist in Secret Manager with GCP_RUNTIME_SERVICE_ACCOUNT
 # granted secretmanager.secretAccessor on it:
 #   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY,
-#   COINGECKO_API_KEY
+#   COINGECKO_API_KEY, TATUM_API_KEY, TATUM_BTC_XPUB, TATUM_LTC_XPUB,
+#   TATUM_DOGE_XPUB, TATUM_EVM_XPUB, TATUM_TRON_XPUB, FCA_API_KEY,
+#   CURRENCYFREAKS_API_KEY
+#
+# The six TATUM_* secrets back TatumService's deposit-address generation
+# (apps/api/.env.example has the full per-chain breakdown of what
+# TATUM_EVM_XPUB covers); FCA_API_KEY/CURRENCYFREAKS_API_KEY back
+# FxRateService's primary/fallback FX lookup for crypto payout
+# conversion. None of the seven are sensitive to leak as xpubs (they can
+# only derive addresses, never sign), but they still go through Secret
+# Manager rather than plain env vars for consistency with the rest of
+# this list and because CURRENCYFREAKS_API_KEY/FCA_API_KEY genuinely are
+# credentials.
 #
 # Deployed with --allow-unauthenticated: the web app calls this API
 # over plain REST/HTTPS (see architecture.md's system diagram), not with
@@ -113,3 +125,11 @@ jobs:
             SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest
             RESEND_API_KEY=RESEND_API_KEY:latest
             COINGECKO_API_KEY=COINGECKO_API_KEY:latest
+            TATUM_API_KEY=TATUM_API_KEY:latest
+            TATUM_BTC_XPUB=TATUM_BTC_XPUB:latest
+            TATUM_LTC_XPUB=TATUM_LTC_XPUB:latest
+            TATUM_DOGE_XPUB=TATUM_DOGE_XPUB:latest
+            TATUM_EVM_XPUB=TATUM_EVM_XPUB:latest
+            TATUM_TRON_XPUB=TATUM_TRON_XPUB:latest
+            FCA_API_KEY=FCA_API_KEY:latest
+            CURRENCYFREAKS_API_KEY=CURRENCYFREAKS_API_KEY:latest
