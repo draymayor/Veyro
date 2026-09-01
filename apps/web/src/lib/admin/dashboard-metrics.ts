@@ -3,12 +3,20 @@ export interface AdminCurrencyTotal {
   total: number;
 }
 
+export interface AdminSymbolTotal {
+  symbol: string;
+  total: number;
+}
+
 export interface AdminDashboardMetrics {
   totalUsers: number;
   todaysTrades: number;
   pendingTrades: number;
   todaysVolumeByCurrency: AdminCurrencyTotal[];
   walletLiabilitiesByCurrency: AdminCurrencyTotal[];
+  walletLiabilitiesCombinedUsd: number | null;
+  totalCryptoTrades: number;
+  cryptoWalletsBySymbol: AdminSymbolTotal[];
   withdrawalsPending: number;
   revenueAvailable: false;
   notifications: {
@@ -16,6 +24,11 @@ export interface AdminDashboardMetrics {
     pendingWithdrawals: number;
     openSupportThreads: number;
   };
+}
+
+/** e.g. 1234.5 BTC -> "1,234.5" - crypto balances need more precision than currency formatting allows, no currency symbol. */
+export function formatSymbolTotal(total: number): string {
+  return total.toLocaleString("en-US", { maximumFractionDigits: 8 });
 }
 
 /**

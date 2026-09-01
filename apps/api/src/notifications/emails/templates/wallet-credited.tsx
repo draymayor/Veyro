@@ -19,23 +19,13 @@ export function WalletCredited({ name, amount, balance }: WalletCreditedProps) {
     <EmailLayout previewText="Your Veyro wallet has been credited">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        Your wallet has been credited
-      </Text>
-      <Text
-        style={{
           margin: '0 0 24px',
           fontSize: 15,
           lineHeight: '24px',
           color: emailTheme.ink,
         }}
       >
-        Hi {name},
+        Hey {name},
         <br />
         Veyro has credited your wallet.
       </Text>
@@ -56,7 +46,7 @@ export function WalletCredited({ name, amount, balance }: WalletCreditedProps) {
         <Text
           style={{
             margin: 0,
-            fontSize: 30,
+            fontSize: 20,
             fontWeight: 700,
             color: emailTheme.success,
           }}

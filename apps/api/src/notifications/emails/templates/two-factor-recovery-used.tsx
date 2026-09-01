@@ -21,16 +21,6 @@ export function TwoFactorRecoveryUsed({
     <EmailLayout previewText="A backup code was used on your Veyro account">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        A backup code was used on your account
-      </Text>
-      <Text
-        style={{
           margin: '0 0 20px',
           fontSize: 15,
           lineHeight: '24px',

@@ -3,12 +3,13 @@ import {
   Container,
   Head,
   Html,
+  Img,
   Preview,
   Section,
   Text,
 } from '@react-email/components';
 import type { ReactNode } from 'react';
-import { emailTheme, SUPPORT_EMAIL } from './theme';
+import { emailTheme, LOGO_URL, SUPPORT_EMAIL } from './theme';
 import { EmailFooter } from './email-footer';
 
 interface EmailLayoutProps {
@@ -16,9 +17,10 @@ interface EmailLayoutProps {
   children: ReactNode;
 }
 
-// Shared shell every template wraps its content with: terracotta header
-// band, white content card, divider, footer. Nothing template-specific
-// lives here, so a header/footer change only ever happens in one place.
+// Shared shell every template wraps its content with: white header band
+// (logo mark + terracotta wordmark), white content card, divider, footer.
+// Nothing template-specific lives here, so a header/footer change only
+// ever happens in one place.
 export function EmailLayout({ previewText, children }: EmailLayoutProps) {
   return (
     <Html>
@@ -43,15 +45,29 @@ export function EmailLayout({ previewText, children }: EmailLayoutProps) {
         >
           <Section
             style={{
-              backgroundColor: emailTheme.primary,
+              backgroundColor: '#FFFFFF',
               padding: '28px 0',
               textAlign: 'center',
+              borderBottom: `1px solid ${emailTheme.border}`,
             }}
           >
+            <Img
+              src={LOGO_URL}
+              alt="Veyro"
+              width={28}
+              height={28}
+              style={{
+                display: 'inline-block',
+                verticalAlign: 'middle',
+                marginRight: 8,
+              }}
+            />
             <Text
               style={{
+                display: 'inline-block',
+                verticalAlign: 'middle',
                 margin: 0,
-                color: '#FFFFFF',
+                color: emailTheme.primary,
                 fontSize: 22,
                 fontWeight: 700,
                 letterSpacing: '0.02em',

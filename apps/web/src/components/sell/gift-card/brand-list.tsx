@@ -15,9 +15,18 @@ import {
   brandCountrySummaries,
   type GiftCardBrand,
 } from "@/lib/gift-cards/data";
-import { formatNgn } from "@/lib/dashboard/placeholder-data";
+import {
+  formatWalletAmount,
+  type WalletCurrency,
+} from "@/lib/dashboard/wallet-currency";
+import { useFxRates } from "@/lib/fx/use-fx-rates";
 import { usePrefersReducedMotion } from "@/lib/motion/use-reduced-motion";
 import { cn } from "@/lib/utils";
+
+interface GiftCardBrandListProps {
+  /** The signed-in user's actual display currency, never the rate's stored currency. */
+  homeCurrency: WalletCurrency;
+}
 
 /**
  * List + expand interaction for the sell flow's brand picker. Search bar
@@ -26,7 +35,7 @@ import { cn } from "@/lib/utils";
  * flat rows with no shadow, no border, and no dividing lines between them,
  * generous vertical padding instead of a boxed card to separate rows.
  */
-export function GiftCardBrandList() {
+export function GiftCardBrandList({ homeCurrency }: GiftCardBrandListProps) {
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -61,6 +70,7 @@ export function GiftCardBrandList() {
             <BrandRow
               key={brand.id}
               brand={brand}
+              homeCurrency={homeCurrency}
               expanded={expandedId === brand.id}
               onToggle={() =>
                 setExpandedId((current) =>
@@ -82,13 +92,15 @@ export function GiftCardBrandList() {
 
 interface BrandRowProps {
   brand: GiftCardBrand;
+  homeCurrency: WalletCurrency;
   expanded: boolean;
   onToggle: () => void;
 }
 
-function BrandRow({ brand, expanded, onToggle }: BrandRowProps) {
+function BrandRow({ brand, homeCurrency, expanded, onToggle }: BrandRowProps) {
   const reducedMotion = usePrefersReducedMotion();
   const summaries = useMemo(() => brandCountrySummaries(brand.id), [brand.id]);
+  const { rates: fxRates } = useFxRates();
 
   return (
     <div>
@@ -149,7 +161,13 @@ function BrandRow({ brand, expanded, onToggle }: BrandRowProps) {
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="text-primary text-sm font-semibold tabular-nums">
-                        Up to {formatNgn(summary.bestRate)}
+                        Up to{" "}
+                        {formatWalletAmount(
+                          summary.bestRate,
+                          "NGN",
+                          homeCurrency,
+                          fxRates ?? undefined,
+                        )}
                       </span>
                       <ArrowUpRight
                         className="text-ink/30 size-4"

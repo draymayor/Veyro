@@ -15,16 +15,6 @@ export function WithdrawalPinChanged({ name }: WithdrawalPinChangedProps) {
     <EmailLayout previewText="Your withdrawal PIN was updated">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        Your withdrawal PIN was updated
-      </Text>
-      <Text
-        style={{
           margin: '0 0 20px',
           fontSize: 15,
           lineHeight: '24px',

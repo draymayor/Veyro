@@ -13,16 +13,6 @@ export function Welcome({ name, getStartedUrl }: WelcomeProps) {
     <EmailLayout previewText="Welcome to Veyro">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        Welcome to Veyro
-      </Text>
-      <Text
-        style={{
           margin: '0 0 24px',
           fontSize: 15,
           lineHeight: '24px',

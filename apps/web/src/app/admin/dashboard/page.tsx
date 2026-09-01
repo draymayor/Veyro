@@ -5,6 +5,15 @@ import {
 } from "@/lib/admin/dashboard-metrics";
 import { MetricCard } from "@/components/admin/dashboard/metric-card";
 import { NotificationsPanel } from "@/components/admin/dashboard/notifications-panel";
+import { CryptoBreakdownDropdown } from "@/components/admin/dashboard/crypto-breakdown-dropdown";
+
+function formatUsd(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
 // Dashboard home (docs/admin-guide.md): top-level metrics + admin
 // notifications panel, all backed by real queries against GET
@@ -56,7 +65,20 @@ export default async function AdminDashboardPage() {
         <MetricCard
           label="Wallet liabilities"
           value={formatCurrencyTotals(metrics.walletLiabilitiesByCurrency)}
-          caption="Total owed across every user wallet"
+          caption="Total owed across every user wallet, by currency"
+        />
+        <MetricCard
+          label="Wallet liabilities (combined)"
+          value={
+            metrics.walletLiabilitiesCombinedUsd === null
+              ? "Unavailable"
+              : formatUsd(metrics.walletLiabilitiesCombinedUsd)
+          }
+          caption="Fiat + crypto held, converted to one USD figure"
+        />
+        <MetricCard
+          label="Total crypto trades"
+          value={metrics.totalCryptoTrades.toLocaleString("en-US")}
         />
         <MetricCard
           label="Withdrawals pending"
@@ -68,6 +90,8 @@ export default async function AdminDashboardPage() {
           caption="Requires tracking liquidation value against quoted payout, not yet built"
         />
       </div>
+
+      <CryptoBreakdownDropdown totals={metrics.cryptoWalletsBySymbol} />
 
       <NotificationsPanel notifications={metrics.notifications} />
     </div>

@@ -7,6 +7,8 @@ import {
   userLabel,
   formatMoney,
   formatDateTime,
+  formatLedgerAmount,
+  formatLedgerBalanceAfter,
 } from "@/lib/admin/users/display";
 import { AccountStatusSelect } from "@/components/admin/users/account-status-select";
 import { SuspendWithdrawalsButton } from "@/components/admin/users/suspend-withdrawals-button";
@@ -149,13 +151,14 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                 className="flex items-center justify-between gap-4"
               >
                 <span className="text-ink/70 min-w-0 truncate text-xs">
+                  {entry.ledger === "crypto" ? "crypto · " : ""}
                   {entry.type} · {formatDateTime(entry.created_at)}
                 </span>
                 <span className="text-ink shrink-0 text-xs font-medium tabular-nums">
                   {entry.type === "debit" ? "-" : "+"}
-                  {formatMoney(entry.amount, entry.wallet_currency)}
+                  {formatLedgerAmount(entry)}
                   {" -> "}
-                  {formatMoney(entry.balance_after, entry.wallet_currency)}
+                  {formatLedgerBalanceAfter(entry)}
                 </span>
               </div>
             ))}

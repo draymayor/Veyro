@@ -58,6 +58,16 @@ function formatAmount(amount: number, currency: string): string {
   }
 }
 
+// crypto_wallet_transactions rows carry a raw symbol (e.g. "BTC") in
+// `currency`, not an ISO-4217 code, so Intl.NumberFormat's style:"currency"
+// throws and formatAmount's catch branch falls back to a fiat-oriented
+// 3-decimal default - collapsing a real balance like 0.00005 BTC to "0".
+// Mirrors crypto-breakdown.tsx's formatCryptoAmount so the same figure
+// reads the same amount in both places on this page.
+function formatCryptoTransactionAmount(amount: number, symbol: string): string {
+  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 8 })} ${symbol}`;
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
@@ -111,7 +121,12 @@ export function TransactionHistoryList({ items }: TransactionHistoryListProps) {
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-1">
                   <span className="text-ink text-sm font-medium tabular-nums">
-                    {formatAmount(item.amount, item.currency)}
+                    {item.kind === "crypto"
+                      ? formatCryptoTransactionAmount(
+                          item.amount,
+                          item.currency,
+                        )
+                      : formatAmount(item.amount, item.currency)}
                   </span>
                   <StatusBadge label={label} tone={tone} />
                 </span>

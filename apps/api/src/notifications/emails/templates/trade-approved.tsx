@@ -28,16 +28,6 @@ export function TradeApproved({
     >
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        You&apos;ve been paid
-      </Text>
-      <Text
-        style={{
           margin: '0 0 24px',
           fontSize: 15,
           lineHeight: '24px',
@@ -65,7 +55,7 @@ export function TradeApproved({
         <Text
           style={{
             margin: 0,
-            fontSize: 30,
+            fontSize: 20,
             fontWeight: 700,
             color: emailTheme.success,
           }}

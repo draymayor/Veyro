@@ -73,6 +73,7 @@ export default async function AssetsPage() {
             <BalanceCard
               homeCurrency={homeCurrency}
               balance={walletSummary.balance}
+              cryptoBalances={cryptoBalances}
               todayPnl={walletSummary.todayPnl}
               showChart
               history={walletSummary.history}

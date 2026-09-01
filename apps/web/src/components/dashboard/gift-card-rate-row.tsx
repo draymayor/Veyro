@@ -4,14 +4,21 @@ import {
   defaultBrandRate,
   type GiftCardBrand,
 } from "@/lib/gift-cards/data";
-import { formatNgn } from "@/lib/dashboard/placeholder-data";
+import {
+  formatWalletAmount,
+  type WalletCurrency,
+} from "@/lib/dashboard/wallet-currency";
+import { useFxRates } from "@/lib/fx/use-fx-rates";
 
 interface GiftCardRateRowProps {
   brand: GiftCardBrand;
+  /** The signed-in user's actual display currency, never the rate's stored currency. */
+  homeCurrency: WalletCurrency;
 }
 
-export function GiftCardRateRow({ brand }: GiftCardRateRowProps) {
+export function GiftCardRateRow({ brand, homeCurrency }: GiftCardRateRowProps) {
   const best = defaultBrandRate(brand);
+  const { rates: fxRates } = useFxRates();
 
   return (
     // Home's Gift Cards tab is a live rate ticker only (docs/context.md) -
@@ -45,7 +52,12 @@ export function GiftCardRateRow({ brand }: GiftCardRateRowProps) {
       </span>
 
       <span className="text-ink justify-self-end text-right text-sm font-medium tabular-nums">
-        {formatNgn(best?.rate ?? 0)}
+        {formatWalletAmount(
+          best?.rate ?? 0,
+          "NGN",
+          homeCurrency,
+          fxRates ?? undefined,
+        )}
       </span>
 
       <span className="text-ink/40 min-w-16 justify-self-end text-right text-xs">

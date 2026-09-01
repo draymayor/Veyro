@@ -14,3 +14,9 @@ export const emailTheme = {
 } as const;
 
 export const SUPPORT_EMAIL = 'support@veyro.best';
+
+// Served from apps/web/public/veyro_logos/veyro-mark.png via the production
+// domain - email clients fetch images remotely, they can't reference a
+// local Next.js public path, so this has to be an absolute, publicly
+// reachable URL rather than a bundled asset.
+export const LOGO_URL = 'https://veyro.best/veyro_logos/veyro-mark.png';

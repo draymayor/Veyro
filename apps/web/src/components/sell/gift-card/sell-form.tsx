@@ -7,6 +7,11 @@ import { ConfirmationDialog } from "@/components/sell/confirmation-dialog";
 import { Button } from "@/components/ui/button";
 import type { CardType, GiftCardRate } from "@/lib/gift-cards/data";
 import { createGiftCardTrade, uploadTradeFile } from "@/lib/trades/gift-card";
+import {
+  formatWalletAmount,
+  type WalletCurrency,
+} from "@/lib/dashboard/wallet-currency";
+import { useFxRates } from "@/lib/fx/use-fx-rates";
 
 const TAB_TRIGGER =
   "text-ink/50 data-[state=active]:bg-card data-[state=active]:text-ink data-[state=active]:shadow-sm flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-40";
@@ -15,6 +20,8 @@ interface GiftCardSellFormProps {
   physicalRate: GiftCardRate | null;
   ecodeRate: GiftCardRate | null;
   defaultType: CardType;
+  /** The signed-in user's actual display currency, never the rate's stored currency. */
+  homeCurrency: WalletCurrency;
 }
 
 /**
@@ -28,7 +35,9 @@ export function GiftCardSellForm({
   physicalRate,
   ecodeRate,
   defaultType,
+  homeCurrency,
 }: GiftCardSellFormProps) {
+  const { rates: fxRates } = useFxRates();
   const initialTab: CardType =
     defaultType === "physical" && physicalRate
       ? "physical"
@@ -189,7 +198,12 @@ export function GiftCardSellForm({
         </Field>
       )}
 
-      <PayoutSummary payout={payout} />
+      <PayoutSummary
+        payout={payout}
+        payoutCurrency={activeRate?.currency ?? "NGN"}
+        homeCurrency={homeCurrency}
+        fxRates={fxRates ?? undefined}
+      />
 
       {submitError && (
         <p className="text-error text-sm" role="alert">
@@ -230,14 +244,21 @@ function Field({
   );
 }
 
-function PayoutSummary({ payout }: { payout: number | null }) {
+function PayoutSummary({
+  payout,
+  payoutCurrency,
+  homeCurrency,
+  fxRates,
+}: {
+  payout: number | null;
+  payoutCurrency: string;
+  homeCurrency: WalletCurrency;
+  fxRates?: Record<string, number>;
+}) {
   const display = useMemo(
     () =>
-      `₦${(payout ?? 0).toLocaleString("en-NG", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`,
-    [payout],
+      formatWalletAmount(payout ?? 0, payoutCurrency, homeCurrency, fxRates),
+    [payout, payoutCurrency, homeCurrency, fxRates],
   );
 
   return (

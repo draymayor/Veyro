@@ -24,16 +24,6 @@ export function TradeRejected({
     <EmailLayout previewText="Update on your submission">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        Update on your submission
-      </Text>
-      <Text
-        style={{
           margin: '0 0 20px',
           fontSize: 15,
           lineHeight: '24px',

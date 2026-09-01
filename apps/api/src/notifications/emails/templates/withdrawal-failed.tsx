@@ -26,16 +26,6 @@ export function WithdrawalFailed({
     <EmailLayout previewText="Your withdrawal couldn't be completed">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        Your withdrawal couldn&apos;t be completed
-      </Text>
-      <Text
-        style={{
           margin: '0 0 20px',
           fontSize: 15,
           lineHeight: '24px',

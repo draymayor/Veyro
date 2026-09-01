@@ -30,16 +30,6 @@ export function SecurityResetByAdmin({
     <EmailLayout previewText="A security setting on your account was reset">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        A security setting was reset
-      </Text>
-      <Text
-        style={{
           margin: '0 0 20px',
           fontSize: 15,
           lineHeight: '24px',
