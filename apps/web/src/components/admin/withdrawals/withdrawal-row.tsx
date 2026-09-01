@@ -71,6 +71,7 @@ export function WithdrawalRow({
       <WithdrawalActions
         withdrawalId={withdrawal.id}
         status={withdrawal.status}
+        cryptoSigningStatus={withdrawal.crypto_signing_status}
       />
     </div>
   );

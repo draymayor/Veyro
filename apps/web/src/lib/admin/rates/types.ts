@@ -44,6 +44,7 @@ export const PLATFORM_SETTING_LABELS: Record<string, string> = {
   referral_bonus_usd: "Referral bonus (USD)",
   crypto_withdrawal_requires_approval:
     "Require approval for crypto withdrawals",
+  crypto_withdrawal_signing_mode: "Crypto withdrawal signing mode",
 };
 
 // Fallback for any key not in the map above: turn snake_case into Title
@@ -69,6 +70,8 @@ export function labelForSettingKey(key: string): string {
 // at it, which is its own source of confusion even with a single key.
 export const SETTINGS_WITH_DEDICATED_UI: Record<string, string> = {
   crypto_withdrawal_requires_approval: "/admin/withdrawals",
+  crypto_withdrawal_signing_mode:
+    "/admin/rates (Crypto Withdrawal Signing Mode toggle above)",
 };
 
 export type SettingValueKind = "boolean" | "number" | "text";

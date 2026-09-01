@@ -143,4 +143,20 @@ export class AdminRatesController {
       value,
     );
   }
+
+  @Get('crypto-signing-mode')
+  getCryptoWithdrawalSigningMode() {
+    return this.adminRatesService.getCryptoWithdrawalSigningMode();
+  }
+
+  @Post('crypto-signing-mode')
+  updateCryptoWithdrawalSigningMode(
+    @Req() req: AuthenticatedRequest,
+    @Body('signingMode') signingMode: 'manual' | 'automatic',
+  ) {
+    return this.adminRatesService.updateCryptoWithdrawalSigningMode(
+      req.user.id,
+      signingMode,
+    );
+  }
 }

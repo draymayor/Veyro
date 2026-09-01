@@ -3,8 +3,12 @@ import { ChainAdapter, DepositAddress, SweepResult } from "./types";
 // tronweb ships without first-party types for this constructor shape in
 // some versions - kept as a require + minimal surface typing to avoid
 // pulling in a mismatched @types package.
+// tronweb@6's CommonJS export is an object with a named `TronWeb` property,
+// not the constructor itself - `const TronWeb = require("tronweb")` gives
+// the module namespace object, and `new TronWeb(...)` throws "TronWeb is
+// not a constructor".
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const TronWeb = require("tronweb");
+const { TronWeb } = require("tronweb");
 
 // Verified 2026-08-30 against Tronscan's own API (apilist.tronscanapi.com):
 // name "Tether USD", symbol USDT, ~$40B/24h volume, 76M holders - genuine.

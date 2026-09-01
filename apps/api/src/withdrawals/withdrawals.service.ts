@@ -32,6 +32,15 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // approval queue entirely, see statusForMethod below.
 const CRYPTO_APPROVAL_SETTING_KEY = 'crypto_withdrawal_requires_approval';
 
+// platform_settings key (docs/database-schema.md's Withdrawal signing mode
+// section): default 'manual' means a crypto withdrawal that reaches
+// 'processing' still needs an explicit admin approve-for-signing action
+// before anything signs/broadcasts. Orthogonal to CRYPTO_APPROVAL_SETTING_KEY
+// above - that gate is about whether the REQUEST itself needs review before
+// proceeding at all; this one is about whether the actual on-chain send is
+// automated once it's proceeding.
+const CRYPTO_SIGNING_MODE_SETTING_KEY = 'crypto_withdrawal_signing_mode';
+
 // Method-specific payout details, per docs/database-schema.md's withdrawals
 // table (docs/product-rules.md rule 18). No gateway integration in V1: this
 // just records the request for manual admin processing.
@@ -72,12 +81,24 @@ export class WithdrawalsService {
 
     const currency = userRow?.currency as string | undefined;
 
+    const status = await this.statusForMethod(client, input.method);
+
     const row: Record<string, unknown> = {
       user_id: user.id,
       amount,
       method: input.method,
-      status: await this.statusForMethod(client, input.method),
+      status,
     };
+
+    // Signing-status gate only starts once a crypto withdrawal actually
+    // reaches 'processing' - if the pre-existing approval-required setting
+    // put it at 'requested' instead, this stays unset until the admin's
+    // existing markProcessing action moves it along (see
+    // AdminWithdrawalsService.markProcessing, which applies the same logic).
+    if (input.method === 'crypto' && status === 'processing') {
+      row.crypto_signing_status =
+        await this.signingStatusForNewProcessing(client);
+    }
 
     // Crypto withdrawals debit the real held crypto_wallets balance for the
     // requested symbol (docs/product-rules.md rules 6a/16) - a completely
@@ -305,5 +326,24 @@ export class WithdrawalsService {
       .maybeSingle();
 
     return data?.value === 'true' ? 'requested' : 'processing';
+  }
+
+  // Reads the CURRENT signing mode at the moment a crypto withdrawal
+  // reaches 'processing' (docs/database-schema.md's Withdrawal signing mode
+  // section). 'automatic' queues it straight for signing with no human
+  // step; 'manual' (the default, matching a missing row) parks it pending
+  // the admin's new, distinct approve-for-signing action - never the
+  // pre-existing markProcessing action, which only governs the separate
+  // requires-approval gate.
+  private async signingStatusForNewProcessing(
+    client: ReturnType<SupabaseService['getClient']>,
+  ): Promise<'ready_to_sign' | 'awaiting_approval'> {
+    const { data } = await client
+      .from('platform_settings')
+      .select('value')
+      .eq('key', CRYPTO_SIGNING_MODE_SETTING_KEY)
+      .maybeSingle();
+
+    return data?.value === 'automatic' ? 'ready_to_sign' : 'awaiting_approval';
   }
 }

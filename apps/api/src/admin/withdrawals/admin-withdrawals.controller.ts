@@ -61,6 +61,20 @@ export class AdminWithdrawalsController {
   // Paid requires a transaction_reference note (docs/admin-guide.md: "marks
   // the withdrawal Paid with a reference note"), enforced server-side in
   // the service, not just a required form field on the frontend.
+  // The signing-mode approval gate (docs/database-schema.md's Withdrawal
+  // signing mode section): distinct from markProcessing above, which
+  // governs the separate requires-approval gate on the request itself.
+  @Post(':withdrawalId/approve-signing')
+  approveForSigning(
+    @Req() req: AuthenticatedRequest,
+    @Param('withdrawalId') withdrawalId: string,
+  ) {
+    return this.adminWithdrawalsService.approveForSigning(
+      req.user.id,
+      withdrawalId,
+    );
+  }
+
   @Post(':withdrawalId/paid')
   markPaid(
     @Req() req: AuthenticatedRequest,

@@ -287,6 +287,42 @@ UNIQUE (address_group, derivation_index)   -- the real cross-user safety invaria
 ```
 No client access, service role only. One row per user per address group, `createDerivedAddress` reserves into this table (get-or-allocate, atomic via the unique constraint) rather than relying on `user_crypto_addresses`' per-row uniqueness for index allocation. Doesn't affect the sweeper, which only reads `derivation_index` off `user_crypto_addresses` rows directly.
 
+### `consolidation_wallets`
+```
+id                uuid (PK)
+chain             text        -- 'BTC' | 'LTC' | 'DOGE' | 'EVM' | 'TRON', one row per chain
+address           text        -- real, self-custodied wallet (Trust Wallet, user-controlled, NOT an exchange address), the sweeper's actual destination
+is_active         boolean
+created_at / updated_at
+```
+This is the real operational treasury, distinct from both `crypto_assets.deposit_address` (per-coin admin fallback/display addresses) and `user_crypto_addresses` (per-user receiving addresses). The sweeper consolidates swept user deposits INTO these addresses. Withdrawals are signed and sent FROM these addresses (via the master seed in Secret Manager), never from a user's original deposit address. Deliberately self-custodied by admin, not an exchange address, since an exchange holds the private key, not Veyro, which would make outbound signing impossible and violate most exchanges' ToS around automated business use.
+
+**Withdrawal signing mode (`platform_settings.crypto_withdrawal_signing_mode`, default `'manual'`):** admin-toggleable between `'manual'` and `'automatic'`, implemented and verified live. `withdrawals.crypto_signing_status` tracks the full signer lifecycle: `'awaiting_approval'` (manual mode, pending admin approval) or `'ready_to_sign'` (automatic mode, or after admin approval) → `'signing'` (atomic claim/lock, set the instant the consolidator job picks up a withdrawal, prevents double-signing) → `'signed'` (success, `withdrawals.status` becomes `'paid'`, `transaction_reference` holds the real tx hash) or `'sign_failed'` (failure, `withdrawals.status` stays `'processing'` for manual admin handling, never auto-retried).
+
+**Correction to an earlier, now-superseded plan**: consolidation wallet signing does NOT use 5 separate `CONSOLIDATION_*_KEY` secrets. The actual architecture is a single shared `CONSOLIDATION_MASTER_SEED` (one 12-word phrase, self-custodied via Trust Wallet, covering all 5 consolidation wallets), with each chain's key derived at signing time via a fixed, independently-verified BIP-32 path (confirmed via real derivation matching real stored addresses, not assumed): BTC `m/84'/0'/0'/0/0`, LTC `m/84'/2'/0'/0/0`, DOGE `m/44'/3'/0'/0/0`, EVM `m/44'/60'/0'/0/0`, TRON `m/44'/195'/0'/0/0`. See `consolidation_wallets` above and `apps/sweeper/scripts/verify-consolidator-derivation.js` for the verification tooling.
+
+**`withdrawal_signing_log`** (new, separate from `sweep_log` since the direction is reversed):
+```
+id              uuid (PK)
+withdrawal_id   uuid (FK -> withdrawals.id)
+chain           text        -- 'BTC' | 'LTC' | 'DOGE' | 'EVM' | 'TRON'
+from_address    text        -- the consolidation wallet (source)
+to_address      text        -- the user's payout address (destination)
+amount          numeric
+tx_hash         text (nullable)
+status          text        -- 'success' | 'failed'
+failure_reason  text (nullable)
+fee_estimate    numeric (nullable)  -- the real network fee, already computed by the adapter at signing time, captured for later reconciliation. Tatum itself does not markup this fee, it charges separately via API credits, the network fee here is the actual miner/validator cost, fluctuates with live congestion, fetched from Tatum's fee-estimate endpoint at signing time, never hardcoded.
+created_at      timestamptz
+```
+Append-only, allows multiple rows per withdrawal_id (a failed attempt followed by a later success is expected). No client access, service role only, written by the consolidator job's own dedicated SA. Note: a real bug was found and fixed where the code initially wrote to columns (`symbol`, an earlier `fee_estimate` naming) that didn't match this approved, applied schema, the table was always the source of truth, the code had drifted from it, not the reverse.
+
+**Solvency safeguard, genuinely verified working, not just designed:** before signing, the consolidator job checks the consolidation wallet's actual ON-CHAIN balance for that chain (not just trusting the `withdrawals`/`crypto_wallets` ledger) and confirms it covers `amount + network fee`, refusing with `sign_failed`/`insufficient_consolidation_balance` otherwise. Confirmed via a real local dry-run against live Tatum infrastructure and the real BTC consolidation wallet (2026-09-01): the check correctly identified the wallet's real balance as 0 and cleanly refused rather than attempting anything. This exists because deposit crediting today is 100% manual admin action with no on-chain verification (see `crypto_wallets` above), so a ledger/reality mismatch is structurally possible and must never turn into an attempted payout the wallet can't actually cover.
+
+**Fee handling, a real distinction from sweeping**: a withdrawal must send the user's exact owed `amount` in full, with the network fee paid on top from the consolidation wallet's own balance, never deducted from the user's payout (unlike a sweep, which moves "everything minus fee"). Getting this backwards would silently shortchange every user's withdrawal.
+
+The consolidator job (`veyro-consolidator` Cloud Run Job, dedicated SA, manual-trigger-only via `gcloud run jobs execute`, no Cloud Scheduler by design) and its CI deploy pipeline (`consolidator-deploy.yml`, mirroring `sweeper-deploy.yml`, deliberately defaults `CONSOLIDATOR_DRY_RUN=true` on every deploy, unlike the sweeper's `false` default, so a routine deploy can never silently re-arm live signing) implement the actual signing logic. **Genuinely verified end-to-end via a real local dry-run against live infrastructure (2026-09-01, not typecheck-only):** real seed access from Secret Manager, real derivation confirmed matching the real stored BTC consolidation wallet address, real Tatum API calls (UTXO fetch, fee estimation, both required real endpoint/param fixes discovered through this testing, not assumed correct), and the solvency safeguard correctly refusing with `{ok: false, reason: 'insufficient_consolidation_balance'}` given the wallet's real on-chain balance is genuinely 0 (no real funds have been sent to it yet). Nothing crashed, nothing silently proceeded, the safety design held exactly as intended on first real exercise.
+
 ### `sweep_log`
 ```
 id                uuid (PK)

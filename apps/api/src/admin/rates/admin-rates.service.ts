@@ -44,6 +44,16 @@ export interface AdminPlatformSetting {
 
 const CARD_TYPES = ['physical', 'e-code'];
 
+export type CryptoWithdrawalSigningMode = 'manual' | 'automatic';
+
+// docs/database-schema.md's consolidation_wallets section: admin-toggleable
+// between 'manual' (a crypto withdrawal sits pending an explicit admin
+// approve-for-signing action) and 'automatic' (no human step once it
+// reaches processing). No seed row by default - a missing row reads as
+// 'manual', the documented default, same "missing row = documented
+// default" pattern as crypto_withdrawal_requires_approval.
+const CRYPTO_SIGNING_MODE_SETTING_KEY = 'crypto_withdrawal_signing_mode';
+
 // Rate Management (docs/admin-guide.md): gift card rate table
 // (Brand -> Country -> Type -> Denomination Range -> Rate), crypto margin
 // per asset (the live CoinGecko price minus this margin determines
@@ -488,6 +498,57 @@ export class AdminRatesService {
     );
 
     return data;
+  }
+
+  // --- Crypto withdrawal signing mode ---
+
+  async getCryptoWithdrawalSigningMode(): Promise<{
+    signingMode: CryptoWithdrawalSigningMode;
+  }> {
+    const client = this.supabaseService.getClient();
+
+    const { data, error } = await client
+      .from('platform_settings')
+      .select('value')
+      .eq('key', CRYPTO_SIGNING_MODE_SETTING_KEY)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+
+    return {
+      signingMode: data?.value === 'automatic' ? 'automatic' : 'manual',
+    };
+  }
+
+  async updateCryptoWithdrawalSigningMode(
+    adminId: string,
+    signingMode: CryptoWithdrawalSigningMode,
+  ): Promise<{ signingMode: CryptoWithdrawalSigningMode }> {
+    if (signingMode !== 'manual' && signingMode !== 'automatic') {
+      throw new BadRequestException(
+        'Signing mode must be "manual" or "automatic".',
+      );
+    }
+
+    const client = this.supabaseService.getClient();
+    const { error } = await client.from('platform_settings').upsert({
+      key: CRYPTO_SIGNING_MODE_SETTING_KEY,
+      value: signingMode,
+      updated_at: new Date().toISOString(),
+      updated_by: adminId,
+    });
+
+    if (error) throw new Error(error.message);
+
+    await this.logAction(
+      client,
+      adminId,
+      null,
+      'rate_changed',
+      `platform_settings.${CRYPTO_SIGNING_MODE_SETTING_KEY} = ${signingMode}`,
+    );
+
+    return { signingMode };
   }
 
   private async logAction(
