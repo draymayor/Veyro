@@ -45,14 +45,16 @@ const FEE_API_CHAIN: Record<string, string> = {
 // accepted value (confirmed live: values above this are rejected with
 // "totalValue must not be greater than 200000000000") to make the
 // "sufficient to cover" set equal to "everything there is". That ceiling
-// is many orders of magnitude above any balance a single deposit address
-// will ever realistically hold, so it's still comfortably an "everything"
-// request in practice.
+// is many orders of magnitude above any balance a single consolidation
+// wallet address will ever realistically hold, so it's still comfortably
+// an "everything" request in practice.
 const UNREACHABLE_TOTAL_VALUE = 200000000000;
 
 /**
- * Tatum-backed UtxoProvider, following the same thin-fetch-wrapper pattern
- * as apps/api/src/crypto-addresses/tatum.service.ts.
+ * Tatum-backed UtxoProvider - identical to apps/sweeper's
+ * src/chains/utxo-tatum-provider.ts (this is pure data-fetching, not
+ * signing, so duplicating it is just for deployable-independence, not a
+ * behavioral change).
  */
 export class TatumUtxoProvider implements UtxoProvider {
   constructor(

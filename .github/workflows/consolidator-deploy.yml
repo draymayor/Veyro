@@ -1,0 +1,108 @@
+# Builds apps/consolidator into a Docker image and updates the
+# consolidator's Cloud Run JOB (not a service, and NOT invoked by any
+# Cloud Scheduler job - see apps/consolidator/README.md: signing a real
+# outbound transaction is meant to always be a deliberate, manual
+# `gcloud run jobs execute` by an authorized operator). Requires
+# apps/sweeper/scripts/gcp/bootstrap-consolidator-iam.sh to have been run
+# once by hand first, so the job resource, its dedicated service account
+# (veyro-consolidator), and the CONSOLIDATION_MASTER_SEED secret already
+# exist.
+#
+# Mirrors sweeper-deploy.yml's structure deliberately, with the same
+# reasoning for being a separate workflow from api-deploy.yml: different
+# trigger path filter, different deploy action (`jobs deploy`, not
+# `deploy-cloudrun`), different service account
+# (GCP_CONSOLIDATOR_SERVICE_ACCOUNT, distinct from both
+# GCP_RUNTIME_SERVICE_ACCOUNT and GCP_SWEEPER_SERVICE_ACCOUNT - none of the
+# 3 deployables' runtime identities should ever be interchangeable).
+#
+# Additional repo secret this workflow needs beyond api-deploy.yml's/
+# sweeper-deploy.yml's:
+#   GCP_CONSOLIDATOR_SERVICE_ACCOUNT - the consolidator's dedicated runtime
+#                                       SA, created by
+#                                       bootstrap-consolidator-iam.sh
+#
+# Runtime config: GCP_PROJECT_ID is passed as a plain env var (not
+# sensitive). CONSOLIDATOR_DRY_RUN defaults to true here, deliberately the
+# opposite default from sweeper-deploy.yml's SWEEP_DRY_RUN=false - every
+# fresh deploy of this job should require an explicit, separate action
+# (`gcloud run jobs update --update-env-vars CONSOLIDATOR_DRY_RUN=false`,
+# or a manual override on the `gcloud run jobs execute` invocation itself)
+# to actually sign anything, rather than a routine CI deploy silently
+# re-arming live signing. CONSOLIDATION_MASTER_SEED itself is read directly
+# from Secret Manager by the running job (src/secret-manager.ts) - never
+# injected via `--set-secrets` here, since only the job's own service
+# account should ever load it, not CI's deploy identity.
+name: Consolidator Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/consolidator/**"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/consolidator-deploy.yml"
+  workflow_dispatch: {}
+
+env:
+  JOB_NAME: veyro-consolidator
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter consolidator lint
+
+      - name: Build (typecheck)
+        run: pnpm --filter consolidator build
+
+      - id: auth
+        name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build image
+        run: |
+          docker build \
+            -f apps/consolidator/Dockerfile \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.JOB_NAME }}:${{ github.sha }} \
+            .
+
+      - name: Push image
+        run: |
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.JOB_NAME }}:${{ github.sha }}
+
+      - name: Update Cloud Run Job
+        run: |
+          gcloud run jobs update ${{ env.JOB_NAME }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --region ${{ secrets.GCP_REGION }} \
+            --image ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.JOB_NAME }}:${{ github.sha }} \
+            --service-account ${{ secrets.GCP_CONSOLIDATOR_SERVICE_ACCOUNT }} \
+            --set-env-vars GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},CONSOLIDATOR_DRY_RUN=true

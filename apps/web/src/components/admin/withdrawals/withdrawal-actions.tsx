@@ -6,7 +6,10 @@ import { Dialog } from "radix-ui";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Button } from "@/components/ui/button";
 import { authFetch } from "@/lib/api-client";
-import type { AdminWithdrawalStatus } from "@/lib/admin/withdrawals/types";
+import type {
+  AdminWithdrawalStatus,
+  CryptoSigningStatus,
+} from "@/lib/admin/withdrawals/types";
 
 /**
  * Mark processing/paid/failed for a single withdrawal
@@ -20,12 +23,15 @@ import type { AdminWithdrawalStatus } from "@/lib/admin/withdrawals/types";
 export function WithdrawalActions({
   withdrawalId,
   status,
+  cryptoSigningStatus,
 }: {
   withdrawalId: string;
   status: AdminWithdrawalStatus;
+  cryptoSigningStatus?: CryptoSigningStatus;
 }) {
   const router = useRouter();
   const [startingProcessing, setStartingProcessing] = useState(false);
+  const [approvingSigning, setApprovingSigning] = useState(false);
   const [paidOpen, setPaidOpen] = useState(false);
   const [failedOpen, setFailedOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,13 +59,47 @@ export function WithdrawalActions({
     }
   }
 
+  // The signing-mode approval gate (docs/database-schema.md's Withdrawal
+  // signing mode section): distinct from Mark Processing above, which
+  // governs the separate requires-approval gate on the request itself.
+  // Approving here only flips crypto_signing_status to 'ready_to_sign' - no
+  // automated signer consumes that yet, so this withdrawal still needs the
+  // normal Mark Paid step once someone (or eventually a signer) actually
+  // sends the funds.
+  async function handleApproveSigning() {
+    setError(null);
+    setApprovingSigning(true);
+    try {
+      await authFetch(`/admin/withdrawals/${withdrawalId}/approve-signing`, {
+        method: "POST",
+      });
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not approve this withdrawal for signing.",
+      );
+    } finally {
+      setApprovingSigning(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-2">
+      {cryptoSigningStatus ? (
+        <SigningStatusBadge status={cryptoSigningStatus} />
+      ) : null}
       {error ? <p className="text-error text-sm">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
         {status === "requested" ? (
           <Button onClick={handleMarkProcessing} disabled={startingProcessing}>
             {startingProcessing ? "Starting..." : "Mark Processing"}
+          </Button>
+        ) : null}
+        {cryptoSigningStatus === "awaiting_approval" ? (
+          <Button onClick={handleApproveSigning} disabled={approvingSigning}>
+            {approvingSigning ? "Approving..." : "Approve for Signing"}
           </Button>
         ) : null}
         {status === "processing" ? (
@@ -82,6 +122,24 @@ export function WithdrawalActions({
       />
     </div>
   );
+}
+
+function SigningStatusBadge({ status }: { status: CryptoSigningStatus }) {
+  if (status === "awaiting_approval") {
+    return (
+      <p className="bg-secondary text-ink/60 w-fit rounded-full px-2.5 py-1 text-xs font-medium">
+        Awaiting admin approval to sign
+      </p>
+    );
+  }
+  if (status === "ready_to_sign") {
+    return (
+      <p className="bg-secondary text-ink/60 w-fit rounded-full px-2.5 py-1 text-xs font-medium">
+        Ready to sign — no automated signer yet, send manually and Mark Paid
+      </p>
+    );
+  }
+  return null;
 }
 
 function MarkPaidDialog({

@@ -69,6 +69,75 @@ chain, `is_active`) before that chain's sweeps can run - the runner throws
 if a chain has no active consolidation wallet configured, rather than
 silently sweeping nowhere.
 
+## CONSOLIDATION_MASTER_SEED - IAM Deny policy status (2026-09-01)
+
+**This section documents a deliberately incomplete piece of the
+consolidator's IAM design. Read this before touching that secret or its
+IAM.**
+
+`CONSOLIDATION_MASTER_SEED` (one shared phrase controlling all 5
+consolidation wallets - see `scripts/gcp/bootstrap-consolidator-iam.sh`'s
+header for the full design and the confirmed, verified derivation path
+per chain) was meant to get the same defense-in-depth treatment as the
+sweeper's 5 seeds above: an explicit GCP IAM Deny policy blocking
+`veyro-api-runtime` from `secretmanager.versions.access` on it, on top of
+the default-deny baseline.
+
+**That explicit deny policy could not be created, after exhausting every
+reasonable path** (project-level role grant, org-level role grant, the
+Cloud Console UI, and Google's own Policy Troubleshooter/Remediator).
+Findings, confirmed independently by Google's own diagnostic tooling:
+
+- `roles/iam.denyAdmin` cannot be granted at the project level at all
+  (`gcloud projects add-iam-policy-binding` rejects it: "Role
+  roles/iam.denyAdmin is not supported for this resource").
+- Granting it at the organization level (`155200553402`) succeeds and is
+  visible in the org's IAM bindings, but `gcloud iam policies create`
+  attached to the project still fails with the same permission-denied
+  error - even attached to the organization itself, where the role
+  actually lives, it still failed.
+- Google's own Policy Troubleshooter/Remediator confirmed this is real:
+  "Principal is eligible" + "no policy denies access" + "missing
+  permissions" simultaneously, and remediation found "no individual,
+  predefined roles include all missing permissions" for this account on
+  this resource.
+- This is a genuine, undocumented structural gap in how
+  `iam.denypolicies.create` resolves for this account/resource
+  combination - not a mistake in any command, role name, JSON shape, or
+  grant along the way. Every other piece of this design (dedicated
+  `veyro-consolidator` SA, `secretAccessor` grant, all 5 derivation
+  paths) was independently verified correct before this was attempted.
+- The temporary org-level `iam.denyAdmin` grant used to attempt this has
+  already been revoked and verified gone. Nothing elevated was left
+  standing from the attempt.
+
+**The actual security boundary is fully intact without the deny policy.**
+`veyro-api-runtime` has never been granted `secretAccessor` (or any role)
+on `CONSOLIDATION_MASTER_SEED` - confirmed via
+`gcloud secrets get-iam-policy CONSOLIDATION_MASTER_SEED`. GCP IAM is
+deny-by-default: no grant means no access, with or without an explicit
+deny policy layered on top. The deny policy was always meant as an
+additional, auditable safety net against someone *later* adding an
+unwanted grant by mistake - not the thing currently preventing access.
+
+**If this gap is ever resolved** (org/Cloud Identity setup changes,
+or GCP updates its role/permission mapping so some role actually
+resolves `iam.denypolicies.create` for this account on this project),
+the rest of the work is already done and doesn't need to be redone -
+only the final `gcloud iam policies create` call remains:
+
+- Tag already created and bound: `consolidation-deny-scope=consolidator-secret`
+  on the `CONSOLIDATION_MASTER_SEED` secret.
+- Deny policy JSON already written and verified correct (the
+  `resource.matchTag(...)` condition, the fully-qualified
+  `secretmanager.googleapis.com/versions.access` permission, the
+  `principal://...serviceAccounts/veyro-api-runtime@...` principal) - see
+  `scripts/gcp/bootstrap-consolidator-iam.sh`'s step 3c.
+- Once permissions resolve correctly, re-run just that one
+  `gcloud iam policies create` command (project or org attachment-point,
+  whichever ends up working) - nothing else in this design needs to
+  change.
+
 ## Verifying before production
 
 This is financial infrastructure - do not point it at mainnet without:

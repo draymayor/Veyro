@@ -1,0 +1,39 @@
+{
+  "name": "consolidator",
+  "version": "0.0.1",
+  "description": "Cloud Run Job that signs and broadcasts real outbound crypto withdrawals from consolidation_wallets. Deliberately a separate deployable from apps/api and apps/sweeper - its own image, its own service account (veyro-consolidator), its own IAM. Never imported by or bundled into either.",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "dev": "ts-node src/main.ts",
+    "lint": "eslint \"src/**/*.ts\" --fix",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@google-cloud/secret-manager": "^5.6.0",
+    "@supabase/supabase-js": "^2.112.3",
+    "bitcoinjs-lib": "^6.1.6",
+    "ecpair": "^2.1.0",
+    "tiny-secp256k1": "^2.2.3",
+    "bip32": "^4.0.0",
+    "ethers": "^6.13.4",
+    "tronweb": "^6.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.2",
+    "globals": "^17.0.0",
+    "jest": "^30.0.0",
+    "prettier": "^3.4.2",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  }
+}
