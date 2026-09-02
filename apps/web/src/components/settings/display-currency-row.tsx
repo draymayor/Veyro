@@ -37,7 +37,6 @@ export function DisplayCurrencyRow({ homeCurrency }: DisplayCurrencyRowProps) {
     <SettingsRow
       icon={GlobeAltIcon}
       label="Display Currency"
-      description="Cosmetic only. Your wallet balance and trade rates are unaffected."
       right={
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>

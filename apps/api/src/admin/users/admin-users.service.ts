@@ -42,7 +42,9 @@ export interface AdminUserWithdrawal {
 
 export interface AdminUserLedgerEntry {
   id: string;
+  ledger: 'fiat' | 'crypto';
   wallet_currency: string;
+  crypto_symbol: string | null;
   trade_id: string | null;
   withdrawal_id: string | null;
   type: string;
@@ -79,6 +81,15 @@ interface ListFilters {
 }
 
 const VALID_ACCOUNT_STATUSES = ['active', 'restricted', 'banned'];
+
+// Mirrors AdminTransactionsService's classification of raw
+// crypto_wallet_transactions.type values into the same credit/debit shape
+// wallet_transactions.type already uses natively - kept local rather than
+// imported since the two services live in separate admin sub-modules and
+// this codebase already duplicates small classification constants like this
+// per-module rather than sharing them (see signingStatusForNewProcessing in
+// withdrawals.service.ts / admin-withdrawals.service.ts).
+const CREDIT_CRYPTO_TYPES = ['deposit', 'admin_credit'];
 
 // User Management (docs/admin-guide.md): the one place admin can look up
 // any user's full history, adjust account_status or withdrawals_suspended,
@@ -226,7 +237,7 @@ export class AdminUsersService {
     const walletCurrencyById = new Map(wallets.map((w) => [w.id, w.currency]));
     const walletIds = wallets.map((w) => w.id);
 
-    let ledger: AdminUserLedgerEntry[] = [];
+    let fiatLedger: AdminUserLedgerEntry[] = [];
     if (walletIds.length > 0) {
       const { data: txRows, error: txError } = await client
         .from('wallet_transactions')
@@ -238,9 +249,11 @@ export class AdminUsersService {
 
       if (txError) throw new Error(txError.message);
 
-      ledger = (txRows ?? []).map((row: Record<string, unknown>) => ({
+      fiatLedger = (txRows ?? []).map((row: Record<string, unknown>) => ({
         id: row.id as string,
+        ledger: 'fiat',
         wallet_currency: walletCurrencyById.get(row.wallet_id as string) ?? '',
+        crypto_symbol: null,
         trade_id: row.trade_id as string | null,
         withdrawal_id: row.withdrawal_id as string | null,
         type: row.type as string,
@@ -249,6 +262,47 @@ export class AdminUsersService {
         created_at: row.created_at as string,
       }));
     }
+
+    // crypto_wallet_transactions carries user_id directly (unlike
+    // wallet_transactions, which only reaches the user through wallet_id -
+    // see the fiat query above), so this needs no wallet-id lookup step.
+    // This was previously missing entirely: the Wallet Ledger section only
+    // ever showed fiat activity, so a user with real crypto_wallets history
+    // (deposits, withdrawal debits, admin reversals) showed an incomplete or
+    // outright empty ledger. Same fix already applied to the All
+    // Transactions view (AdminTransactionsService.listFiat/listCrypto).
+    const { data: cryptoTxRows, error: cryptoTxError } = await client
+      .from('crypto_wallet_transactions')
+      .select(
+        'id, symbol, related_trade_id, related_withdrawal_id, type, amount, balance_after, created_at',
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (cryptoTxError) throw new Error(cryptoTxError.message);
+
+    const cryptoLedger: AdminUserLedgerEntry[] = (cryptoTxRows ?? []).map(
+      (row) => ({
+        id: row.id as string,
+        ledger: 'crypto',
+        wallet_currency: '',
+        crypto_symbol: row.symbol as string,
+        trade_id: row.related_trade_id as string | null,
+        withdrawal_id: row.related_withdrawal_id as string | null,
+        type: CREDIT_CRYPTO_TYPES.includes(row.type as string)
+          ? 'credit'
+          : 'debit',
+        amount: Number(row.amount),
+        balance_after: Number(row.balance_after),
+        created_at: row.created_at as string,
+      }),
+    );
+
+    const ledger: AdminUserLedgerEntry[] = [...fiatLedger, ...cryptoLedger];
+    ledger.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
 
     let referrer: AdminUserDetail['referrer'] = null;
     const referrerId = referralRes.data?.referrer_id as string | undefined;

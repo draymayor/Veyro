@@ -40,7 +40,6 @@ export function DangerZone() {
       <SettingsRow
         icon={ChatBubbleLeftRightIcon}
         label="Close Account"
-        description="Reach out to Support. Accounts with trade or financial history need a quick review before closing."
         onClick={() => router.push("/support")}
       />
     </SettingsSection>

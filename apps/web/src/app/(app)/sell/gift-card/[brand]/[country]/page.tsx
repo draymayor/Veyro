@@ -8,6 +8,8 @@ import {
   GIFT_CARD_BRANDS,
   ratesForBrandCountry,
 } from "@/lib/gift-cards/data";
+import { createClient } from "@/lib/supabase/server";
+import { findCountry } from "@/lib/countries";
 
 interface PageProps {
   params: Promise<{ brand: string; country: string }>;
@@ -29,6 +31,25 @@ export default async function GiftCardSubcategoryPage({ params }: PageProps) {
 
   const rates = ratesForBrandCountry(brandId, country);
   if (rates.length === 0) notFound();
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: profile } = user
+    ? await supabase
+        .from("users")
+        .select("country, currency")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+
+  // AppLayout already redirects unauthenticated/incomplete profiles before
+  // this page renders, so profile.currency should always be set. The
+  // country-derived fallback only guards against that assumption drifting.
+  const homeCurrency =
+    profile?.currency ?? findCountry(profile?.country ?? "")?.currency ?? "USD";
 
   const physicalRate = rates.find((r) => r.cardType === "physical") ?? null;
   const ecodeRate = rates.find((r) => r.cardType === "e-code") ?? null;
@@ -57,6 +78,7 @@ export default async function GiftCardSubcategoryPage({ params }: PageProps) {
           physicalRate={physicalRate}
           ecodeRate={ecodeRate}
           defaultType={brand.defaultType}
+          homeCurrency={homeCurrency}
         />
       </main>
     </>

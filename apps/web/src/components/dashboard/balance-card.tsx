@@ -8,18 +8,34 @@ import { WalletCurrencySelect } from "./wallet-currency-select";
 import type { BalanceHistoryPeriod } from "@/lib/dashboard/get-wallet-summary";
 import {
   formatWalletAmount,
+  walletAmountValue,
   walletCurrencyOptions,
   type WalletCurrency,
 } from "@/lib/dashboard/wallet-currency";
 import { useBalanceVisibility } from "@/lib/dashboard/use-balance-visibility";
 import { useFxRates } from "@/lib/fx/use-fx-rates";
+import { useCryptoRates } from "@/lib/crypto/use-crypto-rates";
 import { cn } from "@/lib/utils";
+
+interface BalanceCardCryptoHolding {
+  symbol: string;
+  balance: number;
+}
 
 interface BalanceCardProps {
   /** The signed-in user's actual wallet currency, set at signup from their country. */
   homeCurrency: WalletCurrency;
-  /** The wallet's real cached balance, denominated in homeCurrency. */
+  /** The fiat wallet's real cached balance, denominated in homeCurrency. */
   balance: number;
+  /**
+   * Every held crypto_wallets balance, converted via live CoinGecko price +
+   * FX rate (same logic CryptoPayoutService/useCryptoPayout use for a sell
+   * quote, minus the margin markdown) and added on top of the fiat balance
+   * above, so the headline figure is the user's real total net worth on
+   * the platform, not just their fiat sub-balance. Defaults to none, for
+   * screens that haven't fetched crypto holdings.
+   */
+  cryptoBalances?: BalanceCardCryptoHolding[];
   todayPnl: { amount: number; percent: number };
   /** Assets page only: Home's balance card stays without the trend chart. */
   showChart?: boolean;
@@ -49,6 +65,7 @@ const HIDDEN_AMOUNT_PLACEHOLDER = "******";
 export function BalanceCard({
   homeCurrency,
   balance,
+  cryptoBalances = [],
   todayPnl,
   showChart = false,
   history,
@@ -62,16 +79,79 @@ export function BalanceCard({
   const [currency, setCurrency] = useState<WalletCurrency>("USD");
   const [hidden, toggleHidden] = useBalanceVisibility();
   const { rates: fxRates } = useFxRates(FX_REFRESH_MS);
-  const pnlPositive = todayPnl.amount >= 0;
+  const { rates: cryptoRates } = useCryptoRates(FX_REFRESH_MS);
+
+  // Raw CoinGecko USD price per held symbol, no margin markdown - this is
+  // a net-worth figure, not a sell quote, so CryptoPayoutService's payout
+  // formula (which marks the price down) doesn't apply here.
+  const cryptoValueUsd = cryptoBalances.reduce(
+    (sum, { symbol, balance: symbolBalance }) =>
+      sum + symbolBalance * (cryptoRates?.[symbol]?.priceUsd ?? 0),
+    0,
+  );
+  // Same walletAmountValue conversion every other figure on this card goes
+  // through, just converting from USD (what CoinGecko prices in) rather
+  // than from homeCurrency.
+  const cryptoValueInHomeCurrency = walletAmountValue(
+    cryptoValueUsd,
+    "USD",
+    homeCurrency,
+    fxRates ?? undefined,
+  );
+  const combinedBalance = balance + cryptoValueInHomeCurrency;
+
+  // Standard mark-to-market portfolio P&L: today's change is priced against
+  // the whole net-worth figure above, not just the fiat wallet's ledger
+  // deltas, otherwise a user who's mostly holding crypto would see a "Today's
+  // P&L" that ignores the actual price move driving their balance. There's
+  // no stored historical crypto balance/price ledger to compute an exact
+  // start-of-day snapshot from (unlike the fiat wallet_transactions table),
+  // so this reconstructs "24h ago value" from CoinGecko's own change24h
+  // percentage against currently-held quantities - the same approximation
+  // most portfolio trackers make absent a full historical ledger. This
+  // ignores any crypto bought/sold/withdrawn earlier today, same tradeoff
+  // change24h itself makes.
+  const cryptoValueUsd24hAgo = cryptoBalances.reduce(
+    (sum, { symbol, balance: symbolBalance }) => {
+      const rate = cryptoRates?.[symbol];
+      if (!rate) return sum;
+      const priorDivisor = 1 + rate.change24h / 100;
+      if (!Number.isFinite(priorDivisor) || priorDivisor <= 0) return sum;
+      return sum + (symbolBalance * rate.priceUsd) / priorDivisor;
+    },
+    0,
+  );
+  const cryptoPnlInHomeCurrency = walletAmountValue(
+    cryptoValueUsd - cryptoValueUsd24hAgo,
+    "USD",
+    homeCurrency,
+    fxRates ?? undefined,
+  );
+  const cryptoValue24hAgoInHomeCurrency = walletAmountValue(
+    cryptoValueUsd24hAgo,
+    "USD",
+    homeCurrency,
+    fxRates ?? undefined,
+  );
+
+  const combinedPnlAmount = todayPnl.amount + cryptoPnlInHomeCurrency;
+  const fiatBalanceStartOfDay = balance - todayPnl.amount;
+  const combinedStartOfDayValue =
+    fiatBalanceStartOfDay + cryptoValue24hAgoInHomeCurrency;
+  const combinedPnlPercent =
+    combinedStartOfDayValue > 0
+      ? (combinedPnlAmount / combinedStartOfDayValue) * 100
+      : 0;
+  const pnlPositive = combinedPnlAmount >= 0;
 
   const balanceText = formatWalletAmount(
-    balance,
+    combinedBalance,
     homeCurrency,
     currency,
     fxRates ?? undefined,
   );
   const pnlText = formatWalletAmount(
-    todayPnl.amount,
+    combinedPnlAmount,
     homeCurrency,
     currency,
     fxRates ?? undefined,
@@ -115,7 +195,7 @@ export function BalanceCard({
           >
             {hidden
               ? HIDDEN_AMOUNT_PLACEHOLDER
-              : `${pnlPositive ? "+" : ""}${pnlText} (${pnlPositive ? "+" : ""}${todayPnl.percent.toFixed(2)}%)`}
+              : `${pnlPositive ? "+" : ""}${pnlText} (${pnlPositive ? "+" : ""}${combinedPnlPercent.toFixed(2)}%)`}
           </span>
         </p>
         {showChart && !hidden && history && asOf && (

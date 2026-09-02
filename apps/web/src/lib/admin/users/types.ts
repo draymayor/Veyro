@@ -36,7 +36,9 @@ export interface AdminUserWithdrawal {
 
 export interface AdminUserLedgerEntry {
   id: string;
+  ledger: "fiat" | "crypto";
   wallet_currency: string;
+  crypto_symbol: string | null;
   trade_id: string | null;
   withdrawal_id: string | null;
   type: "credit" | "debit";

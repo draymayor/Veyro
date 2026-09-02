@@ -9,11 +9,17 @@ import { CRYPTO_ASSETS } from "@/lib/crypto/data";
 import { GIFT_CARD_BRANDS } from "@/lib/gift-cards/data";
 import { useCryptoRates } from "@/lib/crypto/use-crypto-rates";
 import { useSearchQuery } from "@/hooks/use-search-query";
+import type { WalletCurrency } from "@/lib/dashboard/wallet-currency";
 
 const TAB_TRIGGER =
   "text-ink/50 data-[state=active]:bg-card data-[state=active]:text-ink data-[state=active]:shadow-sm rounded-full px-4 py-1.5 text-sm font-medium transition-colors";
 
-export function RatesSection() {
+interface RatesSectionProps {
+  /** The signed-in user's actual display currency, for the Gift Cards rate tab. */
+  homeCurrency: WalletCurrency;
+}
+
+export function RatesSection({ homeCurrency }: RatesSectionProps) {
   const { rates, loading, error } = useCryptoRates();
   const [query, setQuery] = useSearchQuery();
 
@@ -72,7 +78,11 @@ export function RatesSection() {
           {filteredGiftCards.length > 0 ? (
             <RateList columns={["Brand", "Rate", "Country"]}>
               {filteredGiftCards.map((brand) => (
-                <GiftCardRateRow key={brand.id} brand={brand} />
+                <GiftCardRateRow
+                  key={brand.id}
+                  brand={brand}
+                  homeCurrency={homeCurrency}
+                />
               ))}
             </RateList>
           ) : (

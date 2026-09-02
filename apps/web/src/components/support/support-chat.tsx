@@ -89,6 +89,7 @@ export function SupportChat({ userId }: SupportChatProps) {
   useEffect(() => {
     const supabase = createClient();
     let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
     async function loadAndMarkRead() {
       const [{ data: threadRow }, { data: messageRows, error: fetchError }] =
@@ -132,53 +133,79 @@ export function SupportChat({ userId }: SupportChatProps) {
       }
     }
 
+    // Realtime's postgres_changes RLS check is evaluated against whichever
+    // JWT was current when the channel *joins*, and the server never
+    // re-evaluates it later even after a fresher token is pushed to an
+    // already-joined channel. createClient()'s auth session resolves
+    // asynchronously (it's read from cookies on client construction), so
+    // calling .subscribe() immediately can join before that resolves,
+    // silently registering the subscription as anon - auth.uid() then
+    // evaluates null forever and every event gets RLS-filtered out, with
+    // no error surfaced anywhere. Resolving the session and calling
+    // realtime.setAuth() before .subscribe() guarantees the join always
+    // carries the real, authenticated JWT. (A page reload doesn't fix this
+    // on its own: loadAndMarkRead's initial fetch is a plain REST call,
+    // unaffected by which role the realtime join used.)
+    async function subscribeToLiveUpdates() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      if (session?.access_token) {
+        await supabase.realtime.setAuth(session.access_token);
+      }
+      if (cancelled) return;
+
+      channel = supabase
+        .channel(`support-messages-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "support_messages",
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const row = payload.new as SupportMessageRow;
+            setMessages((prev) =>
+              prev.some((m) => m.id === row.id)
+                ? prev
+                : [...prev, toSupportMessage(row)],
+            );
+
+            // The user is actively viewing this thread while it's open, so a
+            // live admin reply counts as read the moment it arrives.
+            if (row.sender === "admin" && row.read_at === null) {
+              void supabase
+                .from("support_messages")
+                .update({ read_at: new Date().toISOString() })
+                .eq("id", row.id);
+            }
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "support_threads",
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            setThread(toSupportThread(payload.new as SupportThreadRow));
+          },
+        )
+        .subscribe();
+    }
+
     void loadAndMarkRead();
-
-    const channel = supabase
-      .channel(`support-messages-${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "support_messages",
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const row = payload.new as SupportMessageRow;
-          setMessages((prev) =>
-            prev.some((m) => m.id === row.id)
-              ? prev
-              : [...prev, toSupportMessage(row)],
-          );
-
-          // The user is actively viewing this thread while it's open, so a
-          // live admin reply counts as read the moment it arrives.
-          if (row.sender === "admin" && row.read_at === null) {
-            void supabase
-              .from("support_messages")
-              .update({ read_at: new Date().toISOString() })
-              .eq("id", row.id);
-          }
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "support_threads",
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          setThread(toSupportThread(payload.new as SupportThreadRow));
-        },
-      )
-      .subscribe();
+    void subscribeToLiveUpdates();
 
     return () => {
       cancelled = true;
-      void supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [userId]);
 

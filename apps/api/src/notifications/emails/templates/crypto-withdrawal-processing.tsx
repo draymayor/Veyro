@@ -23,16 +23,6 @@ export function CryptoWithdrawalProcessing({
     <EmailLayout previewText="Your crypto withdrawal is on its way">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        Your crypto withdrawal is on its way
-      </Text>
-      <Text
-        style={{
           margin: 0,
           fontSize: 15,
           lineHeight: '24px',

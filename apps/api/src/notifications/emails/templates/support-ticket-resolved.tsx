@@ -20,16 +20,6 @@ export function SupportTicketResolved({
     <EmailLayout previewText="Your support ticket has been resolved">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        Your support ticket has been resolved
-      </Text>
-      <Text
-        style={{
           margin: 0,
           fontSize: 15,
           lineHeight: '24px',

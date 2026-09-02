@@ -19,16 +19,6 @@ export function WithdrawalCompleted({
     <EmailLayout previewText="Your withdrawal is complete">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        Your withdrawal is complete
-      </Text>
-      <Text
-        style={{
           margin: '0 0 8px',
           fontSize: 15,
           lineHeight: '24px',

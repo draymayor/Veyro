@@ -32,7 +32,6 @@ export function AccountSnapshotSection({
       <SettingsRow
         icon={FlagIcon}
         label="Country"
-        description="Locked at signup since it sets your wallet currency. Contact Support if this needs to change."
         right={<span className="text-ink/60 text-sm">{countryName}</span>}
       />
     </SettingsSection>

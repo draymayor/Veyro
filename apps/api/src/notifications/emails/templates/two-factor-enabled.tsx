@@ -15,16 +15,6 @@ export function TwoFactorEnabled({ name }: TwoFactorEnabledProps) {
     <EmailLayout previewText="Two-factor authentication enabled on your account">
       <Text
         style={{
-          margin: '0 0 4px',
-          fontSize: 22,
-          fontWeight: 600,
-          color: emailTheme.ink,
-        }}
-      >
-        Two-factor authentication enabled
-      </Text>
-      <Text
-        style={{
           margin: '0 0 20px',
           fontSize: 15,
           lineHeight: '24px',

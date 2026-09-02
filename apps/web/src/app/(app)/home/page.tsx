@@ -4,6 +4,7 @@ import { findCountry } from "@/lib/countries";
 import { getReferralSummary } from "@/lib/referrals/get-summary";
 import { getWalletSummary } from "@/lib/dashboard/get-wallet-summary";
 import { getTransactionHistory } from "@/lib/dashboard/get-transaction-history";
+import { getAllCryptoWalletBalances } from "@/lib/dashboard/get-crypto-wallet-balance";
 import { getNotifications } from "@/lib/notifications/get-notifications";
 import { BalanceCard } from "@/components/dashboard/balance-card";
 import { SellEntryCards } from "@/components/dashboard/sell-entry-cards";
@@ -49,19 +50,23 @@ export default async function HomePage() {
   // Home's balance card never shows the trend chart, but it does show
   // today's P&L, so this still needs the fuller wallet summary (same call
   // Assets makes), just without ever passing its `history` down.
-  const [walletSummary, transactions, notifications] = await Promise.all([
-    user
-      ? getWalletSummary(supabase, user.id, homeCurrency)
-      : Promise.resolve({
-          balance: 0,
-          currency: homeCurrency,
-          todayPnl: { amount: 0, percent: 0 },
-        }),
-    user
-      ? getTransactionHistory(supabase, user.id, homeCurrency)
-      : Promise.resolve([]),
-    user ? getNotifications(supabase, user.id) : Promise.resolve([]),
-  ]);
+  const [walletSummary, transactions, notifications, cryptoBalances] =
+    await Promise.all([
+      user
+        ? getWalletSummary(supabase, user.id, homeCurrency)
+        : Promise.resolve({
+            balance: 0,
+            currency: homeCurrency,
+            todayPnl: { amount: 0, percent: 0 },
+          }),
+      user
+        ? getTransactionHistory(supabase, user.id, homeCurrency)
+        : Promise.resolve([]),
+      user ? getNotifications(supabase, user.id) : Promise.resolve([]),
+      user
+        ? getAllCryptoWalletBalances(supabase, user.id)
+        : Promise.resolve([]),
+    ]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 pt-3 pb-6 sm:px-6 lg:px-8 lg:py-8">
@@ -71,6 +76,7 @@ export default async function HomePage() {
             <BalanceCard
               homeCurrency={homeCurrency}
               balance={walletSummary.balance}
+              cryptoBalances={cryptoBalances}
               todayPnl={walletSummary.todayPnl}
             />
           </StaggerItem>
@@ -78,7 +84,7 @@ export default async function HomePage() {
             <SellEntryCards />
           </StaggerItem>
           <StaggerItem>
-            <RatesSection />
+            <RatesSection homeCurrency={homeCurrency} />
           </StaggerItem>
         </StaggerIn>
 
