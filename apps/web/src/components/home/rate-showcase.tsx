@@ -6,78 +6,76 @@ import { OrbitRings } from "@/components/home/orbit-rings";
 import { Button } from "@/components/ui/button";
 import { useCryptoPayout } from "@/lib/crypto/use-crypto-payout";
 import { useDisplayCurrency } from "@/lib/display-currency/context";
-import { formatDisplayAmount } from "@/lib/display-currency/format";
-
-interface GiftCardRateRow {
-  kind: "gift-card";
-  asset: string;
-  detail: string;
-  /** Platform Rate, NGN per $1 of card value. */
-  rateNgn: number;
-}
+import { formatCryptoPayout } from "@/lib/display-currency/format";
 
 interface CryptoRateRow {
-  kind: "crypto";
   asset: string;
   detail: string;
   /** Matched against crypto_assets.symbol for the payout quote. */
   symbol: string;
-  /** Matched against crypto_assets.network for the payout quote. */
-  networkLabel: string;
+  /**
+   * Matched against crypto_assets.network for the payout quote - the exact
+   * `assetNetwork` value from lib/crypto/data.ts, not the short display
+   * label, since that's what the crypto_assets table actually stores.
+   */
+  network: string;
 }
 
-type RateRow = GiftCardRateRow | CryptoRateRow;
-
-// Gift card rows are manually set Platform Rates (no live source exists for
-// them, per docs/product-rules.md). Crypto rows show Veyro's actual payout
-// quote (GET /crypto/payout: live price marked down by margin and
-// converted to the display currency), the same figure the /crypto rate
-// browser shows, so this section never falls out of sync with a second,
-// hand-maintained number.
-const RATES: RateRow[] = [
+// Shows Veyro's actual sell payout quote (GET /crypto/payout: live price
+// marked down by margin and converted to the display currency), the same
+// figure the /crypto rate browser shows, so this section never falls out
+// of sync with a second, hand-maintained number. Crypto only: gift card
+// rates aren't live-sourced the same way (per docs/product-rules.md) and
+// mixing the two here read as one flat "instant cash" rate, which doesn't
+// hold for crypto's real hold-then-sell model.
+const RATES: CryptoRateRow[] = [
+  { asset: "Bitcoin", detail: "BTC", symbol: "BTC", network: "BTC" },
   {
-    kind: "gift-card",
-    asset: "Steam",
-    detail: "USA, e-code",
-    rateNgn: 1050,
+    asset: "Ethereum",
+    detail: "ERC20",
+    symbol: "ETH",
+    network: "Ethereum (ERC20)",
   },
   {
-    kind: "gift-card",
-    asset: "Apple",
-    detail: "USA, physical",
-    rateNgn: 1120,
-  },
-  {
-    kind: "gift-card",
-    asset: "Google Play",
-    detail: "USA, e-code",
-    rateNgn: 1000,
-  },
-  {
-    kind: "crypto",
     asset: "USDT",
     detail: "TRC20",
     symbol: "USDT",
-    networkLabel: "TRC20",
+    network: "TRON (TRC20)",
   },
   {
-    kind: "crypto",
-    asset: "Bitcoin",
-    detail: "BTC",
-    symbol: "BTC",
-    networkLabel: "Bitcoin",
+    asset: "USD Coin",
+    detail: "ERC20",
+    symbol: "USDC",
+    network: "Ethereum (ERC20)",
   },
 ];
 
 export function RateShowcase() {
   const displayCurrency = useDisplayCurrency();
 
-  // RATES has a fixed, known set of crypto rows, so these are called
-  // directly rather than inside the render loop below (hooks can't be
-  // called conditionally or a variable number of times per render).
-  const usdtQuote = useCryptoPayout("USDT", "TRC20", 1, displayCurrency);
-  const btcQuote = useCryptoPayout("BTC", "Bitcoin", 1, displayCurrency);
-  const quotesBySymbol = { USDT: usdtQuote, BTC: btcQuote };
+  // RATES has a fixed, known set of rows, so these are called directly
+  // rather than inside the render loop below (hooks can't be called
+  // conditionally or a variable number of times per render).
+  const btcQuote = useCryptoPayout("BTC", "BTC", 1, displayCurrency);
+  const ethQuote = useCryptoPayout(
+    "ETH",
+    "Ethereum (ERC20)",
+    1,
+    displayCurrency,
+  );
+  const usdtQuote = useCryptoPayout("USDT", "TRON (TRC20)", 1, displayCurrency);
+  const usdcQuote = useCryptoPayout(
+    "USDC",
+    "Ethereum (ERC20)",
+    1,
+    displayCurrency,
+  );
+  const quotesBySymbol = {
+    BTC: btcQuote,
+    ETH: ethQuote,
+    USDT: usdtQuote,
+    USDC: usdcQuote,
+  };
 
   return (
     <section className="bg-secondary/60 py-20 sm:py-28">
@@ -92,32 +90,27 @@ export function RateShowcase() {
               />
               <div className="relative">
                 <span className="text-background/60 text-xs font-medium tracking-[0.2em] uppercase">
-                  Platform Rates
+                  Crypto Platform Rates
                 </span>
                 <h2 className="font-heading text-background mt-3 max-w-md text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-                  See what your assets are worth
+                  See what your crypto sells for
                 </h2>
                 <p className="text-background/65 mt-4 max-w-sm text-sm">
-                  A sample of today&apos;s rates. Rates fluctuate and are
-                  subject to confirmation at submission time.
+                  Live sell rates, only if and when you choose to sell. Deposits
+                  are held as your own balance, not converted automatically.
                 </p>
               </div>
 
               <ul className="relative mt-10 flex flex-col gap-0.5">
                 {RATES.map((row, i) => {
-                  let rateDisplay: React.ReactNode = null;
-                  if (row.kind === "gift-card") {
-                    rateDisplay = `${formatDisplayAmount(row.rateNgn, displayCurrency)} / $1`;
-                  } else {
-                    const { quote, loading } =
-                      quotesBySymbol[row.symbol as keyof typeof quotesBySymbol];
+                  const { quote, loading } =
+                    quotesBySymbol[row.symbol as keyof typeof quotesBySymbol];
 
-                    rateDisplay = loading ? (
-                      <span className="bg-background/10 inline-block h-4 w-20 animate-pulse rounded" />
-                    ) : (
-                      `${formatDisplayAmount(quote?.payout ?? 0, displayCurrency)} / ${row.symbol}`
-                    );
-                  }
+                  const rateDisplay = loading ? (
+                    <span className="bg-background/10 inline-block h-4 w-20 animate-pulse rounded" />
+                  ) : (
+                    `${formatCryptoPayout(quote?.payout ?? 0, displayCurrency)} / ${row.symbol}`
+                  );
 
                   return (
                     <li
@@ -153,11 +146,12 @@ export function RateShowcase() {
                   Gift Cards & Crypto
                 </span>
                 <h3 className="font-heading text-ink mt-3 text-2xl font-medium text-balance">
-                  Sell gift cards and crypto in minutes
+                  Sell gift cards in minutes, hold crypto on your terms
                 </h3>
                 <p className="text-ink/60 mt-4 text-sm">
-                  From Steam and Apple to USDT and Bitcoin, submit your assets
-                  and get paid straight to your Veyro wallet.
+                  From Steam and Apple to USDT and Bitcoin, submit your assets.
+                  Gift cards pay out straight to your wallet; crypto lands as a
+                  real balance you sell or withdraw whenever you choose.
                 </p>
               </div>
               <Button asChild className="mt-8 w-fit rounded-full">

@@ -99,7 +99,7 @@ export function CryptoHero() {
             }}
             className="inline-block"
           >
-            Sell your crypto.
+            Hold your crypto.
           </span>
           <span
             ref={(el) => {
@@ -107,7 +107,7 @@ export function CryptoHero() {
             }}
             className="inline-block"
           >
-            Get paid the moment we confirm.
+            Sell or withdraw on your terms.
           </span>
         </h1>
 
@@ -115,7 +115,8 @@ export function CryptoHero() {
           ref={subRef}
           className="text-ink/65 mt-5 max-w-lg text-base text-pretty sm:text-lg"
         >
-          Pick your asset and network, see the rate, and send from any wallet.
+          Deposit from any wallet into your own real Veyro balance. Sell
+          whenever you want at the live rate, or withdraw it out untouched.
         </p>
       </div>
 

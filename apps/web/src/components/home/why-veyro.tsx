@@ -6,14 +6,14 @@ import { cn } from "@/lib/utils";
 const VALUE_PROPS = [
   {
     icon: Zap,
-    title: "Instant payout",
-    copy: "Once your card or crypto is confirmed, your wallet is credited automatically. No waiting around.",
+    title: "Instant crediting, your call on selling",
+    copy: "Once your card or crypto deposit is confirmed, your wallet is credited automatically. Crypto is never forced into a sale, hold it and sell whenever you want.",
     tone: "primary" as const,
   },
   {
     icon: Globe2,
     title: "Wide brand & crypto support",
-    copy: "Dozens of gift card brands and seven major crypto assets, all in one place, all one flow.",
+    copy: "Dozens of gift card brands and fifteen major crypto assets, all in one place, all one flow.",
     tone: "card" as const,
   },
   {

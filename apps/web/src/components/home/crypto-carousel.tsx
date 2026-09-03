@@ -26,13 +26,13 @@ export function CryptoCarousel() {
               Crypto
             </span>
             <h2 className="font-heading text-primary-foreground mt-3 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-              Sell crypto for cash, too
+              Hold your crypto, too
             </h2>
           </ScrollReveal>
           <ScrollReveal direction="up" delay={80}>
             <p className="text-primary-foreground/80 mt-4">
-              Seven major assets and counting. Send from any wallet, get
-              confirmed, get paid.
+              Fifteen assets and counting. Send from any wallet, get a real
+              balance, sell or withdraw whenever you choose.
             </p>
           </ScrollReveal>
         </div>

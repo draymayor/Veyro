@@ -1,11 +1,11 @@
 import {
   ListChecks,
-  Gauge,
   QrCode,
   Send,
   FileImage,
   ShieldCheck,
   WalletCards,
+  Repeat,
 } from "lucide-react";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { OrbitRings } from "@/components/home/orbit-rings";
@@ -15,18 +15,13 @@ const STEPS = [
   {
     icon: ListChecks,
     title: "Select your asset and network",
-    copy: "Choose the crypto you're selling, then the network it's on.",
+    copy: "Choose the crypto you're depositing, then the network it's on.",
     orbit: true,
   },
   {
-    icon: Gauge,
-    title: "See your rate",
-    copy: "Your payout per unit is calculated instantly, before you send anything.",
-  },
-  {
     icon: QrCode,
-    title: "We show you our deposit address",
-    copy: "A deposit address for that exact asset and network is generated for your submission.",
+    title: "We show you your deposit address",
+    copy: "A real deposit address for that exact asset and network is generated just for you.",
     orbit: true,
   },
   {
@@ -47,8 +42,13 @@ const STEPS = [
   },
   {
     icon: WalletCards,
-    title: "Your wallet is credited",
-    copy: "Once confirmed, your payout lands in your Veyro wallet automatically.",
+    title: "Your balance is credited",
+    copy: "Once confirmed, the crypto itself lands in your Veyro wallet as a real balance you hold, not cash.",
+  },
+  {
+    icon: Repeat,
+    title: "Sell or withdraw, whenever you choose",
+    copy: "Convert some or all of it to cash at the live rate, or send it out to an external address, on your schedule.",
   },
 ];
 
@@ -56,7 +56,8 @@ const STEPS = [
  * Crypto-specific walkthrough, same horizontal snap-scroll card treatment
  * as the homepage's How It Works and the gift cards Process Strip, so the
  * three read as one system, trimmed/expanded to this flow's own seven steps
- * (deposit address + proof of deposit) rather than a card code submission.
+ * (deposit address + proof of deposit, then a separate hold/sell/withdraw
+ * step) rather than a card code submission or an instant forced sale.
  */
 export function CryptoHowItWorks() {
   return (
@@ -66,7 +67,7 @@ export function CryptoHowItWorks() {
           Process
         </span>
         <h2 className="font-heading text-ink mt-3 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-          How crypto selling works on Veyro
+          How crypto works on Veyro
         </h2>
       </ScrollReveal>
 

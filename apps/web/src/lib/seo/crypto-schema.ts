@@ -52,7 +52,10 @@ export async function cryptoOffersSchema() {
       const offers = (
         await Promise.all(
           asset.networks.map(async (network) => {
-            const payout = await fetchPayout(asset.symbol, network.label);
+            const payout = await fetchPayout(
+              asset.symbol,
+              network.assetNetwork,
+            );
             if (payout === null) return null;
 
             return {
@@ -73,7 +76,7 @@ export async function cryptoOffersSchema() {
         "@context": "https://schema.org",
         "@type": "Product",
         name: `${asset.name} (${asset.symbol})`,
-        description: `Sell your ${asset.name} to Veyro for an instant cash payout to your wallet.`,
+        description: `Deposit ${asset.name} into your own real Veyro balance, then sell to Veyro for cash whenever you choose, at the live rate.`,
         offers,
       };
     }),

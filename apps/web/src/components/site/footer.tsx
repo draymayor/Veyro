@@ -48,8 +48,8 @@ export function Footer() {
             Veyro
           </Link>
           <p className="text-background/60 mt-3 max-w-xs text-sm">
-            Turn gift cards and crypto into cash. See your rate instantly, get
-            paid the moment we confirm.
+            Turn gift cards into cash instantly, or hold, sell, and withdraw
+            your crypto on your own terms.
           </p>
           <div className="mt-6 flex items-center gap-4">
             {SOCIALS.map((social) => (

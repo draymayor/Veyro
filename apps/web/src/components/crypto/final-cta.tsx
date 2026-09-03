@@ -20,11 +20,11 @@ export function CryptoFinalCta() {
           <div className="relative flex flex-col items-start gap-8 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-md">
               <h2 className="font-heading text-primary-foreground text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-                Ready to sell your crypto?
+                Ready to hold your own crypto?
               </h2>
               <p className="text-primary-foreground/85 mt-4">
-                Pick your asset above, see your rate, and get paid the moment we
-                confirm your deposit.
+                Deposit from any wallet, get a real balance in your Veyro
+                account, and sell or withdraw whenever you&apos;re ready.
               </p>
             </div>
             <Button

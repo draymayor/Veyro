@@ -9,7 +9,7 @@ import { type CryptoAsset } from "@/lib/crypto/data";
 import type { CryptoRate } from "@/lib/crypto/use-crypto-rates";
 import { useCryptoPayout } from "@/lib/crypto/use-crypto-payout";
 import { useDisplayCurrency } from "@/lib/display-currency/context";
-import { formatDisplayAmount } from "@/lib/display-currency/format";
+import { formatCryptoPayout } from "@/lib/display-currency/format";
 
 interface AssetCardProps {
   asset: CryptoAsset;
@@ -29,7 +29,7 @@ export function AssetCard({ asset, rate, loading, error }: AssetCardProps) {
   // above by CryptoPriceCard.
   const { quote } = useCryptoPayout(
     asset.symbol,
-    network.label,
+    network.assetNetwork,
     1,
     displayCurrency,
   );
@@ -58,7 +58,7 @@ export function AssetCard({ asset, rate, loading, error }: AssetCardProps) {
             You&apos;ll receive
           </p>
           <p className="font-heading text-primary text-xl font-semibold tabular-nums">
-            {formatDisplayAmount(quote?.payout ?? 0, displayCurrency)}{" "}
+            {formatCryptoPayout(quote?.payout ?? 0, displayCurrency)}{" "}
             <span className="text-background/40 text-sm font-normal">
               / {asset.symbol}
             </span>

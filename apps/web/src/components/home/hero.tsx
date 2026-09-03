@@ -39,11 +39,13 @@ export function Hero() {
           )}
         >
           <h1 className="font-heading text-ink mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-            Turn gift cards and crypto into cash.
+            Turn gift cards into cash. Hold your crypto.
           </h1>
 
           <p className="text-ink/65 mt-5 max-w-lg text-base text-pretty sm:text-lg">
-            See your rate instantly. Get paid the moment we confirm.
+            See your rate instantly. Gift cards pay out the moment we confirm.
+            Crypto deposits into your own real Veyro balance, sell or withdraw
+            whenever you&apos;re ready.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
@@ -60,7 +62,7 @@ export function Hero() {
               variant="outline"
               className="h-12 rounded-full px-7 text-base"
             >
-              <Link href="/crypto">Sell Crypto</Link>
+              <Link href="/crypto">Hold Crypto</Link>
             </Button>
           </div>
         </div>

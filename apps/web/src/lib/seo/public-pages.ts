@@ -8,7 +8,7 @@
 export const SITE_URL = "https://veyro.best";
 
 export const SITE_DESCRIPTION =
-  "Veyro lets you sell gift cards and crypto for instant cash. See your rate up front, submit your card or crypto, and get paid the moment we confirm.";
+  "Veyro lets you sell gift cards for instant cash and hold your own real crypto balance, sell whenever you want at the live rate, or withdraw it to any wallet. See your rate up front, always.";
 
 export interface PublicPage {
   path: string;

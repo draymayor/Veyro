@@ -88,7 +88,7 @@ export function CryptoAmountForm({
 
   const { quote, loading, refreshedAt } = useCryptoPayout(
     asset.symbol,
-    network.label,
+    network.assetNetwork,
     debouncedAmountValid ? parsedDebouncedAmount : 0,
     walletCurrency,
     RATE_REFRESH_MS,
@@ -106,7 +106,7 @@ export function CryptoAmountForm({
   // the payout preview above.
   const { quote: fxQuote } = useCryptoPayout(
     asset.symbol,
-    network.label,
+    network.assetNetwork,
     1,
     walletCurrency,
     RATE_REFRESH_MS,
@@ -132,7 +132,7 @@ export function CryptoAmountForm({
           method: "POST",
           body: JSON.stringify({
             symbol: asset.symbol,
-            network: network.label,
+            network: network.assetNetwork,
             amount: parsedRawAmount,
           }),
         },

@@ -42,12 +42,12 @@ const STEPS = [
   {
     icon: Wallet,
     title: "Your wallet is credited",
-    copy: "Once approved, funds land in your Veyro wallet automatically.",
+    copy: "Once approved, your gift card payout lands as cash, and your crypto lands as a real balance you hold, automatically.",
   },
   {
     icon: Banknote,
-    title: "Withdraw your money",
-    copy: "Cash out by bank transfer, PayPal, or crypto, whenever you're ready.",
+    title: "Sell or withdraw, on your terms",
+    copy: "Cash out by bank transfer, PayPal, or crypto, whenever you're ready, and sell held crypto only when you choose to.",
     orbit: true,
   },
 ];

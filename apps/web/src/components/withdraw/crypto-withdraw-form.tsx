@@ -97,7 +97,7 @@ export function CryptoWithdrawForm({
         amount: parsedAmount,
         method: "crypto",
         cryptoSymbol: asset.symbol,
-        cryptoNetwork: network.label,
+        cryptoNetwork: network.assetNetwork,
         cryptoPayoutAddress: address.trim(),
         remarks: remarks.trim() || undefined,
       };

@@ -27,14 +27,19 @@ const FAQS = [
       "Yes, minimums vary by asset and are shown at the point of submission so you always know before you send anything.",
   },
   {
-    question: "When do I get paid after my deposit is confirmed?",
+    question: "What happens after my deposit is confirmed?",
     answer:
-      "The moment we confirm your deposit on-chain, the payout is added to your Veyro wallet automatically. From there you can withdraw by bank transfer, PayPal, or crypto.",
+      "The moment we confirm your deposit on-chain, that crypto is credited to your Veyro wallet as a real balance you hold, it isn't automatically converted to cash. From there, sell some or all of it whenever you want at the live rate, or withdraw it straight to an external address without ever selling.",
   },
   {
-    question: "Are these rates guaranteed?",
+    question: "Do I have to sell my crypto right away?",
     answer:
-      "Rates shown are Platform Rates and can change. The rate is locked in the moment you submit, so what you see is what you get once your deposit is confirmed.",
+      "No. Depositing and selling are separate steps. Once your deposit is confirmed it sits in your Veyro balance until you choose to sell or withdraw it, there's no forced conversion.",
+  },
+  {
+    question: "Are the sell rates guaranteed?",
+    answer:
+      "Rates shown are Platform Rates and can change. Selling is instant once you choose to do it: the rate you see at that moment is the rate you lock in.",
   },
 ];
 
