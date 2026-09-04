@@ -365,5 +365,25 @@ created_at        timestamptz
 
 - `trades.rate_value`, `asset_amount`, `quoted_payout` are copied at submission time — never recalculated from `gift_card_rates` after the fact.
 - `wallet_transactions` is append-only. No update/delete on existing rows — corrections happen via new offsetting entries, never edits.
-- `crypto_assets.deposit_address` is static per asset/network in V1 (no per-user address generation) — this table is small and admin-managed.
+- `crypto_assets.deposit_address` is the admin-managed fallback/display address per asset/network (see `user_crypto_addresses` for the real, live per-user address generation system, this line was stale and previously contradicted that, corrected here).
+
+### `crypto_deposit_events` (webhook deposit detection, new)
+```
+id                             uuid (PK)
+user_id                        uuid (FK -> users.id on delete cascade)
+symbol                         text
+network                        text
+address                        text        -- the user_crypto_addresses.address this landed on
+tx_hash                        text
+amount                         numeric
+status                         text        -- 'pending_confirmation' | 'credited' | 'orphaned_reorg'
+crypto_wallet_transaction_id   uuid (FK -> crypto_wallet_transactions.id, nullable until credited)
+created_at / credited_at
+UNIQUE (network, tx_hash, address)   -- the real dedupe key, prevents double-crediting on a Tatum webhook redelivery
+```
+`user_crypto_addresses.tatum_subscription_id` (nullable text) marks whether an address has live Tatum webhook coverage, non-null = covered, null = falls back to the existing manual-admin-check path. This is a stored fact, not inferred, since Tatum's real webhook cap on the Free plan is genuinely small (confirmed directly via the dashboard: 5 total subscriptions, platform-wide, shared across every chain, not per-user or per-chain), so coverage will only ever apply to a small number of addresses at a time until the plan is upgraded. Policy is first-come-until-exhausted for V1.
+
+`crypto_wallet_transactions.type` extended to include `'webhook_deposit'` (an automatic, HMAC-verified, confirmation-depth-gated credit, deliberately treated as MORE trustworthy than a manual admin credit, since it's cryptographically verified against real on-chain data rather than a human's visual block-explorer check) and `'reorg_reversal'` (a compensating debit if a previously-credited deposit is later found to have been reorged off-chain).
+
+**Confirmation depth is a deliberate design choice, not Tatum's default**: Tatum fires its webhook at a fixed, thin threshold (1 confirmation for EVM, 2 for UTXO chains), too shallow to trust with real money on its own. The actual crediting logic waits for a real, chain-appropriate minimum confirmation depth via a small poller before crediting, the webhook fire only marks a deposit as `pending_confirmation`, not `credited`.
 - Row-Level Security (Supabase): users can only read their own `trades`, `wallets`, `wallet_transactions`, `withdrawals`; admin role bypasses via service role or dedicated admin policies.

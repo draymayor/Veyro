@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { TatumService } from './tatum.service';
@@ -36,6 +36,8 @@ type Client = ReturnType<SupabaseService['getClient']>;
  */
 @Injectable()
 export class CryptoAddressesService {
+  private readonly logger = new Logger(CryptoAddressesService.name);
+
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
@@ -138,10 +140,25 @@ export class CryptoAddressesService {
     // reuses the SAME address+index, so a second/third/fourth symbol row
     // here is expected, not a conflict - see insertOrReturnExisting.
     if (sameChainRow) {
-      return this.insertOrReturnExisting(client, userId, symbol, network, {
-        address: sameChainRow.address as string,
-        derivationIndex: sameChainRow.derivation_index as number,
-      });
+      const result = await this.insertOrReturnExisting(
+        client,
+        userId,
+        symbol,
+        network,
+        {
+          address: sameChainRow.address as string,
+          derivationIndex: sameChainRow.derivation_index as number,
+        },
+      );
+      // Same physical address as an existing row for this user - webhook
+      // coverage (or lack of it) was already decided when that first row
+      // was created. Just propagate it, never a fresh Tatum call here.
+      await this.ensureWebhookSubscription(
+        client,
+        result.address,
+        chainConfig.tatumChain!,
+      );
+      return result;
     }
 
     const xpub = this.configService.getOrThrow<string>(chainConfig.configKey);
@@ -156,10 +173,82 @@ export class CryptoAddressesService {
       index,
     );
 
-    return this.insertOrReturnExisting(client, userId, symbol, network, {
+    const result = await this.insertOrReturnExisting(
+      client,
+      userId,
+      symbol,
+      network,
+      { address, derivationIndex: index },
+    );
+    // A genuinely new physical address (or - on the losing side of a rare
+    // concurrent-insert race for this exact user/symbol/network - one a
+    // parallel request just created). Either way this is the first point
+    // this address could need webhook coverage registered.
+    await this.ensureWebhookSubscription(
+      client,
+      result.address,
+      chainConfig.tatumChain!,
+    );
+    return result;
+  }
+
+  // Registers Tatum webhook coverage for one physical deposit address, at
+  // most once ever - never per-symbol. Multiple user_crypto_addresses rows
+  // can share one address (every symbol on a shared EVM network), so this
+  // first checks whether ANY row for this exact address already carries a
+  // tatum_subscription_id and, if so, returns immediately: another symbol
+  // on the same address (or a concurrent request for the same brand-new
+  // address) already handled it, or already tried and there's nothing new
+  // to do. Only reaches the real Tatum call when no row for this address
+  // has a subscription id yet.
+  //
+  // This is intentionally not perfectly race-free against two truly
+  // simultaneous first-time requests for the same brand-new address (both
+  // could see "no subscription yet" and both call Tatum) - but Tatum's own
+  // API enforces at most one active ADDRESS_TRANSACTION subscription per
+  // address, so the loser's create call fails harmlessly (caught,
+  // logged, treated as "not covered by this call") rather than wasting a
+  // second one of the account's 5 real slots.
+  private async ensureWebhookSubscription(
+    client: Client,
+    address: string,
+    tatumChain: string,
+  ): Promise<void> {
+    const { data: covered } = await client
+      .from('user_crypto_addresses')
+      .select('tatum_subscription_id')
+      .eq('address', address)
+      .not('tatum_subscription_id', 'is', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (covered) return;
+
+    const webhookUrl =
+      this.configService.getOrThrow<string>('TATUM_WEBHOOK_URL');
+    const subscriptionId = await this.tatumService.createAddressSubscription(
+      tatumChain,
       address,
-      derivationIndex: index,
-    });
+      webhookUrl,
+    );
+    if (!subscriptionId) return; // cap exhausted or request failed - stays on the manual-check path, logged inside TatumService already
+
+    const { error } = await client
+      .from('user_crypto_addresses')
+      .update({ tatum_subscription_id: subscriptionId })
+      .eq('address', address);
+
+    if (error) {
+      // The subscription is real and live on Tatum's side even though we
+      // failed to record it - it will fire against an address we can no
+      // longer identify as "covered" from this table, so the webhook
+      // receiver's own address lookup (by raw address value, not by this
+      // flag) still credits correctly; only the admin-facing coverage
+      // indicator undercounts until this is investigated.
+      this.logger.error(
+        `Tatum subscription ${subscriptionId} created for ${address} but saving tatum_subscription_id failed: ${error.message}`,
+      );
+    }
   }
 
   // Gets this user's already-reserved derivation index for this address

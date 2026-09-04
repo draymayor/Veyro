@@ -89,6 +89,11 @@ export default async function AdminDashboardPage() {
           value="Not yet available"
           caption="Requires tracking liquidation value against quoted payout, not yet built"
         />
+        <MetricCard
+          label="Webhook coverage"
+          value={`${metrics.webhookCoverage.slotsUsed}/${metrics.webhookCoverage.slotsTotal}`}
+          caption="Tatum webhook subscription slots in use, platform-wide"
+        />
       </div>
 
       <CryptoBreakdownDropdown totals={metrics.cryptoWalletsBySymbol} />

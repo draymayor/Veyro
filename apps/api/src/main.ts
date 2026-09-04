@@ -3,7 +3,11 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+  // 'webhooks/tatum' is excluded the same way 'health' is: it's a
+  // third-party callback URL (registered with Tatum at subscription-
+  // creation time as TATUM_WEBHOOK_URL), a plain top-level path reads
+  // clearer than versioning someone else's webhook target.
+  app.setGlobalPrefix('api/v1', { exclude: ['health', 'webhooks/tatum'] });
   // The web app runs on a different origin/port (e.g. localhost:3000 vs
   // this API's localhost:3001), so without CORS every browser fetch from
   // it, not just this one, would be blocked before it even reaches a

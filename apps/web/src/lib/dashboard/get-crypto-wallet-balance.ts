@@ -40,3 +40,34 @@ export async function getAllCryptoWalletBalances(
     balance: Number(row.balance),
   }));
 }
+
+/**
+ * Deposits that have been detected (webhook-recorded) but not yet
+ * credited - crypto_deposit_events rows in 'pending_confirmation' or
+ * 'crediting' (the brief atomic-claim window right before crediting, see
+ * DepositConfirmationService.claimAndCredit). Summed per symbol so the
+ * Assets page can show "X incoming" separate from the real, spendable
+ * crypto_wallets balance above - the user can see it's on the way without
+ * being able to act on it yet. Reads via the same "select own" RLS policy
+ * as crypto_deposit_events generally.
+ */
+export async function getIncomingCryptoDeposits(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ symbol: string; amount: number }[]> {
+  const { data } = await supabase
+    .from("crypto_deposit_events")
+    .select("symbol, amount")
+    .eq("user_id", userId)
+    .in("status", ["pending_confirmation", "crediting"]);
+
+  const totals = new Map<string, number>();
+  for (const row of (data ?? []) as { symbol: string; amount: number }[]) {
+    totals.set(row.symbol, (totals.get(row.symbol) ?? 0) + Number(row.amount));
+  }
+
+  return Array.from(totals.entries()).map(([symbol, amount]) => ({
+    symbol,
+    amount,
+  }));
+}

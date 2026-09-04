@@ -19,6 +19,7 @@ import {
   TwoFactorRecoveryUsed,
   WalletCredited,
   CryptoDepositCredited,
+  CryptoDepositDetected,
   WithdrawalFailed,
   TwoFactorEnabled,
   WithdrawalPinChanged,
@@ -259,6 +260,23 @@ export class NotificationsService {
       email,
       'Reset your Veyro withdrawal PIN',
       WithdrawalPinReset({ name, code, expiryMinutes: OTP_EXPIRY_MINUTES }),
+    );
+  }
+
+  // Sent the instant the Tatum webhook detects a deposit (crypto_deposit_events
+  // status 'pending_confirmation') - distinct from sendCryptoDepositCreditedEmail,
+  // which fires later once the confirmation-depth poller actually credits it.
+  async sendCryptoDepositDetectedEmail(params: {
+    email: string;
+    name: string;
+    amount: string;
+    asset: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      `We've spotted your incoming ${params.asset} deposit`,
+      CryptoDepositDetected(props),
     );
   }
 

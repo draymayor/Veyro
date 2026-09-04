@@ -19,10 +19,22 @@ export interface AdminDashboardMetrics {
   cryptoWalletsBySymbol: AdminSymbolTotal[];
   withdrawalsPending: number;
   revenueAvailable: false;
+  // Webhook-based deposit auto-crediting: the real Tatum subscription cap
+  // is tiny (platform-wide, shared across every chain) and will bind
+  // almost immediately, so this is a real operational fact worth
+  // surfacing rather than a hidden backend constant.
+  webhookCoverage: {
+    slotsUsed: number;
+    slotsTotal: number;
+  };
   notifications: {
     pendingTrades: number;
     pendingWithdrawals: number;
     openSupportThreads: number;
+    // A reorg reversed a webhook-credited deposit but the user had
+    // already spent/withdrawn the credited amount - never auto-resolved,
+    // needs a human to look at it.
+    orphanedReorgsNeedingReview: number;
   };
 }
 

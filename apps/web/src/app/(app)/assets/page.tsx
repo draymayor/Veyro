@@ -10,7 +10,10 @@ import { createClient } from "@/lib/supabase/server";
 import { findCountry } from "@/lib/countries";
 import { getWalletSummary } from "@/lib/dashboard/get-wallet-summary";
 import { getTransactionHistory } from "@/lib/dashboard/get-transaction-history";
-import { getAllCryptoWalletBalances } from "@/lib/dashboard/get-crypto-wallet-balance";
+import {
+  getAllCryptoWalletBalances,
+  getIncomingCryptoDeposits,
+} from "@/lib/dashboard/get-crypto-wallet-balance";
 import { BalanceCard } from "@/components/dashboard/balance-card";
 import { AssetsBreakdown } from "@/components/dashboard/assets-breakdown";
 import { CryptoBreakdown } from "@/components/dashboard/crypto-breakdown";
@@ -49,21 +52,25 @@ export default async function AssetsPage() {
   const homeCurrency =
     profile?.currency ?? findCountry(profile?.country ?? "")?.currency ?? "USD";
 
-  const [walletSummary, transactions, cryptoBalances] = await Promise.all([
-    user
-      ? getWalletSummary(supabase, user.id, homeCurrency)
-      : Promise.resolve({
-          balance: 0,
-          currency: homeCurrency,
-          todayPnl: { amount: 0, percent: 0 },
-          history: { "7d": [], "30d": [], "90d": [], "180d": [] },
-          asOf: new Date().toISOString(),
-        }),
-    user
-      ? getTransactionHistory(supabase, user.id, homeCurrency)
-      : Promise.resolve([]),
-    user ? getAllCryptoWalletBalances(supabase, user.id) : Promise.resolve([]),
-  ]);
+  const [walletSummary, transactions, cryptoBalances, incomingDeposits] =
+    await Promise.all([
+      user
+        ? getWalletSummary(supabase, user.id, homeCurrency)
+        : Promise.resolve({
+            balance: 0,
+            currency: homeCurrency,
+            todayPnl: { amount: 0, percent: 0 },
+            history: { "7d": [], "30d": [], "90d": [], "180d": [] },
+            asOf: new Date().toISOString(),
+          }),
+      user
+        ? getTransactionHistory(supabase, user.id, homeCurrency)
+        : Promise.resolve([]),
+      user
+        ? getAllCryptoWalletBalances(supabase, user.id)
+        : Promise.resolve([]),
+      user ? getIncomingCryptoDeposits(supabase, user.id) : Promise.resolve([]),
+    ]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 pt-3 pb-6 sm:px-6 lg:px-8 lg:py-8">
@@ -87,7 +94,10 @@ export default async function AssetsPage() {
             />
           </StaggerItem>
           <StaggerItem>
-            <CryptoBreakdown balances={cryptoBalances} />
+            <CryptoBreakdown
+              balances={cryptoBalances}
+              incoming={incomingDeposits}
+            />
           </StaggerItem>
           <StaggerItem>
             <TransactionHistoryList items={transactions} />

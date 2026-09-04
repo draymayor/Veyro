@@ -35,6 +35,10 @@ export {
   type CryptoDepositCreditedProps,
 } from './crypto-deposit-credited';
 export {
+  CryptoDepositDetected,
+  type CryptoDepositDetectedProps,
+} from './crypto-deposit-detected';
+export {
   WithdrawalFailed,
   type WithdrawalFailedProps,
 } from './withdrawal-failed';

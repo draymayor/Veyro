@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard, minutes } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -22,10 +23,13 @@ import { BankAccountsModule } from './bank-accounts/bank-accounts.module';
 import { WithdrawalsModule } from './withdrawals/withdrawals.module';
 import { CryptoAddressesModule } from './crypto-addresses/crypto-addresses.module';
 import { CryptoWalletModule } from './crypto-wallet/crypto-wallet.module';
+import { TatumWebhookModule } from './webhooks/tatum/tatum-webhook.module';
+import { CryptoDepositEventsModule } from './crypto-deposit-events/crypto-deposit-events.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     // Global baseline rate limit, keyed by IP by default. 60 requests/min
     // is generous enough for normal browsing (catalog reads, dashboard
     // polling) but stops a single client from hammering the API. Endpoints
@@ -62,6 +66,8 @@ import { CryptoWalletModule } from './crypto-wallet/crypto-wallet.module';
     WithdrawalsModule,
     CryptoAddressesModule,
     CryptoWalletModule,
+    TatumWebhookModule,
+    CryptoDepositEventsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

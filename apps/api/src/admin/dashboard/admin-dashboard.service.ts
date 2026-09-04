@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { CryptoPriceService } from '../../crypto-price/crypto-price.service';
 import { FxRateService } from '../../fx/fx.service';
+import { TATUM_WEBHOOK_SUBSCRIPTION_CAP } from '../../crypto-addresses/tatum.service';
 
 export interface CurrencyTotal {
   currency: string;
@@ -36,10 +37,25 @@ export interface AdminDashboardMetrics {
   // always false rather than a fabricated figure. Flip once that spread is
   // actually recorded somewhere (e.g. a liquidation_value column on trades).
   revenueAvailable: false;
+  // Webhook-based deposit auto-crediting (docs/context.md's "hybrid
+  // model"): the real, confirmed Tatum subscription cap is tiny (5 total,
+  // platform-wide, shared across every chain - see
+  // TATUM_WEBHOOK_SUBSCRIPTION_CAP) and will bind almost immediately, so
+  // this is a real operational fact worth being visible on the
+  // dashboard, not a hidden constant only discoverable by reading code.
+  webhookCoverage: {
+    slotsUsed: number;
+    slotsTotal: number;
+  };
   notifications: {
     pendingTrades: number;
     pendingWithdrawals: number;
     openSupportThreads: number;
+    // A reorg reversed a webhook-credited deposit, but the user had
+    // already spent/withdrawn the credited amount before it was caught -
+    // deliberately never auto-resolved (no silent negative balance, no
+    // automatic write-off), so this needs a human to actually look at it.
+    orphanedReorgsNeedingReview: number;
   };
 }
 
@@ -109,6 +125,8 @@ export class AdminDashboardService {
       withdrawalsPendingRes,
       openThreadsRes,
       unreadMessagesRes,
+      webhookSlotsUsedRes,
+      orphanedReorgsRes,
     ] = await Promise.all([
       client.from('users').select('id', { count: 'exact', head: true }),
       client
@@ -139,6 +157,21 @@ export class AdminDashboardService {
         .select('user_id')
         .eq('sender', 'user')
         .is('read_at', null),
+      // Not a count(*) head query: multiple rows (one per symbol) can
+      // share the SAME address/subscription (an EVM address covering
+      // ETH+USDT+USDC is 3 rows but 1 real Tatum slot) - counting rows
+      // directly would overcount actual slots used, so this fetches the
+      // addresses and dedupes in JS below, same "group in JS" pattern
+      // groupByCurrency/groupBySymbol above already use on this
+      // dashboard.
+      client
+        .from('user_crypto_addresses')
+        .select('address')
+        .not('tatum_subscription_id', 'is', null),
+      client
+        .from('crypto_deposit_events')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'orphaned_reorg_unrecoverable'),
     ]);
 
     for (const res of [
@@ -152,6 +185,8 @@ export class AdminDashboardService {
       withdrawalsPendingRes,
       openThreadsRes,
       unreadMessagesRes,
+      webhookSlotsUsedRes,
+      orphanedReorgsRes,
     ]) {
       if (res.error) throw new Error(res.error.message);
     }
@@ -184,6 +219,10 @@ export class AdminDashboardService {
 
     const pendingTrades = pendingTradesRes.count ?? 0;
     const withdrawalsPending = withdrawalsPendingRes.count ?? 0;
+    const webhookSlotsUsed = new Set(
+      (webhookSlotsUsedRes.data ?? []).map((row) => row.address as string),
+    ).size;
+    const orphanedReorgsNeedingReview = orphanedReorgsRes.count ?? 0;
 
     return {
       totalUsers: totalUsersRes.count ?? 0,
@@ -206,10 +245,15 @@ export class AdminDashboardService {
       cryptoWalletsBySymbol,
       withdrawalsPending,
       revenueAvailable: false,
+      webhookCoverage: {
+        slotsUsed: webhookSlotsUsed,
+        slotsTotal: TATUM_WEBHOOK_SUBSCRIPTION_CAP,
+      },
       notifications: {
         pendingTrades,
         pendingWithdrawals: withdrawalsPending,
         openSupportThreads,
+        orphanedReorgsNeedingReview,
       },
     };
   }
