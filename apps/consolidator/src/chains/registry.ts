@@ -17,7 +17,7 @@ import { TronConsolidatorAdapter } from "./tron";
 // wrong contract entirely. Duplicated from apps/sweeper/src/chains/registry.ts
 // deliberately (separate deployable, must not import from it) - keep both
 // in sync when a contract address changes.
-const EVM_TOKEN_CONTRACTS: Record<string, Record<string, string>> = {
+export const EVM_TOKEN_CONTRACTS: Record<string, Record<string, string>> = {
   ERC20: {
     USDT: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
     USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -34,7 +34,7 @@ const EVM_TOKEN_CONTRACTS: Record<string, Record<string, string>> = {
   Base: { USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" },
 };
 
-const UTXO_PARAMS = {
+export const UTXO_PARAMS = {
   BTC: BITCOIN_PARAMS,
   LTC: LITECOIN_PARAMS,
   DOGE: DOGECOIN_PARAMS,
