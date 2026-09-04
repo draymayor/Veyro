@@ -120,15 +120,21 @@ export class TatumChainDataService {
   /**
    * Account-model chains (EVM family + TRON): confirmations = current
    * height - tx's own block + 1. GET /{chain}/block/current is confirmed
-   * live for ethereum/avalanche/harmony/one; the TRON path specifically
-   * (used for a 'count'-rule chain, TRC20) has NOT yet had a live GET
-   * made against it in this session - it's inferred from that otherwise
-   * consistent pattern, not independently confirmed. Do a real check
-   * before trusting this for TRON specifically.
+   * live for ethereum/avalanche/harmony/one and returns a bare number.
+   * TRON does NOT follow this pattern - confirmed live (2026-09-04) that
+   * `/v3/tron/block/current` 404s ("tron.block.not.found"), which left a
+   * real webhook-detected TRX deposit stuck in 'pending_confirmation'
+   * forever (every poller tick threw and gave up, never advancing it).
+   * TRON's real endpoint is `/v3/tron/info`, returning an OBJECT with a
+   * top-level `blockNumber` field, not a bare number - verified live
+   * against docs.tatum.io/reference/trongetcurrentblock, not assumed.
    */
   async getCurrentBlockNumber(tatumChain: string): Promise<number> {
+    const isTron = tatumChain === 'tron';
     const res = await fetchWithTimeout(
-      `${TATUM_BASE_URL}/${tatumChain}/block/current`,
+      isTron
+        ? `${TATUM_BASE_URL}/tron/info`
+        : `${TATUM_BASE_URL}/${tatumChain}/block/current`,
       { headers: { 'x-api-key': this.apiKey } },
       REQUEST_TIMEOUT_MS,
     );
@@ -139,13 +145,17 @@ export class TatumChainDataService {
       );
     }
     const data = (await res.json()) as unknown;
-    const height = typeof data === 'number' ? data : Number(data);
+    const height = isTron
+      ? (data as { blockNumber?: number }).blockNumber
+      : typeof data === 'number'
+        ? data
+        : Number(data);
     if (!Number.isFinite(height)) {
       throw new Error(
         `Tatum current-block lookup for ${tatumChain} returned a non-numeric height: ${JSON.stringify(data)}`,
       );
     }
-    return height;
+    return height as number;
   }
 
   /**
