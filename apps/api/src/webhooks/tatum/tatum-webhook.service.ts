@@ -116,6 +116,24 @@ export class TatumWebhookService {
     }
 
     const userId = rows[0].user_id as string;
+    // OPEN QUESTION (2026-09-04), deliberately not guessed at: this is
+    // confirmed correct for a NATIVE transfer (tokenMetadata.symbol =
+    // "TRX", live-verified end to end). What tokenMetadata.symbol
+    // contains for an actual TOKEN transfer (e.g. real USDT-TRC20) is
+    // still unconfirmed - Tatum's own createsubscription reference shows
+    // a DIFFERENT, older payload shape where the equivalent field holds a
+    // contract address for tokens, not a ticker; a newer v4 schema
+    // reference doc suggests it's a ticker with the contract address
+    // broken out into a separate `contractAddress` field instead - but
+    // that's still documentation, and this codebase has hit real
+    // doc-vs-reality gaps three separate times tonight already. Testnet
+    // verification was ruled out live: this account's TATUM_API_KEY is
+    // mainnet-only (`403 unsupported.apiKey.network.combination`
+    // creating a tron-testnet subscription), and a separate testnet
+    // account/key is out of scope for now. Left exactly as-is
+    // (correct for the confirmed native case) until a real USDT-TRC20
+    // deposit happens and can be captured the same way TRX was - do not
+    // change this matching logic based on documentation alone.
     const reportedAsset = payload.tokenMetadata?.symbol?.trim().toUpperCase();
     const matchedRow = rows.find(
       (r) => (r.symbol as string).toUpperCase() === reportedAsset,
@@ -126,7 +144,10 @@ export class TatumWebhookService {
       // confirmation-depth poller / a future admin view can still see
       // and investigate an asset we didn't expect on this address,
       // rather than it vanishing silently. It just won't be
-      // auto-creditable under an unrecognized symbol.
+      // auto-creditable under an unrecognized symbol. If the open
+      // question above turns out to affect real token deposits, this is
+      // exactly the safety net that keeps them from being silently lost
+      // or mis-credited - manual review, never a guess.
       this.logger.warn(
         `Tatum webhook reported asset "${payload.tokenMetadata?.symbol}" for ${address}/${network}, which doesn't match this user's tracked symbols (${rows.map((r) => r.symbol as string).join(', ')}) - recording for manual review, not auto-crediting.`,
       );
