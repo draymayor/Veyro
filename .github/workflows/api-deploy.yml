@@ -21,7 +21,15 @@
 #   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY,
 #   COINGECKO_API_KEY, TATUM_API_KEY, TATUM_BTC_XPUB, TATUM_LTC_XPUB,
 #   TATUM_DOGE_XPUB, TATUM_EVM_XPUB, TATUM_TRON_XPUB, FCA_API_KEY,
-#   CURRENCYFREAKS_API_KEY
+#   CURRENCYFREAKS_API_KEY, TATUM_WEBHOOK_URL, TATUM_WEBHOOK_HMAC_SECRET
+#
+# TATUM_WEBHOOK_URL/TATUM_WEBHOOK_HMAC_SECRET back the webhook-based
+# deposit-detection feature (crypto-addresses.service.ts's
+# ensureWebhookSubscription, webhooks/tatum's HMAC guard) - missing
+# either one previously left them out of the Cloud Run deploy entirely,
+# which made every brand-new deposit address request 500 in production
+# (getOrThrow('TATUM_WEBHOOK_URL') has no value to fall back to). Caught
+# via a real deployed-webhook test, not by inspection.
 #
 # The six TATUM_* secrets back TatumService's deposit-address generation
 # (apps/api/.env.example has the full per-chain breakdown of what
@@ -133,3 +141,5 @@ jobs:
             TATUM_TRON_XPUB=TATUM_TRON_XPUB:latest
             FCA_API_KEY=FCA_API_KEY:latest
             CURRENCYFREAKS_API_KEY=CURRENCYFREAKS_API_KEY:latest
+            TATUM_WEBHOOK_URL=TATUM_WEBHOOK_URL:latest
+            TATUM_WEBHOOK_HMAC_SECRET=TATUM_WEBHOOK_HMAC_SECRET:latest
