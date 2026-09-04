@@ -44,6 +44,24 @@ export interface ChainConfig {
    * manual-admin-check path by design, not by bug.
    */
   tatumSubscriptionChain?: string;
+  /**
+   * The value Tatum's real ADDRESS_TRANSACTION webhook payload puts in its
+   * own `chain` field - a THIRD distinct naming scheme from both
+   * `tatumChain` and `tatumSubscriptionChain` above. Confirmed live
+   * (2026-09-04) via `POST /v3/subscription` then `GET
+   * /v3/subscription/{id}` per chain (create, read back the normalized
+   * `chain` value, delete - no real funds needed) rather than assumed
+   * from `tatumSubscriptionChain` + "-mainnet": several genuinely don't
+   * follow that pattern (avalanche-mainnet not avax-mainnet,
+   * cronos-mainnet not cro-mainnet, litecoin-mainnet not
+   * litecoin-core-mainnet, arbitrum-one-mainnet not arb-one-mainnet).
+   * TatumWebhookService's chain-code reverse lookup is keyed from this
+   * field, not `tatumChain` - using `tatumChain` here (as the original
+   * version of this webhook receiver did) made every real inbound TRON
+   * webhook silently no-op on "unrecognized chain", since a real payload
+   * carries 'tron-mainnet', never bare 'tron'.
+   */
+  webhookChain?: string;
 }
 
 const EVM_ADDRESS_GROUP = 'evm-shared';
@@ -64,6 +82,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_BTC_XPUB',
     sweepGroup: 'utxo',
     tatumSubscriptionChain: 'BTC',
+    webhookChain: 'bitcoin-mainnet',
   },
   Litecoin: {
     derivationStyle: 'xpub-index',
@@ -71,6 +90,10 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_LTC_XPUB',
     sweepGroup: 'utxo',
     tatumSubscriptionChain: 'LTC',
+    // NOT 'litecoin-core-mainnet' despite that being the string in the
+    // subscription-creation validation enum - confirmed live this is
+    // what the account's `chain` field actually normalizes to.
+    webhookChain: 'litecoin-mainnet',
   },
   Dogecoin: {
     derivationStyle: 'xpub-index',
@@ -78,6 +101,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_DOGE_XPUB',
     sweepGroup: 'utxo',
     tatumSubscriptionChain: 'DOGE',
+    webhookChain: 'dogecoin-mainnet',
   },
 
   // --- EVM chains: ALL of these share one master xpub (TATUM_EVM_XPUB) and
@@ -90,6 +114,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'ETH',
+    webhookChain: 'ethereum-mainnet',
   },
   BEP20: {
     derivationStyle: 'xpub-index',
@@ -98,6 +123,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'BSC',
+    webhookChain: 'bsc-mainnet',
   },
   Polygon: {
     derivationStyle: 'xpub-index',
@@ -106,6 +132,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'MATIC',
+    webhookChain: 'polygon-mainnet',
   },
   Avalanche: {
     derivationStyle: 'xpub-index',
@@ -114,6 +141,9 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'AVAX',
+    // NOT 'avax-mainnet' despite that being the subscription-creation
+    // enum string - confirmed live the real normalized value is this.
+    webhookChain: 'avalanche-mainnet',
   },
   Celo: {
     derivationStyle: 'xpub-index',
@@ -122,6 +152,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'CELO',
+    webhookChain: 'celo-mainnet',
   },
   Flare: {
     derivationStyle: 'xpub-index',
@@ -130,6 +161,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'FLR',
+    webhookChain: 'flare-mainnet',
   },
   Fantom: {
     derivationStyle: 'xpub-index',
@@ -138,6 +170,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'FTM',
+    webhookChain: 'fantom-mainnet',
   },
   Cronos: {
     derivationStyle: 'xpub-index',
@@ -146,6 +179,9 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'CRO',
+    // NOT 'cro-mainnet' despite that being the subscription-creation
+    // enum string - confirmed live the real normalized value is this.
+    webhookChain: 'cronos-mainnet',
   },
   'Ethereum Classic': {
     derivationStyle: 'xpub-index',
@@ -165,6 +201,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'KAIA',
+    webhookChain: 'kaia-mainnet',
   },
   'XDC Network': {
     derivationStyle: 'xpub-index',
@@ -186,6 +223,9 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'ETH_ARB',
+    // NOT 'arb-one-mainnet' despite that being the subscription-creation
+    // enum string - confirmed live the real normalized value is this.
+    webhookChain: 'arbitrum-one-mainnet',
   },
   Optimism: {
     derivationStyle: 'xpub-index',
@@ -194,6 +234,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'ETH_OP',
+    webhookChain: 'optimism-mainnet',
   },
   Base: {
     derivationStyle: 'xpub-index',
@@ -202,6 +243,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'ETH_BASE',
+    webhookChain: 'base-mainnet',
   },
 
   // --- TRON: its own master xpub, covers TRX and USDT-TRC20. USDC-TRC20
@@ -216,6 +258,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_TRON_XPUB',
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'TRON',
+    webhookChain: 'tron-mainnet',
   },
 
   // --- Shared-address, non-HD chains: no derivation, every user shares one
