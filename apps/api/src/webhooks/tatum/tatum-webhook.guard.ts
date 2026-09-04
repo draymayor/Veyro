@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
@@ -25,26 +30,54 @@ import type { Request } from 'express';
  */
 @Injectable()
 export class TatumWebhookGuard implements CanActivate {
+  private readonly logger = new Logger(TatumWebhookGuard.name);
+
   constructor(private readonly configService: ConfigService) {}
 
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request>();
     const receivedHash = req.header('x-payload-hash');
-    if (!receivedHash) return false;
+    if (!receivedHash) {
+      this.logger.warn(
+        `Tatum webhook rejected: no x-payload-hash header present (content-type: ${req.header('content-type')}).`,
+      );
+      return false;
+    }
 
     const secret = this.configService.getOrThrow<string>(
       'TATUM_WEBHOOK_HMAC_SECRET',
     );
+    const canonicalBody = JSON.stringify(req.body ?? {});
     const expectedHash = createHmac('sha512', secret)
-      .update(JSON.stringify(req.body ?? {}))
+      .update(canonicalBody)
       .digest('base64');
 
     const received = Buffer.from(receivedHash);
     const expected = Buffer.from(expectedHash);
     // timingSafeEqual throws on mismatched lengths rather than returning
     // false - an attacker-controlled header must never reach it un-checked.
-    if (received.length !== expected.length) return false;
+    const matches =
+      received.length === expected.length &&
+      timingSafeEqual(received, expected);
 
-    return timingSafeEqual(received, expected);
+    if (!matches) {
+      // TEMPORARY diagnostic logging (2026-09-04): a real Tatum-delivered
+      // webhook (confirmed via Cloud Run access logs - genuine axios
+      // user-agent, 3 real retries) was rejected here while a synthetic
+      // curl test with a hand-computed hash over the same JSON.stringify
+      // shape passed - meaning req.body, once parsed by Express, doesn't
+      // roundtrip to the exact same string Tatum hashed. Logging the
+      // reconstructed body and both hashes (never the secret) to find the
+      // exact mismatch (extra/reordered fields, number formatting,
+      // content-type mismatch) on the next real delivery, rather than
+      // guessing at a fix. Remove once the real cause is confirmed and
+      // fixed.
+      this.logger.warn(
+        `Tatum webhook HMAC mismatch. content-type=${req.header('content-type')} ` +
+          `canonicalBody=${canonicalBody} receivedHash=${receivedHash} expectedHash=${expectedHash}`,
+      );
+    }
+
+    return matches;
   }
 }
