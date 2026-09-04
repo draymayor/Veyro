@@ -33,6 +33,7 @@ The most-used screen in V1. One queue, filterable by asset type (Gift Card / Cry
 - Locked rate + payout amount
 - If webhook-based detection is active for this address (within whatever tier/limits apply): deposit shown as auto-detected, admin confirms
 - If not covered by automatic detection: admin manually checks that specific user's address on a block explorer
+- **Ethereum Classic and XDC Network never get webhook coverage, permanently.** Tatum's ADDRESS_TRANSACTION subscription product has no `attr.chain` value for either chain at all (confirmed against the full enum it returns) — not a coverage-tier/slot limitation like every other chain, a real gap in what Tatum supports. Deposits on these two networks always go through the manual admin-check path; don't treat their absence from auto-detection as a bug or a temporary gap to chase.
 - Actions: Approve / Reject (with reason)
 - Note: there is currently a real gap between the old proof-of-submission model (removed) and full Tatum integration (not yet built). Do not build UI assuming the old submitted-tx-hash-and-screenshot flow, build toward this target state instead.
 

@@ -28,6 +28,22 @@ export interface ChainConfig {
    * fees, no unspent-output consolidation needed) on 6h.
    */
   sweepGroup: 'utxo' | 'evm';
+  /**
+   * The `attr.chain` value Tatum's POST /v3/subscription (ADDRESS_TRANSACTION)
+   * endpoint actually accepts - confirmed live (2026-09-04) to be a
+   * COMPLETELY DIFFERENT naming scheme from `tatumChain` above (which is
+   * only for /v3/{chain}/address and /v3/{chain}/transaction - e.g. 'tron',
+   * 'ethereum'). Passing `tatumChain` here 400s every time with "attr.chain
+   * must be one of the following values: ... TRON ... ETH ...", which is
+   * exactly what silently made webhookCoverage.slotsUsed stay 0 in
+   * production - not because no one had deposited, but because every
+   * subscription-creation call had been failing since this feature shipped.
+   * Omitted entirely (undefined) for a chain Tatum's ADDRESS_TRANSACTION
+   * product doesn't support at all (verified against the full enum
+   * Tatum returned, not assumed) - those chains stay permanently on the
+   * manual-admin-check path by design, not by bug.
+   */
+  tatumSubscriptionChain?: string;
 }
 
 const EVM_ADDRESS_GROUP = 'evm-shared';
@@ -47,18 +63,21 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     tatumChain: 'bitcoin',
     configKey: 'TATUM_BTC_XPUB',
     sweepGroup: 'utxo',
+    tatumSubscriptionChain: 'BTC',
   },
   Litecoin: {
     derivationStyle: 'xpub-index',
     tatumChain: 'litecoin',
     configKey: 'TATUM_LTC_XPUB',
     sweepGroup: 'utxo',
+    tatumSubscriptionChain: 'LTC',
   },
   Dogecoin: {
     derivationStyle: 'xpub-index',
     tatumChain: 'dogecoin',
     configKey: 'TATUM_DOGE_XPUB',
     sweepGroup: 'utxo',
+    tatumSubscriptionChain: 'DOGE',
   },
 
   // --- EVM chains: ALL of these share one master xpub (TATUM_EVM_XPUB) and
@@ -70,6 +89,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'ETH',
   },
   BEP20: {
     derivationStyle: 'xpub-index',
@@ -77,6 +97,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'BSC',
   },
   Polygon: {
     derivationStyle: 'xpub-index',
@@ -84,6 +105,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'MATIC',
   },
   Avalanche: {
     derivationStyle: 'xpub-index',
@@ -91,6 +113,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'AVAX',
   },
   Celo: {
     derivationStyle: 'xpub-index',
@@ -98,6 +121,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'CELO',
   },
   Flare: {
     derivationStyle: 'xpub-index',
@@ -105,6 +129,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'FLR',
   },
   Fantom: {
     derivationStyle: 'xpub-index',
@@ -112,6 +137,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'FTM',
   },
   Cronos: {
     derivationStyle: 'xpub-index',
@@ -119,6 +145,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'CRO',
   },
   'Ethereum Classic': {
     derivationStyle: 'xpub-index',
@@ -126,6 +153,10 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    // No ETC value anywhere in Tatum's ADDRESS_TRANSACTION `attr.chain`
+    // enum (verified against the full list returned live) - not
+    // supported by this Tatum product at all, so left undefined rather
+    // than guessing a value that would just 400 the same way 'tron' did.
   },
   Kaia: {
     derivationStyle: 'xpub-index',
@@ -133,6 +164,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'KAIA',
   },
   'XDC Network': {
     derivationStyle: 'xpub-index',
@@ -140,6 +172,8 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    // Same as Ethereum Classic above: no XDC value in Tatum's
+    // ADDRESS_TRANSACTION enum, not supported by this product.
   },
   Arbitrum: {
     derivationStyle: 'xpub-index',
@@ -151,6 +185,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'ETH_ARB',
   },
   Optimism: {
     derivationStyle: 'xpub-index',
@@ -158,6 +193,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'ETH_OP',
   },
   Base: {
     derivationStyle: 'xpub-index',
@@ -165,6 +201,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     configKey: 'TATUM_EVM_XPUB',
     addressGroup: EVM_ADDRESS_GROUP,
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'ETH_BASE',
   },
 
   // --- TRON: its own master xpub, covers TRX and USDT-TRC20. USDC-TRC20
@@ -178,6 +215,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     tatumChain: 'tron',
     configKey: 'TATUM_TRON_XPUB',
     sweepGroup: 'evm',
+    tatumSubscriptionChain: 'TRON',
   },
 
   // --- Shared-address, non-HD chains: no derivation, every user shares one

@@ -77,9 +77,19 @@ export class TatumService {
    * manual-admin-check path", not an error condition. The caller logs and
    * moves on either way; address generation itself must never fail because
    * Tatum's subscription slots ran out.
+   *
+   * `subscriptionChain` is deliberately a different value space from
+   * generateAddressFromXpub's `tatumChain` param above (e.g. 'TRON'/'ETH'
+   * here vs 'tron'/'ethereum' there) - confirmed live (2026-09-04) that
+   * this endpoint's `attr.chain` validates against a totally different
+   * enum than /v3/{chain}/address does, despite living under the same
+   * /v3 base path. Passing the wrong one 400s every time - see
+   * ChainConfig.tatumSubscriptionChain's doc comment for how this was
+   * caught (it silently zeroed out webhookCoverage.slotsUsed in
+   * production for every chain, not just one).
    */
   async createAddressSubscription(
-    tatumChain: string,
+    subscriptionChain: string,
     address: string,
     webhookUrl: string,
   ): Promise<string | null> {
@@ -94,7 +104,7 @@ export class TatumService {
           },
           body: JSON.stringify({
             type: 'ADDRESS_TRANSACTION',
-            attr: { address, chain: tatumChain, url: webhookUrl },
+            attr: { address, chain: subscriptionChain, url: webhookUrl },
           }),
         },
         REQUEST_TIMEOUT_MS,
@@ -103,7 +113,7 @@ export class TatumService {
       if (!res.ok) {
         const body = await res.text().catch(() => '');
         this.logger.warn(
-          `Tatum subscription not created for ${tatumChain} address ${address} (falls back to manual admin check): ${res.status} ${body}`,
+          `Tatum subscription not created for ${subscriptionChain} address ${address} (falls back to manual admin check): ${res.status} ${body}`,
         );
         return null;
       }
@@ -112,7 +122,7 @@ export class TatumService {
       return data.id ?? null;
     } catch (err) {
       this.logger.warn(
-        `Tatum subscription request failed for ${tatumChain} address ${address} (falls back to manual admin check): ${(err as Error).message}`,
+        `Tatum subscription request failed for ${subscriptionChain} address ${address} (falls back to manual admin check): ${(err as Error).message}`,
       );
       return null;
     }

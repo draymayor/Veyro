@@ -156,7 +156,7 @@ export class CryptoAddressesService {
       await this.ensureWebhookSubscription(
         client,
         result.address,
-        chainConfig.tatumChain!,
+        chainConfig.tatumSubscriptionChain,
       );
       return result;
     }
@@ -187,7 +187,7 @@ export class CryptoAddressesService {
     await this.ensureWebhookSubscription(
       client,
       result.address,
-      chainConfig.tatumChain!,
+      chainConfig.tatumSubscriptionChain,
     );
     return result;
   }
@@ -212,8 +212,14 @@ export class CryptoAddressesService {
   private async ensureWebhookSubscription(
     client: Client,
     address: string,
-    tatumChain: string,
+    tatumSubscriptionChain: string | undefined,
   ): Promise<void> {
+    // No valid Tatum ADDRESS_TRANSACTION `attr.chain` value exists for this
+    // chain (e.g. Ethereum Classic, XDC Network) - a genuine product gap,
+    // not a bug, so this address stays on the manual-check path
+    // permanently, without ever making a Tatum call for it.
+    if (!tatumSubscriptionChain) return;
+
     const { data: covered } = await client
       .from('user_crypto_addresses')
       .select('tatum_subscription_id')
@@ -227,7 +233,7 @@ export class CryptoAddressesService {
     const webhookUrl =
       this.configService.getOrThrow<string>('TATUM_WEBHOOK_URL');
     const subscriptionId = await this.tatumService.createAddressSubscription(
-      tatumChain,
+      tatumSubscriptionChain,
       address,
       webhookUrl,
     );
