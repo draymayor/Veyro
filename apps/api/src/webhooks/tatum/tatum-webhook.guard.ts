@@ -61,20 +61,34 @@ export class TatumWebhookGuard implements CanActivate {
       timingSafeEqual(received, expected);
 
     if (!matches) {
-      // TEMPORARY diagnostic logging (2026-09-04): a real Tatum-delivered
-      // webhook (confirmed via Cloud Run access logs - genuine axios
-      // user-agent, 3 real retries) was rejected here while a synthetic
-      // curl test with a hand-computed hash over the same JSON.stringify
-      // shape passed - meaning req.body, once parsed by Express, doesn't
-      // roundtrip to the exact same string Tatum hashed. Logging the
-      // reconstructed body and both hashes (never the secret) to find the
-      // exact mismatch (extra/reordered fields, number formatting,
-      // content-type mismatch) on the next real delivery, rather than
-      // guessing at a fix. Remove once the real cause is confirmed and
-      // fixed.
+      // RESOLVED (2026-09-04, see docs/database-schema.md's
+      // crypto_deposit_events section point 3): a real Tatum-delivered
+      // webhook was rejected here while a synthetic curl test with a
+      // hand-computed hash over the same JSON.stringify shape passed.
+      // This originally logged the full reconstructed body and both
+      // complete hashes to find the exact mismatch - both
+      // JSON-canonicalization theories (body re-stringification,
+      // content-type handling) were tested against that captured data and
+      // ruled out, isolating the real cause: the account-wide
+      // TATUM_WEBHOOK_HMAC_SECRET had drifted out of sync with what was
+      // stored in Secret Manager. Fixed by regenerating and re-syncing
+      // both sides (deployed as revision veyro-api-00019-rqr); verified
+      // end to end the same night with a real 0.1 TRX deposit reaching
+      // crypto_deposit_events.status = 'credited'.
+      //
+      // The verbose body/hash logging that found this is deliberately
+      // NOT restored now that the cause is known - it only ever fires on
+      // a mismatch (never on a normal successful request), but logging a
+      // full request body indefinitely in production is unnecessary
+      // noise and a minor data-exposure surface. What's left is a
+      // lightweight tripwire: if the secret ever drifts again (root
+      // cause still not fully understood - why it drifted in the first
+      // place was never pinned down, only that it had), this gives early
+      // warning without the verbosity cost of the full diagnostic
+      // payload running constantly.
       this.logger.warn(
         `Tatum webhook HMAC mismatch. content-type=${req.header('content-type')} ` +
-          `canonicalBody=${canonicalBody} receivedHash=${receivedHash} expectedHash=${expectedHash}`,
+          `receivedHashPrefix=${receivedHash.slice(0, 12)} expectedHashPrefix=${expectedHash.slice(0, 12)}`,
       );
     }
 
