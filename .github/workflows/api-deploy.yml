@@ -21,7 +21,22 @@
 #   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY,
 #   COINGECKO_API_KEY, TATUM_API_KEY, TATUM_BTC_XPUB, TATUM_LTC_XPUB,
 #   TATUM_DOGE_XPUB, TATUM_EVM_XPUB, TATUM_TRON_XPUB, FCA_API_KEY,
-#   CURRENCYFREAKS_API_KEY, TATUM_WEBHOOK_URL, TATUM_WEBHOOK_HMAC_SECRET
+#   CURRENCYFREAKS_API_KEY, TATUM_WEBHOOK_URL, TATUM_WEBHOOK_HMAC_SECRET,
+#   ALCHEMY_API_KEY, ALCHEMY_WEBHOOK_IDS, ALCHEMY_WEBHOOK_SIGNING_KEYS
+#
+# ALCHEMY_* back Alchemy's Address Activity webhook (the second deposit-
+# detection provider, covering EVM chains - see chain-config.ts's
+# alchemyNetwork field and webhooks/alchemy). Same eager-getOrThrow-at-
+# construction pattern as TatumService's own TATUM_API_KEY, which means
+# the exact incident described below for TATUM_WEBHOOK_URL/
+# TATUM_WEBHOOK_HMAC_SECRET applies here too, just worse: missing any of
+# these three fails AlchemyService's/AlchemyWebhookGuard's constructor at
+# app BOOT, not per-request, taking the whole revision down rather than
+# 500ing only new-address requests. Do not add these lines here without
+# first confirming (gcloud secrets get-iam-policy) that
+# GCP_RUNTIME_SERVICE_ACCOUNT already has secretmanager.secretAccessor on
+# all three - unlike every other secret in this list, they do NOT have
+# that grant yet as of 2026-09-05.
 #
 # TATUM_WEBHOOK_URL/TATUM_WEBHOOK_HMAC_SECRET back the webhook-based
 # deposit-detection feature (crypto-addresses.service.ts's
@@ -143,3 +158,6 @@ jobs:
             CURRENCYFREAKS_API_KEY=CURRENCYFREAKS_API_KEY:latest
             TATUM_WEBHOOK_URL=TATUM_WEBHOOK_URL:latest
             TATUM_WEBHOOK_HMAC_SECRET=TATUM_WEBHOOK_HMAC_SECRET:latest
+            ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest
+            ALCHEMY_WEBHOOK_IDS=ALCHEMY_WEBHOOK_IDS:latest
+            ALCHEMY_WEBHOOK_SIGNING_KEYS=ALCHEMY_WEBHOOK_SIGNING_KEYS:latest

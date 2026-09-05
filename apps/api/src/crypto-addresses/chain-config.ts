@@ -62,6 +62,33 @@ export interface ChainConfig {
    * carries 'tron-mainnet', never bare 'tron'.
    */
   webhookChain?: string;
+  /**
+   * The `network` value Alchemy's Address Activity webhook uses, both to
+   * create/target a webhook via their Notify API and in the `event.network`
+   * field of every real delivery (confirmed against
+   * docs.alchemy.com/docs/reference/address-activity-webhook's literal
+   * example payload, 2026-09-05) - a single, consistent enum, unlike
+   * Tatum's three-different-naming-schemes situation above. Only set for
+   * the EVM chains actually activated with Alchemy today (Ethereum,
+   * Polygon, BSC, Arbitrum, Base): Alchemy's free tier is a hard 5-webhooks-
+   * total cap and each Address Activity webhook covers exactly ONE
+   * network (no multi-chain pipeline exists - confirmed against
+   * webhook-types docs), so 5 webhooks means 5 of Veyro's 14 EVM chains,
+   * not all of them. The remaining EVM chains (and BTC/LTC/DOGE) stay on
+   * the manual-admin-check path exactly as before; activating one later is
+   * adding a value here plus its webhook id/signing key to config, not a
+   * rearchitecture - see AlchemyWebhookModule.
+   *
+   * PRECEDENCE: where both this and `tatumSubscriptionChain` are set on
+   * the same chain (true of all 5 chains below - the Tatum values were
+   * never removed, since they remain valid data), `alchemyNetwork` wins:
+   * CryptoAddressesService.ensureWebhookCoverage checks this field FIRST,
+   * so Tatum's own 5 ADDRESS_TRANSACTION slots are never spent on a chain
+   * Alchemy already covers, leaving all 5 free for TRON (its only real
+   * consumer) exactly as before Alchemy was added. This is a deliberate,
+   * explicit dispatch, not an implicit fallthrough - see that method.
+   */
+  alchemyNetwork?: string;
 }
 
 const EVM_ADDRESS_GROUP = 'evm-shared';
@@ -115,6 +142,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'ETH',
     webhookChain: 'ethereum-mainnet',
+    alchemyNetwork: 'ETH_MAINNET',
   },
   BEP20: {
     derivationStyle: 'xpub-index',
@@ -124,6 +152,9 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'BSC',
     webhookChain: 'bsc-mainnet',
+    // Alchemy's own enum is BNB_MAINNET, not BSC_MAINNET - confirmed
+    // against their published Network enum (2026-09-05).
+    alchemyNetwork: 'BNB_MAINNET',
   },
   Polygon: {
     derivationStyle: 'xpub-index',
@@ -133,6 +164,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'MATIC',
     webhookChain: 'polygon-mainnet',
+    alchemyNetwork: 'MATIC_MAINNET',
   },
   Avalanche: {
     derivationStyle: 'xpub-index',
@@ -226,6 +258,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     // NOT 'arb-one-mainnet' despite that being the subscription-creation
     // enum string - confirmed live the real normalized value is this.
     webhookChain: 'arbitrum-one-mainnet',
+    alchemyNetwork: 'ARB_MAINNET',
   },
   Optimism: {
     derivationStyle: 'xpub-index',
@@ -235,6 +268,8 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'ETH_OP',
     webhookChain: 'optimism-mainnet',
+    // Not one of the 5 chains activated with Alchemy yet (see
+    // alchemyNetwork's doc comment) - stays on the manual-check path.
   },
   Base: {
     derivationStyle: 'xpub-index',
@@ -244,6 +279,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     sweepGroup: 'evm',
     tatumSubscriptionChain: 'ETH_BASE',
     webhookChain: 'base-mainnet',
+    alchemyNetwork: 'BASE_MAINNET',
   },
 
   // --- TRON: its own master xpub, covers TRX and USDT-TRC20. USDC-TRC20

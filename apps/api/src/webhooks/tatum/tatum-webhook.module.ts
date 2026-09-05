@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { TatumWebhookController } from './tatum-webhook.controller';
 import { TatumWebhookService } from './tatum-webhook.service';
 import { TatumWebhookGuard } from './tatum-webhook.guard';
-import { NotificationsModule } from '../../notifications/notifications.module';
+import { DepositDetectionModule } from '../../deposit-detection/deposit-detection.module';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [DepositDetectionModule],
   controllers: [TatumWebhookController],
   providers: [TatumWebhookService, TatumWebhookGuard],
 })

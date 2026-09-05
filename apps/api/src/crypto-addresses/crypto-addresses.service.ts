@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { TatumService } from './tatum.service';
+import { AlchemyService } from './alchemy.service';
 import { CHAIN_CONFIGS, ChainConfig } from './chain-config';
 
 // Every network key sharing a given addressGroup (e.g. every EVM chain
@@ -42,6 +43,7 @@ export class CryptoAddressesService {
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
     private readonly tatumService: TatumService,
+    private readonly alchemyService: AlchemyService,
   ) {}
 
   // `displayNetwork` is crypto_assets.network's user-facing display string
@@ -152,12 +154,8 @@ export class CryptoAddressesService {
       );
       // Same physical address as an existing row for this user - webhook
       // coverage (or lack of it) was already decided when that first row
-      // was created. Just propagate it, never a fresh Tatum call here.
-      await this.ensureWebhookSubscription(
-        client,
-        result.address,
-        chainConfig.tatumSubscriptionChain,
-      );
+      // was created. Just propagate it, never a fresh provider call here.
+      await this.ensureWebhookCoverage(client, result.address, chainConfig);
       return result;
     }
 
@@ -184,12 +182,103 @@ export class CryptoAddressesService {
     // concurrent-insert race for this exact user/symbol/network - one a
     // parallel request just created). Either way this is the first point
     // this address could need webhook coverage registered.
+    await this.ensureWebhookCoverage(client, result.address, chainConfig);
+    return result;
+  }
+
+  // Picks which webhook provider (if any) should cover this chain, and
+  // registers the address with it - synchronously, in the same request
+  // that created the address, same posture as the original Tatum-only
+  // flow. `alchemyNetwork` wins whenever both it and `tatumSubscriptionChain`
+  // are set on a chain (true of all 5 chains Alchemy currently covers -
+  // see ChainConfig.alchemyNetwork's doc comment for why the Tatum values
+  // were left in place rather than removed): this is what keeps Tatum's 5
+  // real ADDRESS_TRANSACTION slots free for TRON, its only real consumer,
+  // rather than quietly racing EVM chains for them. A chain with neither
+  // field set (Ethereum Classic, XDC Network) falls all the way through
+  // to the existing manual-admin-check path untouched.
+  private async ensureWebhookCoverage(
+    client: Client,
+    address: string,
+    chainConfig: ChainConfig,
+  ): Promise<void> {
+    if (chainConfig.alchemyNetwork) {
+      await this.ensureAlchemyWebhookCoverage(
+        client,
+        address,
+        chainConfig.alchemyNetwork,
+      );
+      return;
+    }
     await this.ensureWebhookSubscription(
       client,
-      result.address,
+      address,
       chainConfig.tatumSubscriptionChain,
     );
-    return result;
+  }
+
+  // Registers Alchemy webhook coverage for one physical deposit address,
+  // at most once ever - mirrors ensureWebhookSubscription's exact
+  // dedupe-by-address pattern below (multiple user_crypto_addresses rows
+  // can share one address, e.g. every symbol on a shared EVM network, so
+  // this checks whether ANY row for this exact address already carries an
+  // alchemy_webhook_id first). Not perfectly race-free against two truly
+  // simultaneous first-time requests for the same brand-new address for
+  // the same reason ensureWebhookSubscription isn't - Alchemy's own
+  // update-webhook-addresses endpoint is documented idempotent ("identical
+  // requests can be made once or several times with the same effect"), so
+  // a duplicate add from a losing concurrent request is harmless on
+  // Alchemy's side even though it wastes a redundant call.
+  private async ensureAlchemyWebhookCoverage(
+    client: Client,
+    address: string,
+    alchemyNetwork: string,
+  ): Promise<void> {
+    const { data: covered } = await client
+      .from('user_crypto_addresses')
+      .select('alchemy_webhook_id')
+      .eq('address', address)
+      .not('alchemy_webhook_id', 'is', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (covered) return;
+
+    const webhookId = this.alchemyService.getWebhookId(alchemyNetwork);
+    if (!webhookId) {
+      // No webhook configured for this network yet (ALCHEMY_WEBHOOK_IDS
+      // doesn't have an entry) - a config gap, not a runtime error. Stays
+      // on the manual-check path exactly like a Tatum-unsupported chain
+      // does, without ever making a call for it.
+      this.logger.warn(
+        `No Alchemy webhook id configured for network "${alchemyNetwork}" - ${address} falls back to manual admin check.`,
+      );
+      return;
+    }
+
+    const added = await this.alchemyService.addAddressToWebhook(
+      webhookId,
+      address,
+    );
+    if (!added) return; // request failed - stays on the manual-check path, logged inside AlchemyService already
+
+    const { error } = await client
+      .from('user_crypto_addresses')
+      .update({ alchemy_webhook_id: webhookId })
+      .eq('address', address);
+
+    if (error) {
+      // The registration is real and live on Alchemy's side even though
+      // we failed to record it - it will fire against an address we can
+      // no longer identify as "covered" from this table, so the webhook
+      // receiver's own address lookup (by raw address value, not by this
+      // flag) still credits correctly; only the admin-facing coverage
+      // indicator undercounts until this is investigated. Same posture as
+      // the equivalent Tatum failure below.
+      this.logger.error(
+        `Alchemy webhook ${webhookId} registered for ${address} but saving alchemy_webhook_id failed: ${error.message}`,
+      );
+    }
   }
 
   // Registers Tatum webhook coverage for one physical deposit address, at
