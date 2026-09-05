@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AdminRatesService } from './admin-rates.service';
+import { NetworkFeesService } from './network-fees.service';
 import { AdminAuthGuard } from '../admin-auth.guard';
 import { SupabaseAuthGuard } from '../../auth/supabase-auth.guard';
 import type { AuthenticatedRequest } from '../../auth/supabase-auth.guard';
@@ -19,7 +20,10 @@ import type { AuthenticatedRequest } from '../../auth/supabase-auth.guard';
 @Controller('admin/rates')
 @UseGuards(SupabaseAuthGuard, AdminAuthGuard)
 export class AdminRatesController {
-  constructor(private readonly adminRatesService: AdminRatesService) {}
+  constructor(
+    private readonly adminRatesService: AdminRatesService,
+    private readonly networkFeesService: NetworkFeesService,
+  ) {}
 
   @Get('gift-card-brands')
   listGiftCardBrands() {
@@ -142,6 +146,14 @@ export class AdminRatesController {
       key,
       value,
     );
+  }
+
+  // Read-only, live-computed - never admin-editable, since these are real
+  // external network costs Veyro doesn't set. No corresponding POST/PATCH
+  // on purpose (see NetworkFeesService's doc comment).
+  @Get('network-fees')
+  getNetworkFees() {
+    return this.networkFeesService.getNetworkFees();
   }
 
   @Get('crypto-signing-mode')
