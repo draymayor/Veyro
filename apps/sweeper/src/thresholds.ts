@@ -1,12 +1,21 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Fee-aware minimum sweep thresholds, sourced from platform_settings
+ * Sweep-worthiness settings, sourced from platform_settings
  * (docs/planning-history.md's Sweeper section) rather than hardcoded, so an
- * admin can retune a chain's minimum without a redeploy. Values are the
- * minimum amount (in the swept symbol's own units) worth sweeping - i.e.
- * already chosen to comfortably clear that chain's typical network fee, not
- * a raw fee estimate itself.
+ * admin can retune a chain's minimum without a redeploy. Two key families,
+ * distinguished by prefix:
+ *  - `sweep_min_threshold_*` - a static minimum amount (in the swept
+ *    symbol's own units) worth sweeping, for chains/symbols whose fee is
+ *    denominated in that same symbol and doesn't swing wildly enough to
+ *    need live pricing (BTC, LTC, DOGE, native EVM coins, TRX, TRC20 USDT).
+ *  - `sweep_fee_multiple_*` - a multiplier ("sweep only if the deposit
+ *    exceeds N times the current live-estimated network fee") for symbols
+ *    where a fixed amount would go stale, e.g. ERC20 stablecoins: the token
+ *    balance is ~1 USD/unit but gas is paid in the chain's native currency,
+ *    so only a fee-relative rule stays correct as gas prices move. Applied
+ *    live inside the relevant ChainAdapter (see EvmAdapter.sweepToken),
+ *    not as a pre-filter here.
  */
 export class ThresholdService {
   private cache: Record<string, number> | null = null;
@@ -18,7 +27,7 @@ export class ThresholdService {
       const { data, error } = await this.supabase
         .from("platform_settings")
         .select("key, value")
-        .like("key", "sweep_min_threshold_%");
+        .like("key", "sweep_%");
 
       if (error) {
         throw new Error(`Failed to load sweep thresholds: ${error.message}`);

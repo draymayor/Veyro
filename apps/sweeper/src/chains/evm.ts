@@ -1,5 +1,10 @@
 import { ethers } from "ethers";
-import { ChainAdapter, DepositAddress, SweepResult } from "./types";
+import {
+  ChainAdapter,
+  DepositAddress,
+  SweepFeeContext,
+  SweepResult,
+} from "./types";
 
 // Minimal ERC20 ABI - balanceOf + transfer + decimals, the only calls the
 // sweeper needs.
@@ -67,6 +72,7 @@ export class EvmAdapter implements ChainAdapter {
     deposit: DepositAddress,
     symbol: string,
     toAddress: string,
+    feeContext?: SweepFeeContext,
   ): Promise<SweepResult | null> {
     if (deposit.derivationIndex === null) {
       throw new Error(
@@ -78,7 +84,7 @@ export class EvmAdapter implements ChainAdapter {
     const contract = this.tokenContracts[symbol];
 
     if (contract) {
-      return this.sweepToken(wallet, contract, toAddress, feeData);
+      return this.sweepToken(wallet, contract, toAddress, feeData, feeContext);
     }
     return this.sweepNative(wallet, toAddress, feeData);
   }
@@ -116,6 +122,7 @@ export class EvmAdapter implements ChainAdapter {
     contractAddress: string,
     toAddress: string,
     feeData: ethers.FeeData,
+    feeContext?: SweepFeeContext,
   ): Promise<SweepResult | null> {
     const token = new ethers.Contract(contractAddress, ERC20_ABI, wallet);
     const [raw, decimals] = await Promise.all([
@@ -133,6 +140,30 @@ export class EvmAdapter implements ChainAdapter {
     const gasLimit = 65_000n;
     const gasPrice = feeData.gasPrice ?? 0n;
     const fee = gasLimit * gasPrice;
+    const feeEstimate = Number(ethers.formatEther(fee));
+
+    // Fee-aware "worth sweeping" check (sweep_fee_multiple_erc20_token,
+    // see thresholds.ts). Mandatory, not best-effort: without feeContext
+    // there is no gate at all on this path (the balance is a stablecoin,
+    // the fee is native gas - they can't be compared directly), so a
+    // missing feeContext fails closed rather than silently sweeping every
+    // nonzero balance regardless of whether it clears the real fee.
+    if (!feeContext) {
+      throw new Error(
+        "EVM token sweep requires a SweepFeeContext (feeMultiplier + nativeUsdPrice) to decide whether this balance is worth sweeping",
+      );
+    }
+    const balanceUsd = Number(ethers.formatUnits(raw, decimals));
+    const feeUsd = feeEstimate * feeContext.nativeUsdPrice;
+    if (balanceUsd < feeContext.feeMultiplier * feeUsd) return null;
+
+    if (feeContext.dryRun) {
+      return {
+        txHash: "dry_run",
+        amountSwept: balanceUsd,
+        feeEstimate,
+      };
+    }
 
     const tx = (await token.transfer(toAddress, raw, {
       gasLimit,
@@ -143,7 +174,7 @@ export class EvmAdapter implements ChainAdapter {
     return {
       txHash: tx.hash,
       amountSwept: Number(ethers.formatUnits(raw, decimals)),
-      feeEstimate: Number(ethers.formatEther(fee)),
+      feeEstimate,
     };
   }
 }

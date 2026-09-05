@@ -23,7 +23,12 @@ export interface ChainDefinition {
   signingFamily: SigningFamily;
   /** Which combined secret this chain's signing key material lives in. */
   secretName: string;
-  /** platform_settings key holding this chain's fee-aware minimum threshold, per native-unit symbol swept. */
+  /**
+   * platform_settings key deciding whether a symbol is worth sweeping.
+   * Either a `sweep_min_threshold_*` static minimum (native units) or a
+   * `sweep_fee_multiple_*` multiplier checked live against the current fee
+   * estimate (see thresholds.ts for which is which and why).
+   */
   thresholdKeyBySymbol: Record<string, string>;
 }
 
@@ -64,8 +69,8 @@ export const CHAINS: ChainDefinition[] = [
     secretName: "SWEEPER_EVM_SEED",
     thresholdKeyBySymbol: {
       ETH: "sweep_min_threshold_evm_native",
-      USDT: "sweep_min_threshold_erc20_token",
-      USDC: "sweep_min_threshold_erc20_token",
+      USDT: "sweep_fee_multiple_erc20_token",
+      USDC: "sweep_fee_multiple_erc20_token",
     },
   },
   {
@@ -77,7 +82,7 @@ export const CHAINS: ChainDefinition[] = [
     secretName: "SWEEPER_EVM_SEED",
     thresholdKeyBySymbol: {
       BNB: "sweep_min_threshold_evm_native",
-      USDT: "sweep_min_threshold_erc20_token",
+      USDT: "sweep_fee_multiple_erc20_token",
     },
   },
   {
@@ -170,8 +175,8 @@ export const CHAINS: ChainDefinition[] = [
     secretName: "SWEEPER_EVM_SEED",
     thresholdKeyBySymbol: {
       ETH: "sweep_min_threshold_evm_native",
-      USDT: "sweep_min_threshold_erc20_token",
-      USDC: "sweep_min_threshold_erc20_token",
+      USDT: "sweep_fee_multiple_erc20_token",
+      USDC: "sweep_fee_multiple_erc20_token",
     },
   },
   {
@@ -183,8 +188,8 @@ export const CHAINS: ChainDefinition[] = [
     secretName: "SWEEPER_EVM_SEED",
     thresholdKeyBySymbol: {
       ETH: "sweep_min_threshold_evm_native",
-      USDT: "sweep_min_threshold_erc20_token",
-      USDC: "sweep_min_threshold_erc20_token",
+      USDT: "sweep_fee_multiple_erc20_token",
+      USDC: "sweep_fee_multiple_erc20_token",
     },
   },
   {
@@ -196,8 +201,8 @@ export const CHAINS: ChainDefinition[] = [
     secretName: "SWEEPER_EVM_SEED",
     thresholdKeyBySymbol: {
       ETH: "sweep_min_threshold_evm_native",
-      USDT: "sweep_min_threshold_erc20_token",
-      USDC: "sweep_min_threshold_erc20_token",
+      USDT: "sweep_fee_multiple_erc20_token",
+      USDC: "sweep_fee_multiple_erc20_token",
     },
   },
   {
