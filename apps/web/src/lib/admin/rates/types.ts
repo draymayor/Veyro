@@ -34,6 +34,31 @@ export interface AdminPlatformSetting {
   updated_at: string;
 }
 
+export type NetworkFeeAvailability = "live" | "fixed" | "unavailable";
+
+// One row = one real, live-computed network cost - the same number both a
+// user withdrawal and a sweep/consolidation currently pay to move funds on
+// that chain, since it's the same real on-chain fee triggered by two
+// different internal events. Read-only: there is no corresponding POST,
+// this isn't a Veyro-controlled setting.
+export interface AdminNetworkFee {
+  network: string;
+  nativeSymbol: string;
+  availability: NetworkFeeAvailability;
+  transferFeeNative?: number;
+  transferFeeUsd?: number;
+  tokenTransferFeeNative?: number;
+  tokenTransferFeeUsd?: number;
+  tokenSymbolsLabel?: string;
+  source: string;
+  reason?: string;
+}
+
+export interface AdminNetworkFeesResponse {
+  asOf: string;
+  fees: AdminNetworkFee[];
+}
+
 // Human-readable labels for known platform_settings keys, so admin sees
 // "Referral bonus (USD)" instead of raw_snake_case_key text and can't
 // confuse two similarly-named keys for the same setting. Add an entry here

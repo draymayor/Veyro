@@ -12,6 +12,7 @@ import { AdminDashboardController } from './dashboard/admin-dashboard.controller
 import { AdminDashboardService } from './dashboard/admin-dashboard.service';
 import { AdminRatesController } from './rates/admin-rates.controller';
 import { AdminRatesService } from './rates/admin-rates.service';
+import { NetworkFeesService } from './rates/network-fees.service';
 import { AdminSupportController } from './support/admin-support.controller';
 import { AdminSupportService } from './support/admin-support.service';
 import { AdminDepositsController } from './deposits/admin-deposits.controller';
@@ -53,6 +54,7 @@ import { CryptoWalletModule } from '../crypto-wallet/crypto-wallet.module';
     AdminUsersService,
     AdminDashboardService,
     AdminRatesService,
+    NetworkFeesService,
     AdminSupportService,
     AdminDepositsService,
     AdminTransactionsService,

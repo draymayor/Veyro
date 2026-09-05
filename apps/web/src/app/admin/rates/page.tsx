@@ -4,10 +4,12 @@ import type {
   AdminGiftCardRate,
   AdminCryptoAsset,
   AdminPlatformSetting,
+  AdminNetworkFeesResponse,
 } from "@/lib/admin/rates/types";
 import { GiftCardRatesSection } from "@/components/admin/rates/gift-card-rates-section";
 import { CryptoMarginSection } from "@/components/admin/rates/crypto-margin-section";
 import { PlatformSettingsSection } from "@/components/admin/rates/platform-settings-section";
+import { NetworkFeesSection } from "@/components/admin/rates/network-fees-section";
 import {
   CryptoSigningModeToggle,
   type CryptoWithdrawalSigningMode,
@@ -24,14 +26,21 @@ interface SigningModeSettings {
 // returns null on a request failure, rendered as its own empty state per
 // section rather than one page-wide error.
 export default async function AdminRatesPage() {
-  const [brands, rates, cryptoAssets, settings, signingModeSettings] =
-    await Promise.all([
-      adminFetch<AdminGiftCardBrand[]>("/admin/rates/gift-card-brands"),
-      adminFetch<AdminGiftCardRate[]>("/admin/rates/gift-cards"),
-      adminFetch<AdminCryptoAsset[]>("/admin/rates/crypto"),
-      adminFetch<AdminPlatformSetting[]>("/admin/rates/settings"),
-      adminFetch<SigningModeSettings>("/admin/rates/crypto-signing-mode"),
-    ]);
+  const [
+    brands,
+    rates,
+    cryptoAssets,
+    settings,
+    signingModeSettings,
+    networkFees,
+  ] = await Promise.all([
+    adminFetch<AdminGiftCardBrand[]>("/admin/rates/gift-card-brands"),
+    adminFetch<AdminGiftCardRate[]>("/admin/rates/gift-cards"),
+    adminFetch<AdminCryptoAsset[]>("/admin/rates/crypto"),
+    adminFetch<AdminPlatformSetting[]>("/admin/rates/settings"),
+    adminFetch<SigningModeSettings>("/admin/rates/crypto-signing-mode"),
+    adminFetch<AdminNetworkFeesResponse>("/admin/rates/network-fees"),
+  ]);
 
   return (
     <div className="flex min-w-0 flex-col gap-8">
@@ -61,6 +70,14 @@ export default async function AdminRatesPage() {
         </p>
       ) : (
         <PlatformSettingsSection settings={settings} />
+      )}
+
+      {networkFees === null ? (
+        <p className="text-ink/60 text-sm">
+          Couldn&apos;t load network fees. Try refreshing the page.
+        </p>
+      ) : (
+        <NetworkFeesSection initial={networkFees} />
       )}
 
       <CryptoSigningModeToggle
