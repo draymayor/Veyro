@@ -2,6 +2,7 @@ import { loadConfig } from "./config";
 import { createSupabaseClient } from "./supabase-client";
 import { SecretManagerClient } from "./secret-manager";
 import { ThresholdService } from "./thresholds";
+import { PriceFeed } from "./price-feed";
 import { SweepLogRepository } from "./sweep-log";
 import { SweepRunner } from "./sweep-runner";
 import { buildAdapter } from "./chains/registry";
@@ -22,6 +23,7 @@ async function main(): Promise<void> {
   );
   const secrets = new SecretManagerClient(config.gcpProjectId);
   const thresholds = new ThresholdService(supabase);
+  const priceFeed = new PriceFeed(process.env.COINGECKO_API_KEY);
   const sweepLog = new SweepLogRepository(supabase);
 
   const tatumApiKey = process.env.TATUM_API_KEY ?? "";
@@ -34,6 +36,7 @@ async function main(): Promise<void> {
   const runner = new SweepRunner(
     supabase,
     thresholds,
+    priceFeed,
     sweepLog,
     (chain) => buildAdapter(chain, config, secrets, utxoProviders),
     config.dryRun,

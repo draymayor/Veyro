@@ -1,8 +1,15 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ChainDefinition, chainsForGroup, SweepGroup } from "./coins";
 import { ThresholdService } from "./thresholds";
+import { PriceFeed } from "./price-feed";
 import { SweepLogRepository } from "./sweep-log";
-import { ChainAdapter, DepositAddress } from "./chains/types";
+import { ChainAdapter, DepositAddress, SweepFeeContext } from "./chains/types";
+
+// Distinguishes the two threshold key families from thresholds.ts - a
+// fee-multiple key is checked live inside the adapter (it needs the same
+// fee estimate the adapter already fetches), not as a static pre-filter
+// here.
+const FEE_MULTIPLE_KEY_PREFIX = "sweep_fee_multiple_";
 
 interface DepositRow {
   user_id: string;
@@ -17,6 +24,7 @@ export class SweepRunner {
   constructor(
     private readonly supabase: SupabaseClient,
     private readonly thresholds: ThresholdService,
+    private readonly priceFeed: PriceFeed,
     private readonly sweepLog: SweepLogRepository,
     private readonly buildAdapter: (
       chain: ChainDefinition,
@@ -100,9 +108,8 @@ export class SweepRunner {
 
     try {
       const balance = await adapter.getBalance(deposit.address, deposit.symbol);
-      const threshold = await this.thresholds.getThreshold(thresholdKey);
 
-      if (balance < threshold) {
+      if (balance <= 0) {
         await this.sweepLog.record({
           chain: chain.network,
           sweepGroup: chain.sweepGroup,
@@ -111,6 +118,69 @@ export class SweepRunner {
           symbol: deposit.symbol,
           amount: balance,
           status: "skipped_below_threshold",
+        });
+        return;
+      }
+
+      const isFeeAware = thresholdKey.startsWith(FEE_MULTIPLE_KEY_PREFIX);
+      let feeContext: SweepFeeContext | undefined;
+
+      if (isFeeAware) {
+        // No static pre-filter for these symbols - the threshold is a
+        // multiple of the live fee estimate, so it can only be evaluated
+        // inside the adapter, alongside the fee data the adapter already
+        // fetches for the sweep itself (see EvmAdapter.sweepToken).
+        feeContext = {
+          feeMultiplier: await this.thresholds.getThreshold(thresholdKey),
+          nativeUsdPrice: await this.priceFeed.getUsdPrice(chain.nativeSymbol),
+          dryRun: this.dryRun,
+        };
+      } else {
+        const threshold = await this.thresholds.getThreshold(thresholdKey);
+        if (balance < threshold) {
+          await this.sweepLog.record({
+            chain: chain.network,
+            sweepGroup: chain.sweepGroup,
+            fromAddress: deposit.address,
+            toAddress,
+            symbol: deposit.symbol,
+            amount: balance,
+            status: "skipped_below_threshold",
+          });
+          return;
+        }
+
+        if (this.dryRun) {
+          await this.sweepLog.record({
+            chain: chain.network,
+            sweepGroup: chain.sweepGroup,
+            fromAddress: deposit.address,
+            toAddress,
+            symbol: deposit.symbol,
+            amount: balance,
+            status: "skipped_below_threshold",
+            errorMessage: "dry_run: would have swept",
+          });
+          return;
+        }
+      }
+
+      const result = await adapter.sweep(
+        deposit,
+        deposit.symbol,
+        toAddress,
+        feeContext,
+      );
+      if (!result) {
+        await this.sweepLog.record({
+          chain: chain.network,
+          sweepGroup: chain.sweepGroup,
+          fromAddress: deposit.address,
+          toAddress,
+          symbol: deposit.symbol,
+          amount: balance,
+          status: "skipped_below_threshold",
+          errorMessage: "balance did not clear network fee after estimation",
         });
         return;
       }
@@ -122,24 +192,10 @@ export class SweepRunner {
           fromAddress: deposit.address,
           toAddress,
           symbol: deposit.symbol,
-          amount: balance,
+          amount: result.amountSwept,
+          feeEstimate: result.feeEstimate,
           status: "skipped_below_threshold",
           errorMessage: "dry_run: would have swept",
-        });
-        return;
-      }
-
-      const result = await adapter.sweep(deposit, deposit.symbol, toAddress);
-      if (!result) {
-        await this.sweepLog.record({
-          chain: chain.network,
-          sweepGroup: chain.sweepGroup,
-          fromAddress: deposit.address,
-          toAddress,
-          symbol: deposit.symbol,
-          amount: balance,
-          status: "skipped_below_threshold",
-          errorMessage: "balance did not clear network fee after estimation",
         });
         return;
       }
