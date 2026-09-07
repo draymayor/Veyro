@@ -16,9 +16,17 @@
 # Runtime config from GCP Secret Manager, each of these must already exist
 # with GCP_BLOCK_WATCHER_RUNTIME_SERVICE_ACCOUNT granted
 # secretmanager.secretAccessor on it:
-#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BLOCK_WATCHER_SHARED_SECRET
-# (the last one MUST equal apps/api's own BLOCK_WATCHER_SHARED_SECRET
-# secret exactly - see apps/api/src/webhooks/block-watcher's guard).
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BLOCK_WATCHER_SHARED_SECRET,
+#   TRONGRID_API_KEY
+# (BLOCK_WATCHER_SHARED_SECRET MUST equal apps/api's own
+# BLOCK_WATCHER_SHARED_SECRET secret exactly - see
+# apps/api/src/webhooks/block-watcher's guard. TRONGRID_API_KEY is a free
+# key from https://www.trongrid.io/dashboard - required, not optional:
+# unauthenticated TronGrid requests are capped at 1 req/sec, below what
+# this service's own poll interval needs; see config.ts's
+# tronGridApiKey doc comment. Without it, main.ts deliberately holds the
+# TRC20 watcher off at startup rather than retry-looping against a 429 it
+# can never clear.)
 #
 # --min-instances=1 --max-instances=1 --no-cpu-throttling: exactly one
 # instance, always warm, with CPU available outside of request handling.
@@ -140,3 +148,4 @@ jobs:
             SUPABASE_URL=SUPABASE_URL:latest
             SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest
             BLOCK_WATCHER_SHARED_SECRET=BLOCK_WATCHER_SHARED_SECRET:latest
+            TRONGRID_API_KEY=TRONGRID_API_KEY:latest
