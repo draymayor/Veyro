@@ -1,85 +1,118 @@
 import type { UtxoChainConfig } from "../chain-config";
 import type { AddressMap } from "../address-map";
 import type { DetectionSink } from "./types";
+import type { ApiClient } from "../api-client";
 
-const BLOCKCYPHER_BASE = "https://api.blockcypher.com/v1";
 const POLL_INTERVAL_MS = 45_000;
-// BlockCypher's free tier is GET-only, 3 req/sec / 100 req/hr, no token
-// required for mainnet reads (confirmed live 2026-09-07, both the terms and
-// the cap re-confirmed against BlockCypher's current docs). Getting full
-// decoded inputs/outputs for a tx needs a SEPARATE per-tx request (the
-// block endpoint only returns txids, not embedded tx bodies) - fine for
-// Litecoin/Dogecoin's real tx/block counts (tens), but Bitcoin mainnet
-// regularly has 3,700-7,300+ tx/block (sampled live 2026-09-07, higher than
-// earlier estimated), which would blow through the 100/hr cap in a single
-// poll cycle if fetched in full. Rather than silently under-detect without
-// saying so, this caps how many tx bodies get fetched per poll and logs
-// loudly when a block is truncated - a real, load-bearing limitation of the
-// free tier for BTC specifically, not fully solved here.
-//
-// There's a second, larger problem this cap doesn't address: watchUtxo's
-// own height-check poll (GET /{chain}/main every POLL_INTERVAL_MS) runs
-// unconditionally for all three chains regardless of deposit activity - at
-// 80 requests/hr each, that's ~240/hr combined against a shared 100/hr
-// budget (BlockCypher's docs don't disambiguate the cap per chain path, and
-// there's no per-chain token to separate it by), before a single block or
-// tx-detail request happens. This means LTC/DOGE are also at real risk of
-// 429s from baseline polling alone, not just BTC from tx volume. If BTC
-// deposit volume (or 429s on LTC/DOGE) ever becomes significant, this needs
-// either a paid BlockCypher tier or a different/self-hosted provider - not
-// yet decided, see apps/block-watcher/README.md.
-const MAX_TX_FETCHES_PER_POLL = 90;
+const PROVIDER = "alchemy";
 
-interface ChainInfo {
-  height: number;
-  hash: string;
-}
-
-interface BlockSummary {
-  txids: string[];
-}
-
-interface TxDetail {
-  hash: string;
-  outputs: Array<{ value: number; addresses?: string[] }>;
-}
-
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${BLOCKCYPHER_BASE}${path}`);
+/**
+ * Bitcoin Core's own RPC methods, proxied by Alchemy - getblockcount,
+ * getblockhash, and getblock are all flat 10 CU regardless of verbosity
+ * (confirmed against alchemy.com/docs/reference/compute-unit-costs,
+ * 2026-09-07), so a poll cycle across all three chains here costs roughly
+ * 4,200 CU/hr (~3.1M CU/month) - comfortably inside the 30M/month free
+ * tier alongside apps/api's existing (much smaller, webhook-only) Alchemy
+ * usage.
+ */
+async function rpc<T>(
+  alchemyNetwork: string,
+  apiKey: string,
+  method: string,
+  params: unknown[],
+): Promise<T> {
+  const res = await fetch(`https://${alchemyNetwork}.g.alchemy.com/v2/${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
   if (!res.ok) {
-    throw new Error(`BlockCypher ${path} failed: ${res.status}`);
+    throw new Error(
+      `Alchemy ${alchemyNetwork} ${method} failed: HTTP ${res.status}`,
+    );
   }
-  return res.json() as Promise<T>;
+  const body = (await res.json()) as {
+    result?: T;
+    error?: { code: number; message: string } | null;
+  };
+  if (body.error) {
+    throw new Error(
+      `Alchemy ${alchemyNetwork} ${method} failed: ${body.error.code} ${body.error.message}`,
+    );
+  }
+  if (body.result === undefined) {
+    throw new Error(`Alchemy ${alchemyNetwork} ${method} returned no result`);
+  }
+  return body.result;
+}
+
+interface DecodedVout {
+  value: number;
+  scriptPubKey?: {
+    // Newer bitcoind versions (confirmed live on Bitcoin mainnet, 2026-09-07)
+    // return a single `address` string; older ones (confirmed live on
+    // Litecoin mainnet, same date, same Alchemy account) return an
+    // `addresses` array instead - both handled below rather than assuming
+    // one shape holds across all three chains.
+    address?: string;
+    addresses?: string[];
+  };
+}
+
+interface DecodedTx {
+  txid: string;
+  vout: DecodedVout[];
+}
+
+interface DecodedBlock {
+  hash: string;
+  height: number;
+  nTx: number;
+  tx: DecodedTx[];
 }
 
 /**
- * Never resolves under normal operation - polls BlockCypher for new block
- * height (block times are 1-10 minutes on these chains, so polling every
- * 45s is effectively equivalent to push), then checks every output of every
- * transaction in each newly-observed block against the address map. See
- * MAX_TX_FETCHES_PER_POLL's comment for the one real known gap (Bitcoin's
- * tx volume vs. the free tier's request budget).
+ * Never resolves under normal operation - polls Alchemy for the current
+ * block height (`getblockcount`), then for each newly-observed height
+ * fetches the full block with every transaction already decoded
+ * (`getblockhash` + `getblock` verbosity 2) and checks every output
+ * against the address map. Unlike the previous BlockCypher-based
+ * implementation, this needs no per-transaction follow-up request and no
+ * truncation cap: one `getblock` call returns all of a block's
+ * transactions (confirmed live against a real 3,712-tx Bitcoin mainnet
+ * block, 2026-09-07), with output amounts already in whole coin units (not
+ * satoshis - confirmed from the same live response, so no /1e8 conversion
+ * is needed here, unlike BlockCypher's satoshi-denominated `value`).
  */
 export async function watchUtxo(
   chain: UtxoChainConfig,
   addressMap: AddressMap,
   sink: DetectionSink,
+  alchemyApiKey: string,
+  apiClient: ApiClient,
 ): Promise<void> {
   let lastHeight: number | null = null;
 
   for (;;) {
     try {
-      const info = await getJson<ChainInfo>(`/${chain.blockcypherChain}/main`);
+      const height = await rpc<number>(
+        chain.alchemyNetwork,
+        alchemyApiKey,
+        "getblockcount",
+        [],
+      );
       if (lastHeight === null) {
-        lastHeight = info.height;
-      } else if (info.height > lastHeight) {
-        for (let h = lastHeight + 1; h <= info.height; h++) {
-          await processBlockAtHeight(chain, h, addressMap, sink);
+        lastHeight = height;
+      } else if (height > lastHeight) {
+        for (let h = lastHeight + 1; h <= height; h++) {
+          await processBlockAtHeight(chain, h, addressMap, sink, alchemyApiKey);
         }
-        lastHeight = info.height;
+        lastHeight = height;
       }
+      await reportSuccess(apiClient, chain.network);
     } catch (err) {
       console.error(`[block-watcher] ${chain.network} poll failed:`, err);
+      await reportFailure(apiClient, chain.network, err);
     }
 
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -91,36 +124,73 @@ async function processBlockAtHeight(
   height: number,
   addressMap: AddressMap,
   sink: DetectionSink,
+  alchemyApiKey: string,
 ): Promise<void> {
-  const block = await getJson<BlockSummary>(
-    `/${chain.blockcypherChain}/main/blocks/${height}?limit=500`,
+  const hash = await rpc<string>(
+    chain.alchemyNetwork,
+    alchemyApiKey,
+    "getblockhash",
+    [height],
+  );
+  const block = await rpc<DecodedBlock>(
+    chain.alchemyNetwork,
+    alchemyApiKey,
+    "getblock",
+    [hash, 2],
   );
 
-  const txids = block.txids ?? [];
-  if (txids.length > MAX_TX_FETCHES_PER_POLL) {
-    console.warn(
-      `[block-watcher] ${chain.network} block ${height} has ${txids.length} tx, ` +
-        `only checking the first ${MAX_TX_FETCHES_PER_POLL} this cycle (free-tier budget) - ` +
-        "see MAX_TX_FETCHES_PER_POLL comment.",
-    );
-  }
-
-  for (const txid of txids.slice(0, MAX_TX_FETCHES_PER_POLL)) {
-    const tx = await getJson<TxDetail>(
-      `/${chain.blockcypherChain}/main/txs/${txid}`,
-    );
-    for (const output of tx.outputs) {
-      for (const address of output.addresses ?? []) {
+  for (const tx of block.tx) {
+    for (const vout of tx.vout) {
+      const addresses = vout.scriptPubKey?.address
+        ? [vout.scriptPubKey.address]
+        : (vout.scriptPubKey?.addresses ?? []);
+      for (const address of addresses) {
         const matches = addressMap.lookup(chain.network, address);
         if (!matches || matches.length === 0) continue;
         sink({
           network: chain.network,
           address,
-          txHash: tx.hash,
-          amount: output.value / 1e8,
+          txHash: tx.txid,
+          amount: vout.value,
           reportedSymbol: chain.nativeSymbol,
         });
       }
     }
+  }
+}
+
+// Best-effort reporting to apps/api's ProviderHealthService - same posture
+// as tron-watcher.ts's reportSuccess/reportFailure: never lets a reporting
+// failure escape into the watch loop above, which already has its own real
+// failure to handle.
+async function reportSuccess(
+  apiClient: ApiClient,
+  networkCode: string,
+): Promise<void> {
+  try {
+    await apiClient.postProviderHealth({
+      networkCode,
+      provider: PROVIDER,
+      outcome: "success",
+    });
+  } catch (err) {
+    console.error("[block-watcher] provider-health report failed:", err);
+  }
+}
+
+async function reportFailure(
+  apiClient: ApiClient,
+  networkCode: string,
+  err: unknown,
+): Promise<void> {
+  try {
+    await apiClient.postProviderHealth({
+      networkCode,
+      provider: PROVIDER,
+      outcome: "failure",
+      message: err instanceof Error ? err.message : String(err),
+    });
+  } catch (reportErr) {
+    console.error("[block-watcher] provider-health report failed:", reportErr);
   }
 }

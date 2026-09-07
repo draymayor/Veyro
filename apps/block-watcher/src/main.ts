@@ -21,6 +21,10 @@ const MAX_BUFFERED_DETECTIONS = 5_000;
 
 async function main(): Promise<void> {
   const config = loadConfig();
+  const apiClient = new ApiClient(
+    config.apiBaseUrl,
+    config.blockWatcherSharedSecret,
+  );
   startHealthServer(config.port);
 
   const supabase = createSupabaseClient(
@@ -37,11 +41,6 @@ async function main(): Promise<void> {
       console.error("[block-watcher] address map refresh failed:", err);
     });
   }, config.addressMapRefreshMs);
-
-  const apiClient = new ApiClient(
-    config.apiBaseUrl,
-    config.blockWatcherSharedSecret,
-  );
   const buffer: Detection[] = [];
   const sink = (detection: Detection) => {
     if (buffer.length >= MAX_BUFFERED_DETECTIONS) {
@@ -101,7 +100,7 @@ async function main(): Promise<void> {
   }
 
   if (config.tronGridApiKey) {
-    void watchTron(addressMap, sink, config.tronGridApiKey).catch(
+    void watchTron(addressMap, sink, config.tronGridApiKey, apiClient).catch(
       (err: unknown) => {
         console.error("[block-watcher] FATAL: TRC20 watcher exited:", err);
       },
@@ -117,19 +116,24 @@ async function main(): Promise<void> {
     );
   }
 
-  if (config.utxoDetectionEnabled) {
+  if (config.utxoDetectionEnabled && config.alchemyApiKey) {
     for (const chain of UTXO_CHAINS) {
-      void watchUtxo(chain, addressMap, sink).catch((err: unknown) => {
-        console.error(
-          `[block-watcher] FATAL: ${chain.network} watcher exited:`,
-          err,
-        );
-      });
+      void watchUtxo(chain, addressMap, sink, config.alchemyApiKey, apiClient).catch(
+        (err: unknown) => {
+          console.error(
+            `[block-watcher] FATAL: ${chain.network} watcher exited:`,
+            err,
+          );
+        },
+      );
     }
+  } else if (config.utxoDetectionEnabled) {
+    console.warn(
+      `[block-watcher] UTXO_DETECTION_ENABLED is "true" but ALCHEMY_API_KEY is not set - ` +
+        `${UTXO_CHAINS.map((c) => c.network).join("/")} watchers NOT started.`,
+    );
   } else {
-    // See BlockWatcherConfig.utxoDetectionEnabled's doc comment - the
-    // BlockCypher free-tier math doesn't work for BTC/LTC/DOGE together,
-    // and the free-alternative candidate isn't verified yet. Logged at
+    // See BlockWatcherConfig.utxoDetectionEnabled's doc comment - logged at
     // startup rather than silently skipped, same posture as the missing-
     // RPC-URL warning above.
     console.warn(

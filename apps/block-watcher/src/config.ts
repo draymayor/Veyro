@@ -19,15 +19,15 @@ export interface BlockWatcherConfig {
   evmRpcUrls: Record<string, string>;
   /**
    * Explicit opt-in, default false: whether to start the BTC/LTC/DOGE
-   * BlockCypher watchers at all. Deliberately separate from every other
-   * chain family (EVM/TRON always start) - see apps/block-watcher/README.md's
-   * "Known open items" for why: BlockCypher's free tier can't sustain
-   * real BTC+LTC+DOGE block volume even after tuning poll frequency, and
-   * the free-alternative candidate (Blockchair) needs to be verified from
-   * this service's own real Cloud Run egress IP before it's trusted -
-   * not from a dev sandbox, whose IP got blacklisted testing it. Until
-   * that's resolved, this stays unset in the deploy workflow's env_vars
-   * so a deploy exercises EVM+TRON for real without touching BlockCypher.
+   * watchers at all. Deliberately separate from every other chain family
+   * (EVM/TRON always start) - kept as an opt-in even now that the provider
+   * question is resolved (see utxo-watcher.ts: Alchemy's Bitcoin JSON-RPC
+   * API, confirmed live 2026-09-07 - `getblock` verbosity 2 returns every
+   * transaction in a block fully decoded, including output addresses, in
+   * one 10-CU request, at ~3.1M CU/month combined for all three chains -
+   * comfortably under the 30M/month free tier), so that flipping it on for
+   * real funds is still a deliberate, separate decision from deploying this
+   * change.
    */
   utxoDetectionEnabled: boolean;
   /**
@@ -43,6 +43,14 @@ export interface BlockWatcherConfig {
    * never clear.
    */
   tronGridApiKey?: string;
+  /**
+   * Alchemy API key for the BTC/LTC/DOGE watchers (utxo-watcher.ts) - a
+   * separate key/app from apps/api's own ALCHEMY_API_KEY (Notify webhooks
+   * only), since this is a different deployable with its own service
+   * account. Required for UTXO detection to actually start even when
+   * utxoDetectionEnabled is true - see main.ts.
+   */
+  alchemyApiKey?: string;
 }
 
 export function loadConfig(): BlockWatcherConfig {
@@ -67,5 +75,6 @@ export function loadConfig(): BlockWatcherConfig {
     evmRpcUrls,
     utxoDetectionEnabled: process.env.UTXO_DETECTION_ENABLED === "true",
     tronGridApiKey: process.env.TRONGRID_API_KEY || undefined,
+    alchemyApiKey: process.env.ALCHEMY_API_KEY || undefined,
   };
 }

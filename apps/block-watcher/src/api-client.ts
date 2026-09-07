@@ -8,6 +8,14 @@ export interface Detection {
   reportedSymbol: string;
 }
 
+export interface ProviderHealthReport {
+  networkCode: string;
+  provider: string;
+  outcome: "success" | "failure";
+  rateLimited?: boolean;
+  message?: string;
+}
+
 /**
  * Posts detections to apps/api's /webhooks/block-watcher, HMAC-signed the
  * same way BlockWatcherWebhookGuard verifies (see that file): HMAC-SHA256
@@ -45,6 +53,41 @@ export class ApiClient {
       const text = await res.text().catch(() => "<unreadable body>");
       throw new Error(
         `POST /webhooks/block-watcher failed: ${res.status} ${text}`,
+      );
+    }
+  }
+
+  // Reports a TronGrid/Alchemy call outcome to apps/api's
+  // ProviderHealthService, over the same HMAC-signed channel as
+  // postDetections above - routed through apps/api rather than
+  // block-watcher writing network_availability directly, so the admin
+  // alert-email logic (which only lives in ProviderHealthService) fires
+  // for block-watcher-originated trips/recoveries too, not just apps/api's
+  // own Tatum/Alchemy call sites. Best-effort: a failure to REPORT health
+  // must never crash the watcher loop that's already handling its own
+  // real failure - callers catch and log, same posture as every other
+  // "reporting, not the operation itself" call in this codebase.
+  async postProviderHealth(report: ProviderHealthReport): Promise<void> {
+    const signature = createHmac("sha256", this.sharedSecret)
+      .update(JSON.stringify(report))
+      .digest("hex");
+
+    const res = await fetch(
+      `${this.baseUrl}/webhooks/block-watcher/provider-health`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-block-watcher-signature": signature,
+        },
+        body: JSON.stringify(report),
+      },
+    );
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "<unreadable body>");
+      throw new Error(
+        `POST /webhooks/block-watcher/provider-health failed: ${res.status} ${text}`,
       );
     }
   }
