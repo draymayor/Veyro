@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DepositDetectionService } from '../../deposit-detection/deposit-detection.service';
+import { ProviderHealthService } from '../../provider-health/provider-health.service';
 
 /**
  * One deposit candidate detected by apps/block-watcher scanning a block
@@ -42,6 +43,7 @@ export class BlockWatcherWebhookService {
 
   constructor(
     private readonly depositDetectionService: DepositDetectionService,
+    private readonly providerHealthService: ProviderHealthService,
   ) {}
 
   async handleDetections(payload: BlockWatcherDetectionPayload): Promise<void> {
@@ -74,4 +76,37 @@ export class BlockWatcherWebhookService {
       );
     }
   }
+
+  // Routes block-watcher's own outbound-call outcomes (TronGrid poll,
+  // Blockchair diagnostic probe) through apps/api's ProviderHealthService
+  // rather than block-watcher writing network_availability directly -
+  // this is the only place alertTransition's admin-email logic lives, so
+  // a health event block-watcher recorded on its own would silently never
+  // alert anyone. Same trust boundary as handleDetections above (HMAC-
+  // verified by the shared BlockWatcherWebhookGuard).
+  async handleProviderHealth(payload: BlockWatcherProviderHealthPayload) {
+    if (payload.outcome === 'success') {
+      await this.providerHealthService.recordSuccess(
+        payload.networkCode,
+        payload.provider,
+      );
+      return;
+    }
+    await this.providerHealthService.recordFailure(
+      payload.networkCode,
+      payload.provider,
+      {
+        rateLimited: payload.rateLimited ?? false,
+        message: payload.message ?? 'unknown failure',
+      },
+    );
+  }
+}
+
+export interface BlockWatcherProviderHealthPayload {
+  networkCode: string;
+  provider: string;
+  outcome: 'success' | 'failure';
+  rateLimited?: boolean;
+  message?: string;
 }

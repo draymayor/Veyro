@@ -26,6 +26,7 @@ import {
   SecurityResetByAdmin,
   SupportTicketResolved,
   CryptoWithdrawalProcessing,
+  ProviderHealthAlert,
   type TradeAssetType,
   type SecurityResetType,
 } from './emails/templates';
@@ -421,6 +422,37 @@ export class NotificationsService {
       email,
       'Your crypto withdrawal is on its way',
       CryptoWithdrawalProcessing(props),
+    );
+  }
+
+  // Ops alert (ProviderHealthService's alertTransition) - the first
+  // internal/admin send in this file, everything above is user-facing.
+  // Sent to a single admin address, not a per-user email; if
+  // ADMIN_ALERT_EMAIL isn't configured this is skipped (logged, not
+  // thrown) rather than blocking the health-tracking write that triggered
+  // it, same "the real state-change already happened, the email is
+  // best-effort" posture as every other notify-after-the-fact call site
+  // in this codebase.
+  async sendProviderHealthAlertEmail(params: {
+    networkCode: string;
+    provider: string;
+    status: 'available' | 'unavailable';
+    detail: string | null;
+    occurredAt: string;
+  }): Promise<void> {
+    const adminEmail = this.configService.get<string>('ADMIN_ALERT_EMAIL');
+    if (!adminEmail) {
+      this.logger.warn(
+        `ADMIN_ALERT_EMAIL not configured - skipping provider health alert for ${params.provider}/${params.networkCode} (${params.status}).`,
+      );
+      return;
+    }
+    await this.send(
+      adminEmail,
+      params.status === 'unavailable'
+        ? `[Veyro] ${params.provider}/${params.networkCode} deposit detection is unavailable`
+        : `[Veyro] ${params.provider}/${params.networkCode} deposit detection recovered`,
+      ProviderHealthAlert(params),
     );
   }
 }

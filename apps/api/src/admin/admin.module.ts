@@ -25,6 +25,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { CryptoPriceModule } from '../crypto-price/crypto-price.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { CryptoWalletModule } from '../crypto-wallet/crypto-wallet.module';
+import { ProviderHealthModule } from '../provider-health/provider-health.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { CryptoWalletModule } from '../crypto-wallet/crypto-wallet.module';
     CryptoPriceModule,
     WalletModule,
     CryptoWalletModule,
+    ProviderHealthModule,
   ],
   controllers: [
     AdminController,

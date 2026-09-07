@@ -101,6 +101,7 @@ export class DepositConfirmationService {
     const tx = await this.tatumChainDataService.getTransaction(
       tatumChain,
       row.tx_hash,
+      row.network,
     );
     // Not found yet (still in mempool) or found with no block yet -
     // either way, not confirmed at all, let alone confirmed enough.
@@ -265,6 +266,7 @@ export class DepositConfirmationService {
     const tx = await this.tatumChainDataService.getTransaction(
       chainConfig.tatumChain,
       row.tx_hash,
+      row.network,
     );
     if (tx.found) return; // still there, nothing to do
 

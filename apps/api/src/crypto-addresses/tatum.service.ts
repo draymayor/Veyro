@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { fetchWithTimeout } from '../common/fetch-with-timeout';
+import { ProviderHealthService } from '../provider-health/provider-health.service';
 
 const TATUM_BASE_URL = 'https://api.tatum.io/v3';
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -31,12 +32,36 @@ export const TATUM_WEBHOOK_SUBSCRIPTION_CAP = 5;
  * Tatum's own public docs, which disagree with each other on it.
  */
 @Injectable()
-export class TatumService {
+export class TatumService implements OnModuleInit {
   private readonly logger = new Logger(TatumService.name);
   private readonly apiKey: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly providerHealthService: ProviderHealthService,
+  ) {
     this.apiKey = this.configService.getOrThrow<string>('TATUM_API_KEY');
+  }
+
+  onModuleInit(): void {
+    this.providerHealthService.registerProbe('tatum', () => this.probe());
+  }
+
+  // Cheap, side-effect-free recovery check (ProviderHealthService's
+  // scheduled probe): current block height for Bitcoin is real chain data,
+  // not a no-op ping, but costs the same single request as any other
+  // /block/current call and touches nothing.
+  private async probe(): Promise<boolean> {
+    try {
+      const res = await fetchWithTimeout(
+        `${TATUM_BASE_URL}/bitcoin/block/current`,
+        { headers: { 'x-api-key': this.apiKey } },
+        REQUEST_TIMEOUT_MS,
+      );
+      return res.ok;
+    } catch {
+      return false;
+    }
   }
 
   async generateAddressFromXpub(
@@ -92,6 +117,7 @@ export class TatumService {
     subscriptionChain: string,
     address: string,
     webhookUrl: string,
+    networkCode: string,
   ): Promise<string | null> {
     try {
       const res = await fetchWithTimeout(
@@ -115,15 +141,24 @@ export class TatumService {
         this.logger.warn(
           `Tatum subscription not created for ${subscriptionChain} address ${address} (falls back to manual admin check): ${res.status} ${body}`,
         );
+        await this.providerHealthService.recordFailure(networkCode, 'tatum', {
+          rateLimited: res.status === 429,
+          message: `subscription create: ${res.status} ${body}`,
+        });
         return null;
       }
 
       const data = (await res.json()) as { id?: string };
+      await this.providerHealthService.recordSuccess(networkCode, 'tatum');
       return data.id ?? null;
     } catch (err) {
       this.logger.warn(
         `Tatum subscription request failed for ${subscriptionChain} address ${address} (falls back to manual admin check): ${(err as Error).message}`,
       );
+      await this.providerHealthService.recordFailure(networkCode, 'tatum', {
+        rateLimited: false,
+        message: (err as Error).message,
+      });
       return null;
     }
   }

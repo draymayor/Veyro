@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { fetchWithTimeout } from '../common/fetch-with-timeout';
+import { ProviderHealthService } from '../provider-health/provider-health.service';
 
 const ALCHEMY_NOTIFY_BASE_URL = 'https://dashboard.alchemy.com/api';
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -24,12 +25,37 @@ const REQUEST_TIMEOUT_MS = 10_000;
  * 5-per-chain.
  */
 @Injectable()
-export class AlchemyService {
+export class AlchemyService implements OnModuleInit {
   private readonly logger = new Logger(AlchemyService.name);
   private readonly apiKey: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly providerHealthService: ProviderHealthService,
+  ) {
     this.apiKey = this.configService.getOrThrow<string>('ALCHEMY_API_KEY');
+  }
+
+  onModuleInit(): void {
+    this.providerHealthService.registerProbe('alchemy', () => this.probe());
+  }
+
+  // Cheap, side-effect-free recovery check: Notify's team-webhooks list
+  // endpoint is a plain read (no address/webhook mutation), authenticated
+  // the same way as the real addAddressToWebhook call below - good enough
+  // to confirm the Notify API itself (auth, rate limit) is answering
+  // again, without touching any real webhook.
+  private async probe(): Promise<boolean> {
+    try {
+      const res = await fetchWithTimeout(
+        `${ALCHEMY_NOTIFY_BASE_URL}/team-webhooks`,
+        { headers: { 'X-Alchemy-Token': this.apiKey } },
+        REQUEST_TIMEOUT_MS,
+      );
+      return res.ok;
+    } catch {
+      return false;
+    }
   }
 
   // Keyed by Alchemy's own network enum value (e.g. 'ETH_MAINNET'), the
@@ -71,6 +97,7 @@ export class AlchemyService {
   async addAddressToWebhook(
     webhookId: string,
     address: string,
+    networkCode: string,
   ): Promise<boolean> {
     try {
       const res = await fetchWithTimeout(
@@ -95,13 +122,22 @@ export class AlchemyService {
         this.logger.warn(
           `Alchemy address registration not applied for webhook ${webhookId} address ${address} (falls back to manual admin check): ${res.status} ${body}`,
         );
+        await this.providerHealthService.recordFailure(networkCode, 'alchemy', {
+          rateLimited: res.status === 429,
+          message: `${res.status} ${body}`,
+        });
         return false;
       }
+      await this.providerHealthService.recordSuccess(networkCode, 'alchemy');
       return true;
     } catch (err) {
       this.logger.warn(
         `Alchemy address registration request failed for webhook ${webhookId} address ${address} (falls back to manual admin check): ${(err as Error).message}`,
       );
+      await this.providerHealthService.recordFailure(networkCode, 'alchemy', {
+        rateLimited: false,
+        message: (err as Error).message,
+      });
       return false;
     }
   }

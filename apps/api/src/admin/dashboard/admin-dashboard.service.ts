@@ -3,6 +3,10 @@ import { SupabaseService } from '../../supabase/supabase.service';
 import { CryptoPriceService } from '../../crypto-price/crypto-price.service';
 import { FxRateService } from '../../fx/fx.service';
 import { TATUM_WEBHOOK_SUBSCRIPTION_CAP } from '../../crypto-addresses/tatum.service';
+import {
+  ProviderHealthService,
+  NetworkAvailabilityRow,
+} from '../../provider-health/provider-health.service';
 
 export interface CurrencyTotal {
   currency: string;
@@ -57,6 +61,15 @@ export interface AdminDashboardMetrics {
     // automatic write-off), so this needs a human to actually look at it.
     orphanedReorgsNeedingReview: number;
   };
+  // Real-time capacity/rate-limit safety mechanism (docs/planning-history.md,
+  // 2026-09-07): every network+provider pair the automation has ever
+  // recorded a result for. Numbers here are Veyro's OWN request-outcome
+  // tracking, not a mirror of the provider's authoritative usage counter -
+  // none of Tatum/Alchemy/Blockchair/TronGrid expose a live "X used of Y"
+  // endpoint (confirmed against each's own docs/dashboard), so this is
+  // reactive (trips on an observed failure/429) rather than a quota
+  // countdown.
+  providerHealth: NetworkAvailabilityRow[];
 }
 
 const PENDING_TRADE_STATUSES = [
@@ -106,6 +119,7 @@ export class AdminDashboardService {
     private readonly supabaseService: SupabaseService,
     private readonly cryptoPriceService: CryptoPriceService,
     private readonly fxRateService: FxRateService,
+    private readonly providerHealthService: ProviderHealthService,
   ) {}
 
   async getMetrics(): Promise<AdminDashboardMetrics> {
@@ -127,6 +141,7 @@ export class AdminDashboardService {
       unreadMessagesRes,
       webhookSlotsUsedRes,
       orphanedReorgsRes,
+      providerHealth,
     ] = await Promise.all([
       client.from('users').select('id', { count: 'exact', head: true }),
       client
@@ -172,6 +187,7 @@ export class AdminDashboardService {
         .from('crypto_deposit_events')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'orphaned_reorg_unrecoverable'),
+      this.providerHealthService.listAll(),
     ]);
 
     for (const res of [
@@ -255,6 +271,7 @@ export class AdminDashboardService {
         openSupportThreads,
         orphanedReorgsNeedingReview,
       },
+      providerHealth,
     };
   }
 
