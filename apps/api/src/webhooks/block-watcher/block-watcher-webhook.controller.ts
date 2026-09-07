@@ -1,7 +1,10 @@
 import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { BlockWatcherWebhookGuard } from './block-watcher-webhook.guard';
 import { BlockWatcherWebhookService } from './block-watcher-webhook.service';
-import type { BlockWatcherDetectionPayload } from './block-watcher-webhook.service';
+import type {
+  BlockWatcherDetectionPayload,
+  BlockWatcherProviderHealthPayload,
+} from './block-watcher-webhook.service';
 
 // Deliberately excluded from the global 'api/v1' prefix (see main.ts) - same
 // posture as /webhooks/tatum and /webhooks/alchemy, even though the caller
@@ -21,6 +24,17 @@ export class BlockWatcherWebhookController {
   @HttpCode(200)
   async handle(@Body() body: BlockWatcherDetectionPayload) {
     await this.blockWatcherWebhookService.handleDetections(body);
+    return { received: true };
+  }
+
+  // Same HMAC guard as the detections route above - both are this
+  // codebase's own first-party channel from apps/block-watcher, just
+  // reporting a different kind of event.
+  @Post('provider-health')
+  @UseGuards(BlockWatcherWebhookGuard)
+  @HttpCode(200)
+  async handleProviderHealth(@Body() body: BlockWatcherProviderHealthPayload) {
+    await this.blockWatcherWebhookService.handleProviderHealth(body);
     return { received: true };
   }
 }

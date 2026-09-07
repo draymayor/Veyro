@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { TatumService } from './tatum.service';
 import { AlchemyService } from './alchemy.service';
+import { ProviderHealthService } from '../provider-health/provider-health.service';
 import { CHAIN_CONFIGS, ChainConfig } from './chain-config';
 
 // Every network key sharing a given addressGroup (e.g. every EVM chain
@@ -44,6 +45,7 @@ export class CryptoAddressesService {
     private readonly configService: ConfigService,
     private readonly tatumService: TatumService,
     private readonly alchemyService: AlchemyService,
+    private readonly providerHealthService: ProviderHealthService,
   ) {}
 
   // `displayNetwork` is crypto_assets.network's user-facing display string
@@ -92,6 +94,24 @@ export class CryptoAddressesService {
         address: existing.address as string,
         destinationTag: (existing.destination_tag as string | null) ?? null,
       };
+    }
+
+    // Distinct from the is_active check above: is_active is the admin's
+    // durable business decision (this asset/network is offered at all);
+    // this is the automation's own, separately-tracked state (deposit
+    // DETECTION for this network is not currently reliable - a provider
+    // is rate-limited or failing). Both must hold before a NEW deposit
+    // address is handed out - see network_availability's migration
+    // comment for why the two are never merged into one flag. Checked
+    // only here, after the `existing` lookup above already returned - a
+    // user who already has an address for this network can still see and
+    // use it during an outage; this only blocks a brand-new address
+    // (which is what would actually go untracked) from being generated
+    // while detection can't be trusted.
+    if (!(await this.providerHealthService.isNetworkAvailable(networkCode))) {
+      throw new BadRequestException(
+        'Deposits for that network are temporarily unavailable - please try again shortly.',
+      );
     }
 
     return chainConfig.derivationStyle === 'shared-tag'
@@ -155,7 +175,12 @@ export class CryptoAddressesService {
       // Same physical address as an existing row for this user - webhook
       // coverage (or lack of it) was already decided when that first row
       // was created. Just propagate it, never a fresh provider call here.
-      await this.ensureWebhookCoverage(client, result.address, chainConfig);
+      await this.ensureWebhookCoverage(
+        client,
+        result.address,
+        chainConfig,
+        network,
+      );
       return result;
     }
 
@@ -182,7 +207,12 @@ export class CryptoAddressesService {
     // concurrent-insert race for this exact user/symbol/network - one a
     // parallel request just created). Either way this is the first point
     // this address could need webhook coverage registered.
-    await this.ensureWebhookCoverage(client, result.address, chainConfig);
+    await this.ensureWebhookCoverage(
+      client,
+      result.address,
+      chainConfig,
+      network,
+    );
     return result;
   }
 
@@ -201,12 +231,14 @@ export class CryptoAddressesService {
     client: Client,
     address: string,
     chainConfig: ChainConfig,
+    networkCode: string,
   ): Promise<void> {
     if (chainConfig.alchemyNetwork) {
       await this.ensureAlchemyWebhookCoverage(
         client,
         address,
         chainConfig.alchemyNetwork,
+        networkCode,
       );
       return;
     }
@@ -214,6 +246,7 @@ export class CryptoAddressesService {
       client,
       address,
       chainConfig.tatumSubscriptionChain,
+      networkCode,
     );
   }
 
@@ -233,6 +266,7 @@ export class CryptoAddressesService {
     client: Client,
     address: string,
     alchemyNetwork: string,
+    networkCode: string,
   ): Promise<void> {
     const { data: covered } = await client
       .from('user_crypto_addresses')
@@ -259,6 +293,7 @@ export class CryptoAddressesService {
     const added = await this.alchemyService.addAddressToWebhook(
       webhookId,
       address,
+      networkCode,
     );
     if (!added) return; // request failed - stays on the manual-check path, logged inside AlchemyService already
 
@@ -302,6 +337,7 @@ export class CryptoAddressesService {
     client: Client,
     address: string,
     tatumSubscriptionChain: string | undefined,
+    networkCode: string,
   ): Promise<void> {
     // No valid Tatum ADDRESS_TRANSACTION `attr.chain` value exists for this
     // chain (e.g. Ethereum Classic, XDC Network) - a genuine product gap,
@@ -325,6 +361,7 @@ export class CryptoAddressesService {
       tatumSubscriptionChain,
       address,
       webhookUrl,
+      networkCode,
     );
     if (!subscriptionId) return; // cap exhausted or request failed - stays on the manual-check path, logged inside TatumService already
 

@@ -8,6 +8,23 @@ export interface AdminSymbolTotal {
   total: number;
 }
 
+// Real-time capacity/rate-limit safety mechanism (docs/planning-history.md,
+// 2026-09-07): one row per network+provider pair the automation has ever
+// recorded a result for. Numbers are Veyro's own request-outcome tracking,
+// not a mirror of the provider's own usage counter - none of
+// Tatum/Alchemy/Blockchair/TronGrid expose a live "X used of Y" endpoint.
+export interface AdminNetworkAvailability {
+  networkCode: string;
+  provider: string;
+  status: "available" | "degraded" | "unavailable";
+  reason: string | null;
+  disabledAt: string | null;
+  autoRecoveryAt: string | null;
+  consecutiveFailures: number;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+}
+
 export interface AdminDashboardMetrics {
   totalUsers: number;
   todaysTrades: number;
@@ -36,6 +53,7 @@ export interface AdminDashboardMetrics {
     // needs a human to look at it.
     orphanedReorgsNeedingReview: number;
   };
+  providerHealth: AdminNetworkAvailability[];
 }
 
 /** e.g. 1234.5 BTC -> "1,234.5" - crypto balances need more precision than currency formatting allows, no currency symbol. */

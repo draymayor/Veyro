@@ -3,9 +3,10 @@ import { BlockWatcherWebhookController } from './block-watcher-webhook.controlle
 import { BlockWatcherWebhookService } from './block-watcher-webhook.service';
 import { BlockWatcherWebhookGuard } from './block-watcher-webhook.guard';
 import { DepositDetectionModule } from '../../deposit-detection/deposit-detection.module';
+import { ProviderHealthModule } from '../../provider-health/provider-health.module';
 
 @Module({
-  imports: [DepositDetectionModule],
+  imports: [DepositDetectionModule, ProviderHealthModule],
   controllers: [BlockWatcherWebhookController],
   providers: [BlockWatcherWebhookService, BlockWatcherWebhookGuard],
 })

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { fetchWithTimeout } from '../common/fetch-with-timeout';
+import { ProviderHealthService } from '../provider-health/provider-health.service';
 
 const TATUM_BASE_URL = 'https://api.tatum.io/v3';
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -22,7 +23,10 @@ export interface TransactionLookup {
 export class TatumChainDataService {
   private readonly apiKey: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly providerHealthService: ProviderHealthService,
+  ) {
     this.apiKey = this.configService.getOrThrow<string>('TATUM_API_KEY');
   }
 
@@ -33,25 +37,51 @@ export class TatumChainDataService {
    * chains follow the identical documented REST shape). A 404 means the
    * transaction genuinely doesn't exist (found: false) - the actual
    * reorg signal when this was previously found with a blockNumber.
+   *
+   * `networkCode` (CHAIN_CONFIGS' key, e.g. 'Bitcoin' - NOT `tatumChain`,
+   * Tatum's own lowercase REST segment) drives provider-health recording:
+   * this runs every 2-minute poller tick for every pending deposit event
+   * (DepositConfirmationService), making it a far more representative
+   * "is Tatum detection currently working" signal than the one-off
+   * webhook-subscription call TatumService.createAddressSubscription
+   * already reports on.
    */
   async getTransaction(
     tatumChain: string,
     txHash: string,
+    networkCode: string,
   ): Promise<TransactionLookup> {
-    const res = await fetchWithTimeout(
-      `${TATUM_BASE_URL}/${tatumChain}/transaction/${txHash}`,
-      { headers: { 'x-api-key': this.apiKey } },
-      REQUEST_TIMEOUT_MS,
-    );
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(
+        `${TATUM_BASE_URL}/${tatumChain}/transaction/${txHash}`,
+        { headers: { 'x-api-key': this.apiKey } },
+        REQUEST_TIMEOUT_MS,
+      );
+    } catch (err) {
+      await this.providerHealthService.recordFailure(networkCode, 'tatum', {
+        rateLimited: false,
+        message: (err as Error).message,
+      });
+      throw err;
+    }
 
-    if (res.status === 404) return { found: false, blockNumber: null };
+    if (res.status === 404) {
+      await this.providerHealthService.recordSuccess(networkCode, 'tatum');
+      return { found: false, blockNumber: null };
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
+      await this.providerHealthService.recordFailure(networkCode, 'tatum', {
+        rateLimited: res.status === 429,
+        message: `transaction lookup: ${res.status} ${body}`,
+      });
       throw new Error(
         `Tatum transaction lookup failed for ${tatumChain} tx ${txHash}: ${res.status} ${body}`,
       );
     }
 
+    await this.providerHealthService.recordSuccess(networkCode, 'tatum');
     const data = (await res.json()) as { blockNumber?: number };
     return { found: true, blockNumber: data.blockNumber ?? null };
   }

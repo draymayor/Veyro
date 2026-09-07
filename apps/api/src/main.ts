@@ -22,6 +22,12 @@ async function bootstrap() {
       'webhooks/tatum',
       'webhooks/alchemy',
       'webhooks/block-watcher',
+      // The exclude list only matches exact paths, not prefixes - this
+      // sibling route (BlockWatcherWebhookController's provider-health
+      // endpoint) needs its own entry or it silently lands under
+      // /api/v1 while apps/block-watcher's ApiClient posts to the
+      // unprefixed path, same as the detections route above.
+      'webhooks/block-watcher/provider-health',
     ],
   });
   // The web app runs on a different origin/port (e.g. localhost:3000 vs

@@ -63,3 +63,7 @@ export {
   CryptoWithdrawalProcessing,
   type CryptoWithdrawalProcessingProps,
 } from './crypto-withdrawal-processing';
+export {
+  ProviderHealthAlert,
+  type ProviderHealthAlertProps,
+} from './provider-health-alert';

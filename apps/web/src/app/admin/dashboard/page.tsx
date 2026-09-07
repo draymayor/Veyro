@@ -5,6 +5,7 @@ import {
 } from "@/lib/admin/dashboard-metrics";
 import { MetricCard } from "@/components/admin/dashboard/metric-card";
 import { NotificationsPanel } from "@/components/admin/dashboard/notifications-panel";
+import { ProviderHealthPanel } from "@/components/admin/dashboard/provider-health-panel";
 import { CryptoBreakdownDropdown } from "@/components/admin/dashboard/crypto-breakdown-dropdown";
 
 function formatUsd(value: number): string {
@@ -99,6 +100,8 @@ export default async function AdminDashboardPage() {
       <CryptoBreakdownDropdown totals={metrics.cryptoWalletsBySymbol} />
 
       <NotificationsPanel notifications={metrics.notifications} />
+
+      <ProviderHealthPanel rows={metrics.providerHealth} />
     </div>
   );
 }
