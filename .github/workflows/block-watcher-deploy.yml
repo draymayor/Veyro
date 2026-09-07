@@ -20,14 +20,14 @@
 # (the last one MUST equal apps/api's own BLOCK_WATCHER_SHARED_SECRET
 # secret exactly - see apps/api/src/webhooks/block-watcher's guard).
 #
-# --min-instances=1 --max-instances=1 --no-cpu-throttle: exactly one
+# --min-instances=1 --max-instances=1 --no-cpu-throttling: exactly one
 # instance, always warm, with CPU available outside of request handling.
 # More than one instance would open duplicate WS connections and duplicate
 # poll loops against the same free-tier RPC budgets for no benefit (result
 # rows are deduped downstream anyway by UNIQUE(network, tx_hash, address),
 # so a second instance buys nothing but wasted quota) - min/max both pinned
 # to 1 rather than just min, to actually prevent that rather than only
-# guaranteeing a floor. --no-cpu-throttle keeps the event loop/poll timers
+# guaranteeing a floor. --no-cpu-throttling keeps the event loop/poll timers
 # running between Cloud Run's own health-check hits, which default Cloud Run
 # CPU throttling would otherwise stall. Deployed WITHOUT --allow-
 # unauthenticated: nothing external calls this service (it only ever calls
@@ -107,7 +107,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ secrets.GCP_REGION }}
           image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          flags: --service-account=${{ secrets.GCP_BLOCK_WATCHER_RUNTIME_SERVICE_ACCOUNT }} --min-instances=1 --max-instances=1 --no-cpu-throttle
+          flags: --service-account=${{ secrets.GCP_BLOCK_WATCHER_RUNTIME_SERVICE_ACCOUNT }} --min-instances=1 --max-instances=1 --no-cpu-throttling
           # API_BASE_URL is the real deployed apps/api Cloud Run URL,
           # confirmed live via `gcloud run services describe veyro-api`
           # 2026-09-07 - re-check it if that service is ever recreated
