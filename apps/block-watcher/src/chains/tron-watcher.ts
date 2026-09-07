@@ -5,6 +5,9 @@ import {
 } from "../chain-config";
 import type { AddressMap } from "../address-map";
 import type { DetectionSink } from "./types";
+import type { ApiClient } from "../api-client";
+
+const PROVIDER = "trongrid";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { TronWeb } = require("tronweb");
@@ -18,6 +21,15 @@ const TRANSFER_TOPIC_NO_PREFIX =
   "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 const tronWeb = new TronWeb({ fullHost: TRONGRID_BASE });
+
+class TronGridHttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
 
 interface TronBlock {
   block_header?: { raw_data?: { number?: number } };
@@ -61,7 +73,7 @@ async function trongridPost<T>(
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(`TronGrid ${path} failed: ${res.status}`);
+    throw new TronGridHttpError(`TronGrid ${path} failed: ${res.status}`, res.status);
   }
   return res.json() as Promise<T>;
 }
@@ -88,10 +100,28 @@ export async function watchTron(
   addressMap: AddressMap,
   sink: DetectionSink,
   apiKey: string,
+  apiClient: ApiClient,
 ): Promise<void> {
   let lastProcessed: number | null = null;
+  // In-memory cooldown, set from a rate-limit trip's reported
+  // auto_recovery_at (via reportFailure below) - checked before every
+  // poll so a live rate-limit trip stops hammering TronGrid immediately
+  // rather than continuing to hit it every 3s until the next tick happens
+  // to fail too, which only prolongs a ban (confirmed real for Blockchair;
+  // TronGrid's own docs don't document a ban, but there's no reason to
+  // find out). Resets to null the moment any call succeeds again. Starts
+  // null on every fresh process, so a restart can cost one wasted call
+  // before this catches up - an accepted, small cost.
+  let cooldownUntil: number | null = null;
 
   for (;;) {
+    if (cooldownUntil !== null && Date.now() < cooldownUntil) {
+      await new Promise((r) =>
+        setTimeout(r, Math.min(cooldownUntil! - Date.now(), POLL_INTERVAL_MS)),
+      );
+      continue;
+    }
+
     try {
       const now = await trongridPost<TronBlock>(
         "/wallet/getnowblock",
@@ -107,12 +137,54 @@ export async function watchTron(
         await processBlock(num, addressMap, sink, apiKey);
       }
       lastProcessed = latest;
+      cooldownUntil = null;
+      await reportSuccess(apiClient);
     } catch (err) {
       console.error("[block-watcher] TRC20 poll failed:", err);
+      cooldownUntil = await reportFailure(apiClient, err);
     }
 
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
+}
+
+// Best-effort reporting to apps/api's ProviderHealthService - never lets a
+// reporting failure escape into the watch loop above, which already has
+// its own real failure to handle.
+async function reportSuccess(apiClient: ApiClient): Promise<void> {
+  try {
+    await apiClient.postProviderHealth({
+      networkCode: TRON_NETWORK,
+      provider: PROVIDER,
+      outcome: "success",
+    });
+  } catch (err) {
+    console.error("[block-watcher] provider-health report failed:", err);
+  }
+}
+
+async function reportFailure(
+  apiClient: ApiClient,
+  err: unknown,
+): Promise<number | null> {
+  const rateLimited = err instanceof TronGridHttpError && err.status === 429;
+  try {
+    await apiClient.postProviderHealth({
+      networkCode: TRON_NETWORK,
+      provider: PROVIDER,
+      outcome: "failure",
+      rateLimited,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  } catch (reportErr) {
+    console.error("[block-watcher] provider-health report failed:", reportErr);
+  }
+  // Cooldown is only worth pausing for on a confirmed rate-limit response -
+  // a generic timeout/5xx isn't necessarily "back off," and
+  // ProviderHealthService's own FAILURE_THRESHOLD-based trip already
+  // covers that case for the depositable gate; this local pacing exists
+  // specifically to stop hammering TronGrid the instant IT says slow down.
+  return rateLimited ? Date.now() + 30_000 : null;
 }
 
 async function processBlock(
