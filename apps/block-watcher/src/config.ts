@@ -30,6 +30,19 @@ export interface BlockWatcherConfig {
    * so a deploy exercises EVM+TRON for real without touching BlockCypher.
    */
   utxoDetectionEnabled: boolean;
+  /**
+   * Optional TronGrid API key (from the free tier at
+   * https://www.trongrid.io/dashboard). Confirmed live 2026-09-07 in
+   * production: unauthenticated requests to api.trongrid.io are capped at
+   * 1 req/sec (TronGrid cut this from a higher anonymous limit back in
+   * 2023) - tron-watcher.ts's 3s poll interval alone exceeds that, so
+   * every single poll cycle 429s without a key. A free key raises this to
+   * 15 req/sec, comfortably enough. main.ts only starts watchTron when
+   * this is set - undefined means TRON detection is deliberately held off
+   * rather than left silently retry-looping against a rate limit it can
+   * never clear.
+   */
+  tronGridApiKey?: string;
 }
 
 export function loadConfig(): BlockWatcherConfig {
@@ -53,5 +66,6 @@ export function loadConfig(): BlockWatcherConfig {
     addressMapRefreshMs: Number(process.env.ADDRESS_MAP_REFRESH_MS ?? 60_000),
     evmRpcUrls,
     utxoDetectionEnabled: process.env.UTXO_DETECTION_ENABLED === "true",
+    tronGridApiKey: process.env.TRONGRID_API_KEY || undefined,
   };
 }

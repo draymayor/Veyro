@@ -43,10 +43,21 @@ interface TronTransactionInfo {
   log?: Array<{ address: string; topics?: string[]; data?: string }>;
 }
 
-async function trongridPost<T>(path: string, body: unknown): Promise<T> {
+async function trongridPost<T>(
+  path: string,
+  body: unknown,
+  apiKey: string,
+): Promise<T> {
   const res = await fetch(`${TRONGRID_BASE}${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    // Confirmed live 2026-09-07: unauthenticated requests are capped at
+    // 1 req/sec (TronGrid cut this in 2023), which this watcher's 3s poll
+    // interval alone exceeds - a free key (15 req/sec) is required, not
+    // optional. See BlockWatcherConfig.tronGridApiKey's doc comment.
+    headers: {
+      "content-type": "application/json",
+      "TRON-PRO-API-KEY": apiKey,
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -76,19 +87,24 @@ async function trongridPost<T>(path: string, body: unknown): Promise<T> {
 export async function watchTron(
   addressMap: AddressMap,
   sink: DetectionSink,
+  apiKey: string,
 ): Promise<void> {
   let lastProcessed: number | null = null;
 
   for (;;) {
     try {
-      const now = await trongridPost<TronBlock>("/wallet/getnowblock", {});
+      const now = await trongridPost<TronBlock>(
+        "/wallet/getnowblock",
+        {},
+        apiKey,
+      );
       const latest = now.block_header?.raw_data?.number;
       if (latest === undefined)
         throw new Error("getnowblock missing block number");
 
       const from = lastProcessed === null ? latest : lastProcessed + 1;
       for (let num = from; num <= latest; num++) {
-        await processBlock(num, addressMap, sink);
+        await processBlock(num, addressMap, sink, apiKey);
       }
       lastProcessed = latest;
     } catch (err) {
@@ -103,14 +119,16 @@ async function processBlock(
   num: number,
   addressMap: AddressMap,
   sink: DetectionSink,
+  apiKey: string,
 ): Promise<void> {
   const [block, txInfos] = await Promise.all([
-    trongridPost<TronBlock>("/wallet/getblockbynum", { num }),
+    trongridPost<TronBlock>("/wallet/getblockbynum", { num }, apiKey),
     trongridPost<TronTransactionInfo[]>(
       "/wallet/gettransactioninfobyblocknum",
       {
         num,
       },
+      apiKey,
     ),
   ]);
 

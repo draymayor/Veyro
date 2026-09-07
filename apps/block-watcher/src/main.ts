@@ -100,9 +100,22 @@ async function main(): Promise<void> {
     }
   }
 
-  void watchTron(addressMap, sink).catch((err: unknown) => {
-    console.error("[block-watcher] FATAL: TRC20 watcher exited:", err);
-  });
+  if (config.tronGridApiKey) {
+    void watchTron(addressMap, sink, config.tronGridApiKey).catch(
+      (err: unknown) => {
+        console.error("[block-watcher] FATAL: TRC20 watcher exited:", err);
+      },
+    );
+  } else {
+    // See BlockWatcherConfig.tronGridApiKey's doc comment - confirmed live
+    // that unauthenticated TronGrid requests 429 immediately (1 req/sec
+    // cap, this watcher's poll interval alone exceeds it). Held off
+    // rather than left retry-looping against a limit it can never clear.
+    console.warn(
+      "[block-watcher] TRONGRID_API_KEY not set - TRC20 watcher NOT started. " +
+        "Get a free key at https://www.trongrid.io/dashboard.",
+    );
+  }
 
   if (config.utxoDetectionEnabled) {
     for (const chain of UTXO_CHAINS) {
@@ -128,7 +141,8 @@ async function main(): Promise<void> {
   console.log(
     `[block-watcher] started - ${EVM_CHAINS.filter((c) => c.detectionMode === "ws").length} WS chains, ` +
       `${EVM_CHAINS.filter((c) => c.detectionMode === "poll-evm").length} poll-evm chains, ` +
-      `TRC20, ${config.utxoDetectionEnabled ? UTXO_CHAINS.length : 0} UTXO chains.`,
+      `${config.tronGridApiKey ? "TRC20 (active)" : "TRC20 (held off)"}, ` +
+      `${config.utxoDetectionEnabled ? UTXO_CHAINS.length : 0} UTXO chains.`,
   );
 }
 
