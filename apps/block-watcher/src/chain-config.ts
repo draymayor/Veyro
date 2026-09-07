@@ -20,7 +20,12 @@
  *     free REST API instead.
  *   - 'poll-utxo': BTC/LTC/DOGE. BlockCypher's free tier is GET-polling
  *     only (WebHooks/WebSockets are paid-only, confirmed live against their
- *     docs 2026-09-07) - fine given these chains' 1-10 minute block times.
+ *     docs 2026-09-07), and the 100 req/hr cap is also confirmed live -
+ *     NOT fully "fine" as originally assumed: all three chains' height-poll
+ *     alone (independent of any deposit activity) already sums to ~2.4x
+ *     that budget. See apps/block-watcher/README.md's "Known open items"
+ *     for the live numbers - this is an accepted open risk, not a resolved
+ *     one.
  */
 
 export type DetectionMode = "ws" | "poll-evm" | "poll-tron" | "poll-utxo";
@@ -32,12 +37,14 @@ export interface EvmChainConfig {
   /** wss:// URL for detectionMode 'ws' chains only (PublicNode). */
   wsUrl?: string;
   /**
-   * Contract address per ERC20-style token symbol on this chain.
-   * CRITICAL: copied from apps/sweeper/src/chains/registry.ts's own
-   * EVM_TOKEN_CONTRACTS, which carries the same warning - verify every
-   * address below against the official token list / block explorer for its
-   * chain before trusting this for auto-crediting. Treat as unverified
-   * placeholders where not independently re-checked here.
+   * Contract address per ERC20-style token symbol on this chain. Copied
+   * from apps/sweeper/src/chains/registry.ts's own EVM_TOKEN_CONTRACTS.
+   * CONFIRMED (2026-09-07) live on-chain: every address below resolves to
+   * a real deployed contract with the expected symbol()/decimals() (ETH
+   * pair via Alchemy's token-metadata API, the rest via direct eth_call) -
+   * see apps/block-watcher/README.md's "Known open items" section for the
+   * two non-bug notes (Arbitrum USDT's post-rebrand on-chain symbol, BSC
+   * USDT's 18 decimals). Re-verify here if this list ever grows.
    */
   tokenContracts: Record<string, string>;
 }

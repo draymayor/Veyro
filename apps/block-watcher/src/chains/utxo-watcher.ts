@@ -5,18 +5,29 @@ import type { DetectionSink } from "./types";
 const BLOCKCYPHER_BASE = "https://api.blockcypher.com/v1";
 const POLL_INTERVAL_MS = 45_000;
 // BlockCypher's free tier is GET-only, 3 req/sec / 100 req/hr, no token
-// required for mainnet reads (confirmed live 2026-09-07 - see the Strategy
-// 3 design writeup). Getting full decoded inputs/outputs for a tx needs a
-// SEPARATE per-tx request (the block endpoint only returns txids, not
-// embedded tx bodies) - fine for Litecoin/Dogecoin's real tx/block counts
-// (tens), but Bitcoin mainnet regularly has 2,000-4,000+ tx/block, which
-// would blow through the 100/hr cap in a single poll cycle if fetched in
-// full. Rather than silently under-detect without saying so, this caps how
-// many tx bodies get fetched per poll and logs loudly when a block is
-// truncated - a real, load-bearing limitation of the free tier for BTC
-// specifically, not fully solved here. If BTC deposit volume ever becomes
-// significant, this needs either a paid BlockCypher tier or a different
-// provider for Bitcoin alone.
+// required for mainnet reads (confirmed live 2026-09-07, both the terms and
+// the cap re-confirmed against BlockCypher's current docs). Getting full
+// decoded inputs/outputs for a tx needs a SEPARATE per-tx request (the
+// block endpoint only returns txids, not embedded tx bodies) - fine for
+// Litecoin/Dogecoin's real tx/block counts (tens), but Bitcoin mainnet
+// regularly has 3,700-7,300+ tx/block (sampled live 2026-09-07, higher than
+// earlier estimated), which would blow through the 100/hr cap in a single
+// poll cycle if fetched in full. Rather than silently under-detect without
+// saying so, this caps how many tx bodies get fetched per poll and logs
+// loudly when a block is truncated - a real, load-bearing limitation of the
+// free tier for BTC specifically, not fully solved here.
+//
+// There's a second, larger problem this cap doesn't address: watchUtxo's
+// own height-check poll (GET /{chain}/main every POLL_INTERVAL_MS) runs
+// unconditionally for all three chains regardless of deposit activity - at
+// 80 requests/hr each, that's ~240/hr combined against a shared 100/hr
+// budget (BlockCypher's docs don't disambiguate the cap per chain path, and
+// there's no per-chain token to separate it by), before a single block or
+// tx-detail request happens. This means LTC/DOGE are also at real risk of
+// 429s from baseline polling alone, not just BTC from tx volume. If BTC
+// deposit volume (or 429s on LTC/DOGE) ever becomes significant, this needs
+// either a paid BlockCypher tier or a different/self-hosted provider - not
+// yet decided, see apps/block-watcher/README.md.
 const MAX_TX_FETCHES_PER_POLL = 90;
 
 interface ChainInfo {

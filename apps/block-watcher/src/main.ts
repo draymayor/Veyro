@@ -104,19 +104,31 @@ async function main(): Promise<void> {
     console.error("[block-watcher] FATAL: TRC20 watcher exited:", err);
   });
 
-  for (const chain of UTXO_CHAINS) {
-    void watchUtxo(chain, addressMap, sink).catch((err: unknown) => {
-      console.error(
-        `[block-watcher] FATAL: ${chain.network} watcher exited:`,
-        err,
-      );
-    });
+  if (config.utxoDetectionEnabled) {
+    for (const chain of UTXO_CHAINS) {
+      void watchUtxo(chain, addressMap, sink).catch((err: unknown) => {
+        console.error(
+          `[block-watcher] FATAL: ${chain.network} watcher exited:`,
+          err,
+        );
+      });
+    }
+  } else {
+    // See BlockWatcherConfig.utxoDetectionEnabled's doc comment - the
+    // BlockCypher free-tier math doesn't work for BTC/LTC/DOGE together,
+    // and the free-alternative candidate isn't verified yet. Logged at
+    // startup rather than silently skipped, same posture as the missing-
+    // RPC-URL warning above.
+    console.warn(
+      `[block-watcher] UTXO_DETECTION_ENABLED is not "true" - ${UTXO_CHAINS.map((c) => c.network).join("/")} ` +
+        "watchers NOT started. See README.md's Known open items.",
+    );
   }
 
   console.log(
     `[block-watcher] started - ${EVM_CHAINS.filter((c) => c.detectionMode === "ws").length} WS chains, ` +
       `${EVM_CHAINS.filter((c) => c.detectionMode === "poll-evm").length} poll-evm chains, ` +
-      `TRC20, ${UTXO_CHAINS.length} UTXO chains.`,
+      `TRC20, ${config.utxoDetectionEnabled ? UTXO_CHAINS.length : 0} UTXO chains.`,
   );
 }
 

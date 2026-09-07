@@ -17,6 +17,19 @@ export interface BlockWatcherConfig {
   addressMapRefreshMs: number;
   /** RPC endpoints per poll-evm network label, e.g. { Fantom: 'https://...' }. */
   evmRpcUrls: Record<string, string>;
+  /**
+   * Explicit opt-in, default false: whether to start the BTC/LTC/DOGE
+   * BlockCypher watchers at all. Deliberately separate from every other
+   * chain family (EVM/TRON always start) - see apps/block-watcher/README.md's
+   * "Known open items" for why: BlockCypher's free tier can't sustain
+   * real BTC+LTC+DOGE block volume even after tuning poll frequency, and
+   * the free-alternative candidate (Blockchair) needs to be verified from
+   * this service's own real Cloud Run egress IP before it's trusted -
+   * not from a dev sandbox, whose IP got blacklisted testing it. Until
+   * that's resolved, this stays unset in the deploy workflow's env_vars
+   * so a deploy exercises EVM+TRON for real without touching BlockCypher.
+   */
+  utxoDetectionEnabled: boolean;
 }
 
 export function loadConfig(): BlockWatcherConfig {
@@ -39,5 +52,6 @@ export function loadConfig(): BlockWatcherConfig {
     blockWatcherSharedSecret: requireEnv("BLOCK_WATCHER_SHARED_SECRET"),
     addressMapRefreshMs: Number(process.env.ADDRESS_MAP_REFRESH_MS ?? 60_000),
     evmRpcUrls,
+    utxoDetectionEnabled: process.env.UTXO_DETECTION_ENABLED === "true",
   };
 }

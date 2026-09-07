@@ -56,15 +56,15 @@ async function trongridPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 /**
- * OPEN QUESTION (2026-09-07), deliberately not guessed at, same posture as
- * AlchemyWebhookService's own doc comment: this shape is taken from
- * TronGrid's published docs (getnowblock / getblockbynum /
- * gettransactioninfobyblocknum), NOT verified against a real live capture -
- * there is no funded TRON account or live TRC20 deposit to confirm the
- * exact field names/casing against yet. Flagged here rather than silently
- * trusted; the first real inbound detection on this path should be diffed
- * against this before leaning on it for auto-crediting the way Tatum's
- * existing TRON webhook path already can.
+ * CONFIRMED (2026-09-07) against a real live capture, not just TronGrid's
+ * published docs: a getnowblock/getblockbynum/gettransactioninfobyblocknum
+ * round trip against TronGrid mainnet matched every field name/shape this
+ * file assumes, byte-for-byte - including a real Transfer event from the
+ * official USDT contract (TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t) captured in
+ * the sampled block, independently confirmed via triggerconstantcontract.
+ * See apps/block-watcher/README.md's "Known open items" section for the
+ * detail. No longer an open question; kept here as a record of what was
+ * actually checked rather than assumed.
  *
  * Native TRX transfers come from getblockbynum's embedded transactions
  * (contract type "TransferContract", hex addresses converted via TronWeb's

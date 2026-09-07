@@ -108,27 +108,32 @@ jobs:
           region: ${{ secrets.GCP_REGION }}
           image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
           flags: --service-account=${{ secrets.GCP_BLOCK_WATCHER_RUNTIME_SERVICE_ACCOUNT }} --min-instances=1 --max-instances=1 --no-cpu-throttle
-          # PLACEHOLDER - API_BASE_URL must be the real deployed apps/api
-          # Cloud Run URL (from that service's own deploy output / `gcloud
-          # run services describe veyro-api`), not this example value.
+          # API_BASE_URL is the real deployed apps/api Cloud Run URL,
+          # confirmed live via `gcloud run services describe veyro-api`
+          # 2026-09-07 - re-check it if that service is ever recreated
+          # (Cloud Run URLs are stable across redeploys of the same
+          # service, but not across a delete+recreate).
           #
-          # The EVM_RPC_URL_* values below were found during the Strategy 3
-          # design research (2026-09-07) but, unlike the PublicNode WSS
-          # endpoints and BlockCypher's free-tier terms, were NOT
-          # independently re-verified live against a real JSON-RPC call the
-          # way ethereum/arbitrum/optimism/base/avalanche/polygon were -
-          # confirm each one actually responds (a simple eth_chainId POST,
-          # same check used to verify Fantom's PublicNode absence) before
-          # trusting this for production deposit detection. Free public RPCs
-          # also change/rotate over time; re-verify periodically regardless.
+          # The EVM_RPC_URL_* values below were live-verified with a plain
+          # `eth_chainId` POST on 2026-09-07 (result's chain ID checked
+          # against each network's real chain ID - Celo 42220/0xa4ec, Flare
+          # 14/0xe, Fantom 250/0xfa, Cronos 25/0x19, Ethereum Classic
+          # 61/0x3d, Kaia 8217/0x2019, XDC 50/0x32 - all matched). Two of the
+          # three URLs originally recorded during design research were
+          # already dead by verification time and were swapped for working
+          # ones: rpc.ftm.tools now 401s ("API key not found" - it's gated
+          # despite being publicized as free) and etc.rivet.link no longer
+          # resolves in DNS at all. Free public RPCs change/rotate over
+          # time regardless; re-verify periodically with the same
+          # eth_chainId check rather than assuming these stay up.
           env_vars: |
-            API_BASE_URL=https://veyro-api-xyz.run.app
+            API_BASE_URL=https://veyro-api-479708499599.us-central1.run.app
             ADDRESS_MAP_REFRESH_MS=60000
             EVM_RPC_URL_Celo=https://forno.celo.org
             EVM_RPC_URL_Flare=https://flare-api.flare.network/ext/C/rpc
-            EVM_RPC_URL_Fantom=https://rpc.ftm.tools
+            EVM_RPC_URL_Fantom=https://rpcapi.fantom.network
             EVM_RPC_URL_Cronos=https://evm.cronos.org
-            EVM_RPC_URL_Ethereum_Classic=https://etc.rivet.link
+            EVM_RPC_URL_Ethereum_Classic=https://etc.drpc.org
             EVM_RPC_URL_Kaia=https://public-en.node.kaia.io
             EVM_RPC_URL_XDC_Network=https://rpc.xdcrpc.com
           secrets: |
