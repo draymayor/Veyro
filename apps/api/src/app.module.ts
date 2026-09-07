@@ -25,6 +25,7 @@ import { CryptoAddressesModule } from './crypto-addresses/crypto-addresses.modul
 import { CryptoWalletModule } from './crypto-wallet/crypto-wallet.module';
 import { TatumWebhookModule } from './webhooks/tatum/tatum-webhook.module';
 import { AlchemyWebhookModule } from './webhooks/alchemy/alchemy-webhook.module';
+import { BlockWatcherWebhookModule } from './webhooks/block-watcher/block-watcher-webhook.module';
 import { CryptoDepositEventsModule } from './crypto-deposit-events/crypto-deposit-events.module';
 
 @Module({
@@ -69,6 +70,7 @@ import { CryptoDepositEventsModule } from './crypto-deposit-events/crypto-deposi
     CryptoWalletModule,
     TatumWebhookModule,
     AlchemyWebhookModule,
+    BlockWatcherWebhookModule,
     CryptoDepositEventsModule,
   ],
   controllers: [AppController],

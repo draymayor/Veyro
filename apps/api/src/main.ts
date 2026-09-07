@@ -17,7 +17,12 @@ async function bootstrap() {
   // top-level path reads clearer than versioning someone else's webhook
   // target.
   app.setGlobalPrefix('api/v1', {
-    exclude: ['health', 'webhooks/tatum', 'webhooks/alchemy'],
+    exclude: [
+      'health',
+      'webhooks/tatum',
+      'webhooks/alchemy',
+      'webhooks/block-watcher',
+    ],
   });
   // The web app runs on a different origin/port (e.g. localhost:3000 vs
   // this API's localhost:3001), so without CORS every browser fetch from
