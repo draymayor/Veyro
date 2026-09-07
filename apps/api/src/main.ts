@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -29,6 +30,19 @@ async function bootstrap() {
     ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
     : 'http://localhost:3000';
   app.enableCors({ origin: corsOrigin });
+  // Global no-store: Express's default ETag is computed from response body
+  // alone, with no Vary: Authorization. For any authenticated GET whose URL
+  // is identical across callers (auth/me, bank-accounts, referrals/table,
+  // withdrawal-pin/status, admin/session, ...), a browser can send another
+  // account's stale If-None-Match for that URL and get a legitimate 304 back
+  // for a completely different account (see PR #12, which first fixed this
+  // one-off on crypto-addresses). Setting no-store on every response - not
+  // just per route - closes the whole class at once, including any future
+  // per-user GET endpoint that would otherwise ship with the same hole.
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
   await app.listen(process.env.PORT ?? 8080);
 }
 void bootstrap();
