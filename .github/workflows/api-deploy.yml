@@ -22,7 +22,15 @@
 #   COINGECKO_API_KEY, TATUM_API_KEY, TATUM_BTC_XPUB, TATUM_LTC_XPUB,
 #   TATUM_DOGE_XPUB, TATUM_EVM_XPUB, TATUM_TRON_XPUB, FCA_API_KEY,
 #   CURRENCYFREAKS_API_KEY, TATUM_WEBHOOK_URL, TATUM_WEBHOOK_HMAC_SECRET,
-#   ALCHEMY_API_KEY, ALCHEMY_WEBHOOK_IDS, ALCHEMY_WEBHOOK_SIGNING_KEYS
+#   ALCHEMY_API_KEY, ALCHEMY_WEBHOOK_IDS, ALCHEMY_WEBHOOK_SIGNING_KEYS,
+#   BLOCK_WATCHER_SHARED_SECRET
+#
+# BLOCK_WATCHER_SHARED_SECRET backs /webhooks/block-watcher (Strategy 3's
+# self-hosted block-watcher, apps/block-watcher/BlockWatcherWebhookGuard) -
+# same eager-getOrThrow-at-construction pattern as the Alchemy secrets
+# above, so a missing value here fails at app BOOT, not per-request. Must
+# equal apps/block-watcher's own BLOCK_WATCHER_SHARED_SECRET secret exactly
+# (see block-watcher-deploy.yml).
 #
 # ALCHEMY_* back Alchemy's Address Activity webhook (the second deposit-
 # detection provider, covering EVM chains - see chain-config.ts's
@@ -161,3 +169,4 @@ jobs:
             ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest
             ALCHEMY_WEBHOOK_IDS=ALCHEMY_WEBHOOK_IDS:latest
             ALCHEMY_WEBHOOK_SIGNING_KEYS=ALCHEMY_WEBHOOK_SIGNING_KEYS:latest
+            BLOCK_WATCHER_SHARED_SECRET=BLOCK_WATCHER_SHARED_SECRET:latest

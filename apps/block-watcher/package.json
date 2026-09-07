@@ -1,0 +1,37 @@
+{
+  "name": "block-watcher",
+  "version": "0.0.1",
+  "description": "Always-on Cloud Run SERVICE (not a Job, unlike sweeper/consolidator - holds persistent WebSocket connections) that independently detects crypto deposits by scanning chains directly, genuinely redundant with (not a fallback to) the Tatum/Alchemy webhooks. Deliberately a separate deployable from apps/api - its own image, its own service account, its own IAM. Never imported by or bundled into apps/api; posts detections to apps/api's /webhooks/block-watcher instead. See docs/planning-history.md's Strategy 3 section.",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "dev": "ts-node src/main.ts",
+    "lint": "eslint \"src/**/*.ts\" --fix",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "ethers": "^6.13.4",
+    "tronweb": "^6.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.5.13",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.2",
+    "globals": "^17.0.0",
+    "jest": "^30.0.0",
+    "prettier": "^3.4.2",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  }
+}

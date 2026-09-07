@@ -1,0 +1,137 @@
+# Builds apps/block-watcher into a Docker image and deploys it to GCP Cloud
+# Run as an always-on SERVICE (unlike sweeper-deploy.yml/consolidator-
+# deploy.yml, which deploy Cloud Run JOBS) - see apps/block-watcher/Dockerfile
+# and package.json for why: it holds persistent WebSocket connections and
+# poll loops, so it must never scale to zero or be CPU-throttled between
+# requests.
+#
+# Requires the same GCP_* repo secrets as api-deploy.yml (WORKLOAD_IDENTITY_
+# PROVIDER, SERVICE_ACCOUNT, PROJECT_ID, REGION, ARTIFACT_REPO), plus its own
+# narrowly-scoped runtime identity:
+#   GCP_BLOCK_WATCHER_RUNTIME_SERVICE_ACCOUNT - only needs read access to
+#     user_crypto_addresses (via the Supabase service-role key secret below)
+#     and no GCP Secret Manager access at all - block-watcher holds no
+#     master seed, unlike sweeper/consolidator.
+#
+# Runtime config from GCP Secret Manager, each of these must already exist
+# with GCP_BLOCK_WATCHER_RUNTIME_SERVICE_ACCOUNT granted
+# secretmanager.secretAccessor on it:
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BLOCK_WATCHER_SHARED_SECRET
+# (the last one MUST equal apps/api's own BLOCK_WATCHER_SHARED_SECRET
+# secret exactly - see apps/api/src/webhooks/block-watcher's guard).
+#
+# --min-instances=1 --max-instances=1 --no-cpu-throttle: exactly one
+# instance, always warm, with CPU available outside of request handling.
+# More than one instance would open duplicate WS connections and duplicate
+# poll loops against the same free-tier RPC budgets for no benefit (result
+# rows are deduped downstream anyway by UNIQUE(network, tx_hash, address),
+# so a second instance buys nothing but wasted quota) - min/max both pinned
+# to 1 rather than just min, to actually prevent that rather than only
+# guaranteeing a floor. --no-cpu-throttle keeps the event loop/poll timers
+# running between Cloud Run's own health-check hits, which default Cloud Run
+# CPU throttling would otherwise stall. Deployed WITHOUT --allow-
+# unauthenticated: nothing external calls this service (it only ever calls
+# OUT to apps/api), Cloud Run's own health/startup probes reach the
+# container regardless of invoker IAM.
+name: Block Watcher Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/block-watcher/**"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/block-watcher-deploy.yml"
+  workflow_dispatch: {}
+
+env:
+  SERVICE_NAME: veyro-block-watcher
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter block-watcher lint
+
+      - name: Test
+        run: pnpm --filter block-watcher test
+
+      - name: Build (typecheck)
+        run: pnpm --filter block-watcher build
+
+      - id: auth
+        name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build image
+        run: |
+          docker build \
+            -f apps/block-watcher/Dockerfile \
+            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            .
+
+      - name: Push image
+        run: |
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ secrets.GCP_REGION }}
+          image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          flags: --service-account=${{ secrets.GCP_BLOCK_WATCHER_RUNTIME_SERVICE_ACCOUNT }} --min-instances=1 --max-instances=1 --no-cpu-throttle
+          # PLACEHOLDER - API_BASE_URL must be the real deployed apps/api
+          # Cloud Run URL (from that service's own deploy output / `gcloud
+          # run services describe veyro-api`), not this example value.
+          #
+          # The EVM_RPC_URL_* values below were found during the Strategy 3
+          # design research (2026-09-07) but, unlike the PublicNode WSS
+          # endpoints and BlockCypher's free-tier terms, were NOT
+          # independently re-verified live against a real JSON-RPC call the
+          # way ethereum/arbitrum/optimism/base/avalanche/polygon were -
+          # confirm each one actually responds (a simple eth_chainId POST,
+          # same check used to verify Fantom's PublicNode absence) before
+          # trusting this for production deposit detection. Free public RPCs
+          # also change/rotate over time; re-verify periodically regardless.
+          env_vars: |
+            API_BASE_URL=https://veyro-api-xyz.run.app
+            ADDRESS_MAP_REFRESH_MS=60000
+            EVM_RPC_URL_Celo=https://forno.celo.org
+            EVM_RPC_URL_Flare=https://flare-api.flare.network/ext/C/rpc
+            EVM_RPC_URL_Fantom=https://rpc.ftm.tools
+            EVM_RPC_URL_Cronos=https://evm.cronos.org
+            EVM_RPC_URL_Ethereum_Classic=https://etc.rivet.link
+            EVM_RPC_URL_Kaia=https://public-en.node.kaia.io
+            EVM_RPC_URL_XDC_Network=https://rpc.xdcrpc.com
+          secrets: |
+            SUPABASE_URL=SUPABASE_URL:latest
+            SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest
+            BLOCK_WATCHER_SHARED_SECRET=BLOCK_WATCHER_SHARED_SECRET:latest
