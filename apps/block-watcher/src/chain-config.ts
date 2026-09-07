@@ -18,14 +18,13 @@
  *   - 'poll-tron': TRON has no WS block/event subscription on any provider
  *     (confirmed - not a TronGrid-specific limitation), polls TronGrid's
  *     free REST API instead.
- *   - 'poll-utxo': BTC/LTC/DOGE. BlockCypher's free tier is GET-polling
- *     only (WebHooks/WebSockets are paid-only, confirmed live against their
- *     docs 2026-09-07), and the 100 req/hr cap is also confirmed live -
- *     NOT fully "fine" as originally assumed: all three chains' height-poll
- *     alone (independent of any deposit activity) already sums to ~2.4x
- *     that budget. See apps/block-watcher/README.md's "Known open items"
- *     for the live numbers - this is an accepted open risk, not a resolved
- *     one.
+ *   - 'poll-utxo': BTC/LTC/DOGE, via Alchemy's Bitcoin JSON-RPC API rather
+ *     than BlockCypher (whose free tier's shared 100 req/hr cap couldn't
+ *     sustain real Bitcoin block volume - see README.md's "Known open
+ *     items" for the full history). `getblock` verbosity 2 returns every
+ *     transaction in a block already decoded in one request, confirmed
+ *     live 2026-09-07, at ~3.1M CU/month combined for all three chains -
+ *     well inside the 30M/month free tier.
  */
 
 export type DetectionMode = "ws" | "poll-evm" | "poll-tron" | "poll-utxo";
@@ -169,12 +168,22 @@ export const TRON_USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 export interface UtxoChainConfig {
   network: string;
   nativeSymbol: string;
-  /** BlockCypher's own chain path segment, e.g. 'btc' in /v1/btc/main. */
-  blockcypherChain: string;
+  /**
+   * Alchemy's network slug for this chain's Bitcoin-JSON-RPC-style API,
+   * e.g. 'bitcoin-mainnet' in https://bitcoin-mainnet.g.alchemy.com/v2/{key}.
+   * NOTE: Alchemy's own Bitcoin API docs page (alchemy.com/docs/reference/
+   * bitcoin-api-quickstart) advertises a DIFFERENT, broken host
+   * (bitcoin-mainnet.alchemy-blast.com) that Cloudflare blocks outright for
+   * every client tested (curl, Node fetch, and a real browser navigation,
+   * 2026-09-07) - the working host follows the same `{chain}.g.alchemy.com`
+   * pattern every other Alchemy chain uses, confirmed live against real
+   * mainnet data for all three chains below.
+   */
+  alchemyNetwork: string;
 }
 
 export const UTXO_CHAINS: UtxoChainConfig[] = [
-  { network: "Bitcoin", nativeSymbol: "BTC", blockcypherChain: "btc" },
-  { network: "Litecoin", nativeSymbol: "LTC", blockcypherChain: "ltc" },
-  { network: "Dogecoin", nativeSymbol: "DOGE", blockcypherChain: "doge" },
+  { network: "Bitcoin", nativeSymbol: "BTC", alchemyNetwork: "bitcoin-mainnet" },
+  { network: "Litecoin", nativeSymbol: "LTC", alchemyNetwork: "litecoin-mainnet" },
+  { network: "Dogecoin", nativeSymbol: "DOGE", alchemyNetwork: "dogecoin-mainnet" },
 ];

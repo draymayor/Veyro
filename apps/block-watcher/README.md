@@ -31,9 +31,12 @@ rather than run-to-completion-and-exit.
 - **TRON** via polling TronGrid's free REST API - no provider offers a WS
   block/event subscription for TRON at all (confirmed, not a TronGrid-only
   gap).
-- **Bitcoin/Litecoin/Dogecoin** via polling BlockCypher's free tier
-  (GET-only - WebHooks/WebSockets are paid-only on BlockCypher, confirmed
-  live 2026-09-07).
+- **Bitcoin/Litecoin/Dogecoin** via polling Alchemy's Bitcoin JSON-RPC API
+  (Bitcoin Core's own RPC methods, proxied by Alchemy) - `getblockcount`
+  every 45s, and on a new height, `getblockhash` + `getblock` verbosity 2
+  to get every transaction in the block fully decoded (output addresses
+  included) in one call. Confirmed live 2026-09-07 against real mainnet
+  data on all three chains.
 
 Every chain family funnels into the same downstream path: a match against
 the in-memory address hash map (refreshed from `user_crypto_addresses`
@@ -68,24 +71,28 @@ originally documented and still needs a decision, not just verification.
   `TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` via `triggerconstantcontract`), so
   this wasn't just a shape match but an actual live USDT transfer parsed
   correctly end to end. No code change needed.
-- **Bitcoin mainnet vs. BlockCypher's free tier: confirmed worse than
-  documented, not yet resolved.** Real recent BTC blocks ran 3,702-7,276
-  tx (sampled live via BlockCypher itself) - higher than this doc's old
-  "2,000-4,000+" estimate. BlockCypher's current docs confirm the 100
-  req/hr free-tier cap. But the bigger issue isn't `MAX_TX_FETCHES_PER_POLL`
-  truncating large blocks - it's that `watchUtxo`'s height-check poll
-  (`GET /{chain}/main` every `POLL_INTERVAL_MS` = 45s) runs unconditionally
-  for BTC, LTC, and DOGE independently, at 80 requests/hr each = 240/hr
-  combined, already 2.4x the shared free-tier budget before a single block
-  or tx-detail request is made. (BlockCypher's docs describe the 100/hr cap
-  as a property of the free tier generally, not disambiguated per chain
-  path; unauthenticated requests have no per-chain token to separate them
-  by, so treat it as shared until proven otherwise.) This means all three
-  UTXO chains are at real risk of 429s from baseline polling alone, not
-  just Bitcoin from tx volume - **still needs a decision**: a paid
-  BlockCypher tier, a different/self-hosted provider, or accepting
-  degraded coverage across all three UTXO chains (not just Bitcoin) before
-  this goes live for real funds.
+- **Bitcoin mainnet vs. BlockCypher's free tier: resolved by switching
+  providers, not by tuning BlockCypher.** BlockCypher's free tier
+  (confirmed live 2026-09-07: 100 req/hr, shared across BTC/LTC/DOGE, no
+  per-chain token) couldn't sustain real Bitcoin block volume (3,702-7,276
+  tx/block sampled live) because getting decoded outputs needed one
+  request per transaction on top of the block fetch itself. Alchemy's
+  Bitcoin JSON-RPC API doesn't have that shape: `getblock` verbosity 2
+  returns every transaction in a block already decoded - including output
+  addresses - in a single request, confirmed live against a real 3,712-tx
+  Bitcoin mainnet block and a real Litecoin block. Its documented endpoint
+  (`bitcoin-mainnet.alchemy-blast.com`, per Alchemy's own quickstart page)
+  is Cloudflare-blocked for every client tested (curl, Node, and a real
+  browser navigation) - the working endpoint follows the standard
+  `{chain}-mainnet.g.alchemy.com` pattern instead, see chain-config.ts's
+  `alchemyNetwork` field. CU cost confirmed against Alchemy's own current
+  pricing table (`getblockcount`/`getblockhash`/`getblock` are all a flat
+  10 CU regardless of verbosity): ~4,200 CU/hr combined for all three
+  chains at this polling rate, ~3.1M CU/month - about 10% of the 30M/month
+  free tier, alongside apps/api's separate (much smaller, webhook-only)
+  Alchemy usage. `UTXO_DETECTION_ENABLED` is still an explicit opt-in
+  (see config.ts) - flipping it on for real funds remains a deliberate
+  decision, but the provider-side blocker is resolved.
 - **The 7 long-tail EVM chains' public RPC URLs: 5 of 7 confirmed live,
   2 were dead and have been replaced.** A plain `eth_chainId` POST against
   each returned the correct chain ID for Celo, Flare, Cronos, Kaia, and XDC
