@@ -63,19 +63,79 @@ async function runBlockchairProbe(): Promise<BlockchairProbeResult[]> {
 }
 
 /**
+ * TEMPORARY, read-only diagnostic - fetches one real recent block and one
+ * real transaction from it per chain, via Blockchair's `dashboards/block`
+ * and `dashboards/transaction` endpoints, and returns the raw JSON
+ * verbatim for inspection. Exists because the dev sandbox this was
+ * designed from got IP-blacklisted by Blockchair on the very first
+ * `dashboards/block` call (2 requests in), while the exact same call
+ * succeeds cleanly from this service's real Cloud Run egress IP - so the
+ * actual response shape needs to be captured from here, not the sandbox,
+ * before writing a watcher against it. Three total Blockchair calls per
+ * invocation (stats, one block, one tx) - trivial against either tier's
+ * budget. Remove alongside runBlockchairProbe once the watcher is built
+ * and shape-verified.
+ */
+async function fetchBlockchairShape(chain: string): Promise<unknown> {
+  const statsRes = await fetch(`https://api.blockchair.com/${chain}/stats`);
+  const stats = (await statsRes.json()) as {
+    data?: { best_block_height?: number };
+  };
+  const height = stats.data?.best_block_height;
+  if (height === undefined) {
+    return { chain, error: "no best_block_height in stats response", stats };
+  }
+
+  const blockRes = await fetch(
+    `https://api.blockchair.com/${chain}/dashboards/block/${height}`,
+  );
+  const block = (await blockRes.json()) as {
+    data?: Record<string, { transactions?: string[] }>;
+  };
+  const blockEntry = block.data?.[String(height)];
+  const firstTxid = blockEntry?.transactions?.[0];
+
+  let tx: unknown = null;
+  if (firstTxid) {
+    const txRes = await fetch(
+      `https://api.blockchair.com/${chain}/dashboards/transaction/${firstTxid}`,
+    );
+    tx = await txRes.json();
+  }
+
+  return { chain, height, block, tx };
+}
+
+/**
  * Cloud Run Services (unlike sweeper/consolidator's Jobs) require the
  * container to listen on $PORT and respond to traffic, or the revision
  * never becomes ready - block-watcher itself has no inbound API of its
  * own (it only ever calls OUT to apps/api), so this exists purely to
  * satisfy that requirement and to give a real /health for uptime checks.
- * Also carries the temporary /diagnostics/blockchair probe above - both
- * are reachable only by whoever holds Cloud Run Invoker on this service
+ * Also carries the temporary /diagnostics/* probes above - all are
+ * reachable only by whoever holds Cloud Run Invoker on this service
  * (deployed without --allow-unauthenticated), never publicly.
  */
 export function startHealthServer(port: number): void {
   const server = createServer((req, res) => {
     if (req.url === "/diagnostics/blockchair") {
       runBlockchairProbe()
+        .then((results) => {
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({ results }, null, 2));
+        })
+        .catch((err: unknown) => {
+          res.writeHead(500, { "content-type": "application/json" });
+          res.end(
+            JSON.stringify({
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        });
+      return;
+    }
+    if (req.url === "/diagnostics/blockchair-shape") {
+      Promise.all(BLOCKCHAIR_CHAINS.map((chain) => fetchBlockchairShape(chain)))
         .then((results) => {
           res.writeHead(200, { "content-type": "application/json" });
           res.end(JSON.stringify({ results }, null, 2));
