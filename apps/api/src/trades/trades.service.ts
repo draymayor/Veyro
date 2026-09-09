@@ -11,6 +11,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { WalletService } from '../wallet/wallet.service';
 import { CryptoWalletService } from '../crypto-wallet/crypto-wallet.service';
 import { CryptoPayoutService } from '../crypto-price/crypto-payout.service';
+import { EarnService } from '../earn/earn.service';
 
 export type CardType = 'physical' | 'e-code';
 export type TradeFileType = 'card_image' | 'receipt';
@@ -110,6 +111,7 @@ export class TradesService {
     private readonly walletService: WalletService,
     private readonly cryptoWalletService: CryptoWalletService,
     private readonly cryptoPayoutService: CryptoPayoutService,
+    private readonly earnService: EarnService,
   ) {}
 
   // Sell Crypto (docs/product-rules.md rule 6a, REVISED AGAIN): a
@@ -228,6 +230,12 @@ export class TradesService {
       undefined,
       trade.id as string,
     );
+
+    // Real trade completion (docs/database-schema.md's earn_bonus_claims
+    // section): a sell conversion counts toward an Earn bonus's required
+    // trade volume exactly like an approved gift card trade does. No-op
+    // for a user with no 'claimed' row.
+    await this.earnService.checkAndUnlockBonus(client, user.id);
 
     return {
       tradeId: trade.id as string,

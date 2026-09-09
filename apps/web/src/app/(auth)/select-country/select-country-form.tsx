@@ -26,7 +26,11 @@ const itemVariants: Variants = {
   },
 };
 
-export function SelectCountryForm() {
+interface SelectCountryFormProps {
+  next?: string | null;
+}
+
+export function SelectCountryForm({ next }: SelectCountryFormProps) {
   const router = useRouter();
   const [country, setCountry] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -72,7 +76,7 @@ export function SelectCountryForm() {
       return;
     }
 
-    router.push(POST_AUTH_ENTRY_PATH);
+    router.push(next ?? POST_AUTH_ENTRY_PATH);
   }
 
   return (

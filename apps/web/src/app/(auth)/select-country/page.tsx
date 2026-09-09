@@ -15,7 +15,20 @@ import { SelectCountryForm } from "./select-country-form";
 // docs/product-rules.md rule 13b). This check has to hold independent of
 // whichever caller sent the user here, so it lives here rather than only
 // in each caller (auth/callback/route.ts, login, verify-email).
-export default async function SelectCountryPage() {
+interface SelectCountryPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function SelectCountryPage({
+  searchParams,
+}: SelectCountryPageProps) {
+  const params = await searchParams;
+  const nextParam = params.next;
+  const next =
+    typeof nextParam === "string" && nextParam.startsWith("/")
+      ? nextParam
+      : null;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -41,8 +54,8 @@ export default async function SelectCountryPage() {
   }
 
   if (profile?.country) {
-    redirect(POST_AUTH_ENTRY_PATH);
+    redirect(next ?? POST_AUTH_ENTRY_PATH);
   }
 
-  return <SelectCountryForm />;
+  return <SelectCountryForm next={next} />;
 }

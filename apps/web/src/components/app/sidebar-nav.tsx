@@ -4,12 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { DESKTOP_NAV_ITEMS } from "./nav-items";
+import { DESKTOP_NAV_ITEMS, SCOUT_NAV_ITEM } from "./nav-items";
 import { UserAvatar } from "./user-avatar";
 import type { AppUser } from "./app-user";
 
 interface SidebarNavProps {
   user: AppUser;
+  isScout?: boolean;
 }
 
 /**
@@ -17,8 +18,11 @@ interface SidebarNavProps {
  * site's footer bar, so the sidebar and footer read as one consistent dark
  * surface across the product.
  */
-export function SidebarNav({ user }: SidebarNavProps) {
+export function SidebarNav({ user, isScout = false }: SidebarNavProps) {
   const pathname = usePathname();
+  const items = isScout
+    ? [...DESKTOP_NAV_ITEMS, SCOUT_NAV_ITEM]
+    : DESKTOP_NAV_ITEMS;
 
   return (
     <aside className="bg-ink sticky top-0 hidden h-screen w-64 shrink-0 flex-col justify-between px-4 py-6 md:flex">
@@ -35,7 +39,7 @@ export function SidebarNav({ user }: SidebarNavProps) {
         </Link>
 
         <nav className="flex flex-col gap-1">
-          {DESKTOP_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {items.map(({ href, label, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link

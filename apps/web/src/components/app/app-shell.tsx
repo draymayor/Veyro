@@ -7,16 +7,18 @@ import type { AppUser } from "./app-user";
 interface AppShellProps {
   children: ReactNode;
   user: AppUser;
+  /** Scout nav item only shows for an approved scout_applications row. */
+  isScout?: boolean;
 }
 
-export function AppShell({ children, user }: AppShellProps) {
+export function AppShell({ children, user, isScout = false }: AppShellProps) {
   return (
     <div className="flex min-h-screen">
-      <SidebarNav user={user} />
+      <SidebarNav user={user} isScout={isScout} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar user={user} />
         <div className="flex-1 pb-16 md:pb-0">{children}</div>
-        <BottomNav />
+        <BottomNav isScout={isScout} />
       </div>
     </div>
   );

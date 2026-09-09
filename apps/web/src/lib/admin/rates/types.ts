@@ -70,6 +70,12 @@ export const PLATFORM_SETTING_LABELS: Record<string, string> = {
   crypto_withdrawal_requires_approval:
     "Require approval for crypto withdrawals",
   crypto_withdrawal_signing_mode: "Crypto withdrawal signing mode",
+  earn_tier1_bonus_usd: "Earn bonus - Tier 1 amount (USD)",
+  earn_tier1_required_volume_usd:
+    "Earn bonus - Tier 1 required trade volume (USD)",
+  earn_tier2_bonus_usd: "Earn bonus - Tier 2 amount (USD)",
+  earn_tier2_required_volume_usd:
+    "Earn bonus - Tier 2 required trade volume (USD)",
 };
 
 // Fallback for any key not in the map above: turn snake_case into Title

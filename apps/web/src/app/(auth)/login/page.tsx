@@ -47,6 +47,12 @@ function LoginForm() {
   const recovered = searchParams.get("recovered") === "1";
   const oauthError = searchParams.get("error") === "oauth";
   const oauthErrorReason = searchParams.get("reason");
+  // Optional post-auth redirect target (e.g. from the Careers page's Apply
+  // button: /login?next=/scout/apply). Only ever an internal path, never
+  // followed for an admin identity or an incomplete-onboarding redirect
+  // below - those always take priority.
+  const next = searchParams.get("next");
+  const nextSuffix = next ? `?next=${encodeURIComponent(next)}` : "";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -99,11 +105,15 @@ function LoginForm() {
     }
 
     if (me && !me.emailVerified) {
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      router.push(
+        `/verify-email?email=${encodeURIComponent(email)}${
+          next ? `&next=${encodeURIComponent(next)}` : ""
+        }`,
+      );
       return;
     }
 
-    router.push(POST_AUTH_ENTRY_PATH);
+    router.push(next && next.startsWith("/") ? next : POST_AUTH_ENTRY_PATH);
   }
 
   return (
@@ -286,7 +296,7 @@ function LoginForm() {
           >
             Don&apos;t have an account?{" "}
             <Link
-              href="/signup"
+              href={`/signup${nextSuffix}`}
               className="text-ink font-semibold hover:underline"
             >
               Sign up

@@ -19,6 +19,12 @@ import { AdminDepositsController } from './deposits/admin-deposits.controller';
 import { AdminDepositsService } from './deposits/admin-deposits.service';
 import { AdminTransactionsController } from './transactions/admin-transactions.controller';
 import { AdminTransactionsService } from './transactions/admin-transactions.service';
+import { AdminEarnClaimsController } from './earn-claims/admin-earn-claims.controller';
+import { AdminEarnClaimsService } from './earn-claims/admin-earn-claims.service';
+import { AdminScoutApplicationsController } from './scout-applications/admin-scout-applications.controller';
+import { AdminScoutApplicationsService } from './scout-applications/admin-scout-applications.service';
+import { AdminScoutDaysController } from './scout-days/admin-scout-days.controller';
+import { AdminScoutDaysService } from './scout-days/admin-scout-days.service';
 import { AuthModule } from '../auth/auth.module';
 import { FxModule } from '../fx/fx.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -26,6 +32,7 @@ import { CryptoPriceModule } from '../crypto-price/crypto-price.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { CryptoWalletModule } from '../crypto-wallet/crypto-wallet.module';
 import { ProviderHealthModule } from '../provider-health/provider-health.module';
+import { EarnModule } from '../earn/earn.module';
 
 @Module({
   imports: [
@@ -36,6 +43,7 @@ import { ProviderHealthModule } from '../provider-health/provider-health.module'
     WalletModule,
     CryptoWalletModule,
     ProviderHealthModule,
+    EarnModule,
   ],
   controllers: [
     AdminController,
@@ -47,6 +55,9 @@ import { ProviderHealthModule } from '../provider-health/provider-health.module'
     AdminSupportController,
     AdminDepositsController,
     AdminTransactionsController,
+    AdminEarnClaimsController,
+    AdminScoutApplicationsController,
+    AdminScoutDaysController,
   ],
   providers: [
     AdminService,
@@ -60,6 +71,9 @@ import { ProviderHealthModule } from '../provider-health/provider-health.module'
     AdminSupportService,
     AdminDepositsService,
     AdminTransactionsService,
+    AdminEarnClaimsService,
+    AdminScoutApplicationsService,
+    AdminScoutDaysService,
   ],
 })
 export class AdminModule {}

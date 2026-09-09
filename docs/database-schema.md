@@ -425,3 +425,45 @@ Alerting reuses the existing `NotificationsService`/Resend pattern, a new `sendP
 
 **Real corrections made during build, worth preserving**: the `depositable` gate was initially placed before the existing-address lookup in `crypto-addresses.service.ts`, which would have wrongly blocked a user from viewing an address they already have during an outage, moved to only gate handing out a NEW address, caught before shipping. `block-watcher` (a separate deployable) doesn't write this table directly, it POSTs to a new guarded `/webhooks/block-watcher/provider-health` route so alerting logic (which only lives in `apps/api`) stays centralized, one owner. Manual Deposit's admin filter deliberately does NOT check `network_availability`, since that page is precisely the fallback admins use when automated detection is down, filtering it by the same signal would break the fallback it exists to provide.
 - Row-Level Security (Supabase): users can only read their own `trades`, `wallets`, `wallet_transactions`, `withdrawals`; admin role bypasses via service role or dedicated admin policies.
+
+### `earn_bonus_claims` (Earn page bonus program, added 2026-09-08)
+```
+id                          uuid (PK)
+user_id                     uuid (FK -> users.id on delete cascade, UNIQUE — one claim per user, enforced)
+bonus_amount_usd            numeric     -- 50 or 100
+required_trade_volume_usd   numeric     -- 100 or 150 respectively
+status                      text        -- 'claimed' | 'unlocked' | 'paid' | 'expired'
+claimed_at                  timestamptz
+expires_at                  timestamptz -- claimed_at + 3 days, enforced default
+unlocked_at                 timestamptz (nullable)
+paid_at                     timestamptz (nullable)
+wallet_transaction_id       uuid (FK -> wallet_transactions.id, nullable until paid)
+```
+**Real fraud vector identified and closed before building, worth preserving the reasoning**: the originally requested design (claim a bonus, deposit a matching amount, withdraw everything immediately) would have let a user claim $50, deposit $100 of their own money, and immediately withdraw the full $150 with zero real cost, an unlimited, repeatable, self-funding drain on the $50,000 pool, not a real promotion. Corrected: the bonus only unlocks (`status: 'unlocked'`) once the user has generated `required_trade_volume_usd` in REAL trading volume (selling gift cards/crypto through the platform, generating real margin revenue for Veyro), not merely deposited a balance. Only once unlocked can it be paid out (`status: 'paid'`, a real `wallet_transactions` credit). One claim per user, enforced at the database level via the `UNIQUE` constraint on `user_id`, not just application logic. Unclaimed-and-undeposited-toward bonuses expire after 3 days (`status: 'expired'`).
+
+**Admin-tunable Earn values (follow-up, requested alongside the initial build):** `platform_settings` should hold the bonus tiers themselves (amounts and required trade volumes) as admin-editable values, not hardcoded, same pattern as `referral_bonus_usd`, so the promotion's economics can be adjusted without a code change.
+
+### Careers / Scout program (added 2026-09-08)
+```
+scout_applications
+  id, user_id (UNIQUE), status ('pending'|'approved'|'rejected'), applied_at,
+  reviewed_at, reviewed_by, rejection_reason
+
+scout_days
+  id, user_id, status ('in_progress'|'pending_review'|'approved'|'rejected'),
+  opened_at, closed_at, reviewed_at, reviewed_by, rejection_reason,
+  payout_amount_usd, wallet_transaction_id (FK -> wallet_transactions.id)
+
+scout_link_submissions
+  id, scout_day_id (FK -> scout_days.id), user_id, url, platform,
+  focus_tag ('recruit_scouts'|'recruit_users'|null, OPTIONAL, tracking-only,
+  never affects pay or workflow), submitted_at,
+  link_status ('pending'|'approved'|'rejected'), rejection_reason
+```
+**Real design decisions worth preserving:**
+- **Single, merged role, not two separate jobs.** The originally-requested "Job 1" (recruit scouts) and "Job 2" (recruit users) were merged after confirming pay never actually depended on which type of recruiting happened, a scout is paid the same $240/day regardless. `focus_tag` is a lightweight, optional, purely-informational field for admin's own reporting, it never gates payment or workflow.
+- **A "day" is submission-count-based, not time-based.** Opens on a scout's first link submission (`scout_days` row created, `status: 'in_progress'`), stays open across any number of real calendar days until 10+ links are submitted, then closes to `'pending_review'` for admin to approve/reject.
+- **Multiple days can be pending review simultaneously**, capped at `scout_max_pending_days_before_block` (5) via `platform_settings`, once a scout has 5 unreviewed days, the app blocks new submissions and tells them Veyro needs to review existing days first, before a 6th can open.
+- **Existing referral system reused as-is** for the recruit-scouts/recruit-users mechanics (a scout still shares their normal referral link/code, still earns the existing $10 referral bonus per successful signup), no separate recruitment-tracking system built.
+- **30 days means 30 APPROVED, PAID days specifically**, not 30 calendar days, a rejected day doesn't count toward the total and doesn't reduce it either, it just doesn't help.
+- **Payout is a standard fiat wallet_transactions credit**, labeled clearly as job-related, into the user's EXISTING general fiat balance, no separate scout wallet or balance. The 30-day lock is enforced entirely at withdrawal time: attempting to withdraw fiat before 30 approved days exist shows a popup explaining the remaining requirement, it does not block the deposit/credit itself, only withdrawal of those specific earnings.
