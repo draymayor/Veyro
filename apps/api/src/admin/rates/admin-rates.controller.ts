@@ -118,16 +118,19 @@ export class AdminRatesController {
   }
 
   @Patch('crypto/:assetId')
-  updateCryptoAssetMargin(
+  updateCryptoAsset(
     @Req() req: AuthenticatedRequest,
     @Param('assetId') assetId: string,
-    @Body('marginPercentage') marginPercentage: number,
+    @Body()
+    body: { marginPercentage?: number; depositAddress?: string },
   ) {
-    return this.adminRatesService.updateCryptoAssetMargin(
-      req.user.id,
-      assetId,
-      Number(marginPercentage),
-    );
+    return this.adminRatesService.updateCryptoAsset(req.user.id, assetId, {
+      marginPercentage:
+        body.marginPercentage !== undefined
+          ? Number(body.marginPercentage)
+          : undefined,
+      depositAddress: body.depositAddress,
+    });
   }
 
   @Get('settings')
@@ -169,6 +172,22 @@ export class AdminRatesController {
     return this.adminRatesService.updateCryptoWithdrawalSigningMode(
       req.user.id,
       signingMode,
+    );
+  }
+
+  @Get('deposit-address-mode')
+  getDepositAddressMode() {
+    return this.adminRatesService.getDepositAddressMode();
+  }
+
+  @Post('deposit-address-mode')
+  updateDepositAddressMode(
+    @Req() req: AuthenticatedRequest,
+    @Body('depositAddressMode') depositAddressMode: 'manual' | 'automatic',
+  ) {
+    return this.adminRatesService.updateDepositAddressMode(
+      req.user.id,
+      depositAddressMode,
     );
   }
 }

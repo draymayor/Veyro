@@ -54,6 +54,19 @@ export type CryptoWithdrawalSigningMode = 'manual' | 'automatic';
 // default" pattern as crypto_withdrawal_requires_approval.
 const CRYPTO_SIGNING_MODE_SETTING_KEY = 'crypto_withdrawal_signing_mode';
 
+export type DepositAddressMode = 'automatic' | 'manual';
+
+// docs/database-schema.md's platform_settings section: admin-toggleable
+// between 'automatic' (the real per-user address system, normal behavior)
+// and 'manual' (every user is handed the same admin-set fallback address
+// from crypto_assets.deposit_address for that asset/network, instead of a
+// real per-user one). This is a pre-launch-only tool - see
+// CryptoAddressesService.getOrCreateAddress's doc comment and the admin UI
+// warning next to DepositAddressModeToggle. A missing row reads as
+// 'automatic', the documented default, same "missing row = documented
+// default" pattern as CRYPTO_SIGNING_MODE_SETTING_KEY.
+const DEPOSIT_ADDRESS_MODE_SETTING_KEY = 'deposit_address_mode';
+
 // Rate Management (docs/admin-guide.md): gift card rate table
 // (Brand -> Country -> Type -> Denomination Range -> Rate), crypto margin
 // per asset (the live CoinGecko price minus this margin determines
@@ -394,17 +407,45 @@ export class AdminRatesService {
     };
   }
 
-  async updateCryptoAssetMargin(
+  // Partial update: margin_percentage (Crypto Margin's original purpose)
+  // and/or deposit_address, now also editable here rather than only ever
+  // being set once at createCryptoAsset time via direct migration seeding.
+  // deposit_address is more than display text once deposit_address_mode
+  // can be 'manual' (see getOrCreateAddress): in that mode this is the
+  // literal address every user is handed, so an admin typo here is a live
+  // fund-misdirection risk, not just a cosmetic one - still no default or
+  // placeholder, same posture as createCryptoAsset.
+  async updateCryptoAsset(
     adminId: string,
     assetId: string,
-    marginPercentage: number,
+    input: { marginPercentage?: number; depositAddress?: string },
   ): Promise<AdminCryptoAsset> {
-    const margin = this.validateMarginPercentage(marginPercentage);
+    const patch: Record<string, unknown> = {};
+    const logParts: string[] = [];
+
+    if (input.marginPercentage !== undefined) {
+      const margin = this.validateMarginPercentage(input.marginPercentage);
+      patch.margin_percentage = margin;
+      logParts.push(`margin set to ${margin}%`);
+    }
+
+    if (input.depositAddress !== undefined) {
+      const depositAddress = input.depositAddress?.trim();
+      if (!depositAddress) {
+        throw new BadRequestException('Deposit address cannot be empty.');
+      }
+      patch.deposit_address = depositAddress;
+      logParts.push(`deposit address set to ${depositAddress}`);
+    }
+
+    if (Object.keys(patch).length === 0) {
+      throw new BadRequestException('Nothing to update.');
+    }
 
     const client = this.supabaseService.getClient();
     const { data, error } = await client
       .from('crypto_assets')
-      .update({ margin_percentage: margin })
+      .update(patch)
       .eq('id', assetId)
       .select(
         'id, symbol, network, deposit_address, margin_percentage, is_active',
@@ -419,7 +460,7 @@ export class AdminRatesService {
       adminId,
       assetId,
       'rate_changed',
-      `Crypto margin set to ${margin}%`,
+      `Crypto asset: ${logParts.join(', ')}`,
     );
 
     let livePriceUsd: number | null = null;
@@ -549,6 +590,57 @@ export class AdminRatesService {
     );
 
     return { signingMode };
+  }
+
+  // --- Deposit address mode ---
+
+  async getDepositAddressMode(): Promise<{
+    depositAddressMode: DepositAddressMode;
+  }> {
+    const client = this.supabaseService.getClient();
+
+    const { data, error } = await client
+      .from('platform_settings')
+      .select('value')
+      .eq('key', DEPOSIT_ADDRESS_MODE_SETTING_KEY)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+
+    return {
+      depositAddressMode: data?.value === 'manual' ? 'manual' : 'automatic',
+    };
+  }
+
+  async updateDepositAddressMode(
+    adminId: string,
+    depositAddressMode: DepositAddressMode,
+  ): Promise<{ depositAddressMode: DepositAddressMode }> {
+    if (depositAddressMode !== 'manual' && depositAddressMode !== 'automatic') {
+      throw new BadRequestException(
+        'Deposit address mode must be "manual" or "automatic".',
+      );
+    }
+
+    const client = this.supabaseService.getClient();
+    const { error } = await client.from('platform_settings').upsert({
+      key: DEPOSIT_ADDRESS_MODE_SETTING_KEY,
+      value: depositAddressMode,
+      updated_at: new Date().toISOString(),
+      updated_by: adminId,
+    });
+
+    if (error) throw new Error(error.message);
+
+    await this.logAction(
+      client,
+      adminId,
+      null,
+      'rate_changed',
+      `platform_settings.${DEPOSIT_ADDRESS_MODE_SETTING_KEY} = ${depositAddressMode}`,
+    );
+
+    return { depositAddressMode };
   }
 
   private async logAction(

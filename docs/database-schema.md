@@ -443,6 +443,8 @@ wallet_transaction_id       uuid (FK -> wallet_transactions.id, nullable until p
 
 **Admin-tunable Earn values (follow-up, requested alongside the initial build):** `platform_settings` should hold the bonus tiers themselves (amounts and required trade volumes) as admin-editable values, not hardcoded, same pattern as `referral_bonus_usd`, so the promotion's economics can be adjusted without a code change.
 
+**`deposit_address_mode` (`platform_settings`, default `'automatic'`):** admin toggle between `'automatic'` (real, per-user generated deposit addresses, the normal, correct state) and `'manual'` (every user sees the SAME admin-set fallback address per asset/network, from `crypto_assets.deposit_address`, instead of their own real generated one). **Explicitly a pre-launch-only tool**: with zero real users, there's no fund-attribution risk from multiple people sharing one address. This risk becomes REAL the moment actual users exist, worth treating "switch back to automatic before real users deposit" as a hard requirement, not a suggestion, once launched. Admin can also edit the fallback addresses themselves (`crypto_assets.deposit_address`) directly, same admin panel.
+
 ### Careers / Scout program (added 2026-09-08)
 ```
 scout_applications

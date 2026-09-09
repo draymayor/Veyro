@@ -86,23 +86,34 @@ export function CryptoMarginSection({
 function AssetRow({ asset }: { asset: AdminCryptoAsset }) {
   const router = useRouter();
   const [margin, setMargin] = useState(String(asset.margin_percentage));
+  const [depositAddress, setDepositAddress] = useState(asset.deposit_address);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dirty = margin !== String(asset.margin_percentage);
+  const marginDirty = margin !== String(asset.margin_percentage);
+  const addressDirty = depositAddress !== asset.deposit_address;
+  const dirty = marginDirty || addressDirty;
 
   async function save() {
+    if (addressDirty && !depositAddress.trim()) {
+      setError("Deposit address cannot be empty.");
+      return;
+    }
     setError(null);
     setSaving(true);
     try {
+      const body: Record<string, unknown> = {};
+      if (marginDirty) body.marginPercentage = Number(margin);
+      if (addressDirty) body.depositAddress = depositAddress.trim();
+
       await authFetch(`/admin/rates/crypto/${asset.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ marginPercentage: Number(margin) }),
+        body: JSON.stringify(body),
       });
       router.refresh();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not save this margin.",
+        err instanceof Error ? err.message : "Could not save this asset.",
       );
     } finally {
       setSaving(false);
@@ -113,11 +124,12 @@ function AssetRow({ asset }: { asset: AdminCryptoAsset }) {
     <tr className="border-border/60 border-b last:border-0">
       <td className="text-ink px-3 py-2 font-medium">{asset.symbol}</td>
       <td className="text-ink/70 px-3 py-2">{asset.network}</td>
-      <td
-        className="text-ink/70 max-w-[180px] truncate px-3 py-2 font-mono text-xs"
-        title={asset.deposit_address}
-      >
-        {asset.deposit_address}
+      <td className="px-3 py-2">
+        <input
+          className="border-border bg-card text-ink focus-visible:border-ring h-9 w-40 min-w-0 rounded-lg border px-2 font-mono text-xs outline-none"
+          value={depositAddress}
+          onChange={(e) => setDepositAddress(e.target.value)}
+        />
       </td>
       <td className="text-ink/70 px-3 py-2 tabular-nums">
         {formatUsd(asset.live_price_usd)}
