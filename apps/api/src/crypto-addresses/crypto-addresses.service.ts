@@ -86,13 +86,30 @@ export class CryptoAddressesService {
 
     const { data: asset } = await client
       .from('crypto_assets')
-      .select('is_active, network_code')
+      .select('is_active, network_code, deposit_address')
       .eq('symbol', symbol)
       .eq('network', displayNetwork)
       .maybeSingle();
 
     if (!asset?.is_active) {
       throw new BadRequestException('That asset/network is not supported.');
+    }
+
+    // Pre-launch admin override (admin-rates.service.ts's
+    // DEPOSIT_ADDRESS_MODE_SETTING_KEY doc comment): when 'manual', every
+    // user gets the same admin-set crypto_assets.deposit_address instead of
+    // a real per-user one, and this never touches user_crypto_addresses -
+    // no row is read or written here, so flipping the setting back to
+    // 'automatic' leaves nothing to clean up; the very next call just
+    // resumes the real derivation flow below as if manual mode never
+    // happened. Checked before the existing-address lookup so it also
+    // overrides a user who already has a real address from before manual
+    // mode was turned on.
+    if (await this.isManualDepositAddressMode(client)) {
+      return {
+        address: asset.deposit_address as string,
+        destinationTag: null,
+      };
     }
 
     const networkCode = asset.network_code as string;
@@ -149,6 +166,16 @@ export class CryptoAddressesService {
           networkCode,
           chainConfig,
         );
+  }
+
+  private async isManualDepositAddressMode(client: Client): Promise<boolean> {
+    const { data } = await client
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'deposit_address_mode')
+      .maybeSingle();
+
+    return data?.value === 'manual';
   }
 
   // BTC/LTC/DOGE/TRON/EVM: derive from the chain's master xpub via
@@ -293,8 +320,9 @@ export class CryptoAddressesService {
     alchemyNetwork: string,
     networkCode: string,
   ): Promise<void> {
-    const networksOnThisWebhook =
-      NETWORKS_BY_ALCHEMY_NETWORK[alchemyNetwork] ?? [networkCode];
+    const networksOnThisWebhook = NETWORKS_BY_ALCHEMY_NETWORK[
+      alchemyNetwork
+    ] ?? [networkCode];
 
     const { data: covered } = await client
       .from('user_crypto_addresses')

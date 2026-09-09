@@ -76,6 +76,7 @@ export const PLATFORM_SETTING_LABELS: Record<string, string> = {
   earn_tier2_bonus_usd: "Earn bonus - Tier 2 amount (USD)",
   earn_tier2_required_volume_usd:
     "Earn bonus - Tier 2 required trade volume (USD)",
+  deposit_address_mode: "Deposit address mode",
 };
 
 // Fallback for any key not in the map above: turn snake_case into Title
@@ -103,6 +104,7 @@ export const SETTINGS_WITH_DEDICATED_UI: Record<string, string> = {
   crypto_withdrawal_requires_approval: "/admin/withdrawals",
   crypto_withdrawal_signing_mode:
     "/admin/rates (Crypto Withdrawal Signing Mode toggle above)",
+  deposit_address_mode: "/admin/rates (Deposit Address Mode toggle above)",
 };
 
 export type SettingValueKind = "boolean" | "number" | "text";

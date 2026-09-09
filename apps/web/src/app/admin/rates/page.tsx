@@ -14,9 +14,17 @@ import {
   CryptoSigningModeToggle,
   type CryptoWithdrawalSigningMode,
 } from "@/components/admin/rates/crypto-signing-mode-toggle";
+import {
+  DepositAddressModeToggle,
+  type DepositAddressMode,
+} from "@/components/admin/rates/deposit-address-mode-toggle";
 
 interface SigningModeSettings {
   signingMode: CryptoWithdrawalSigningMode;
+}
+
+interface DepositAddressModeSettings {
+  depositAddressMode: DepositAddressMode;
 }
 
 // Rate Management (docs/admin-guide.md): three sections stacked on one
@@ -32,6 +40,7 @@ export default async function AdminRatesPage() {
     cryptoAssets,
     settings,
     signingModeSettings,
+    depositAddressModeSettings,
     networkFees,
   ] = await Promise.all([
     adminFetch<AdminGiftCardBrand[]>("/admin/rates/gift-card-brands"),
@@ -39,6 +48,7 @@ export default async function AdminRatesPage() {
     adminFetch<AdminCryptoAsset[]>("/admin/rates/crypto"),
     adminFetch<AdminPlatformSetting[]>("/admin/rates/settings"),
     adminFetch<SigningModeSettings>("/admin/rates/crypto-signing-mode"),
+    adminFetch<DepositAddressModeSettings>("/admin/rates/deposit-address-mode"),
     adminFetch<AdminNetworkFeesResponse>("/admin/rates/network-fees"),
   ]);
 
@@ -82,6 +92,12 @@ export default async function AdminRatesPage() {
 
       <CryptoSigningModeToggle
         initialSigningMode={signingModeSettings?.signingMode ?? "manual"}
+      />
+
+      <DepositAddressModeToggle
+        initialMode={
+          depositAddressModeSettings?.depositAddressMode ?? "automatic"
+        }
       />
     </div>
   );
