@@ -16,7 +16,7 @@ interface TopBarProps {
 const MAIN_TAB_PATHS = new Set(MOBILE_NAV_ITEMS.map((item) => item.href));
 
 /**
- * Main tab pages (Home, Leaderboard, Assets) only, per
+ * Main tab pages (Home, Leaderboard, Assets, Earn) only, per
  * docs/design-principles.md's Navigation Chrome section. Every other route
  * is an inner/drill-in page and renders its own InnerPageHeader instead,
  * so this bar never doubles up with that simpler header. The search bar

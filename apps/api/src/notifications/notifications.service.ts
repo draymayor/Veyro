@@ -27,6 +27,10 @@ import {
   SupportTicketResolved,
   CryptoWithdrawalProcessing,
   ProviderHealthAlert,
+  EarnBonusClaimed,
+  EarnBonusUnlocked,
+  ScoutApplicationApproved,
+  ScoutDayApproved,
   type TradeAssetType,
   type SecurityResetType,
 } from './emails/templates';
@@ -454,5 +458,73 @@ export class NotificationsService {
         : `[Veyro] ${params.provider}/${params.networkCode} deposit detection recovered`,
       ProviderHealthAlert(params),
     );
+  }
+
+  // Sent the instant a user claims an Earn bonus (EarnService.claim).
+  async sendEarnBonusClaimedEmail(params: {
+    email: string;
+    name: string;
+    bonusAmount: string;
+    requiredVolume: string;
+    expiryDays: number;
+    referralLink: string;
+    referralBonusAmount: string;
+    earnUrl: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      `You've claimed ${params.bonusAmount}!`,
+      EarnBonusClaimed(props),
+    );
+  }
+
+  // Sent from EarnService.payOutUnlockedBonus once the claim's required
+  // trade volume is met and the wallet credit has landed.
+  async sendEarnBonusUnlockedEmail(params: {
+    email: string;
+    name: string;
+    bonusAmount: string;
+    walletUrl: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      'Bonus unlocked and credited',
+      EarnBonusUnlocked(props),
+    );
+  }
+
+  async sendScoutApplicationApprovedEmail(params: {
+    email: string;
+    name: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    const scoutUrl = `${this.webAppUrl()}/scout`;
+    await this.send(
+      email,
+      "You're approved as a Veyro Scout",
+      ScoutApplicationApproved({ ...props, scoutUrl }),
+    );
+  }
+
+  async sendScoutDayApprovedEmail(params: {
+    email: string;
+    name: string;
+    amount: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    const walletUrl = `${this.webAppUrl()}/assets`;
+    await this.send(
+      email,
+      `${params.amount} credited for your Scout day`,
+      ScoutDayApproved({ ...props, walletUrl }),
+    );
+  }
+
+  private webAppUrl(): string {
+    return (
+      this.configService.get<string>('WEB_APP_URL') ?? 'http://localhost:3000'
+    ).replace(/\/+$/, '');
   }
 }

@@ -9,6 +9,7 @@ import { SupabaseService } from '../../supabase/supabase.service';
 import { FxRateService } from '../../fx/fx.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { WalletService } from '../../wallet/wallet.service';
+import { EarnService } from '../../earn/earn.service';
 
 export interface AdminTradeListItem {
   id: string;
@@ -83,6 +84,7 @@ export class AdminTradesService {
     private readonly notificationsService: NotificationsService,
     private readonly configService: ConfigService,
     private readonly walletService: WalletService,
+    private readonly earnService: EarnService,
   ) {}
 
   // trades has two foreign keys into users (user_id and reviewed_by), so an
@@ -254,6 +256,11 @@ export class AdminTradesService {
       approvedTrade.user_id,
       tradeId,
     );
+    // Real trade completion (docs/database-schema.md's earn_bonus_claims
+    // section): approval is the single event that makes a gift card trade
+    // real, so it's also the trigger for Earn bonus volume/unlock. No-op
+    // for a user with no 'claimed' row.
+    await this.earnService.checkAndUnlockBonus(client, approvedTrade.user_id);
 
     return { id: approvedTrade.id, status: 'approved' };
   }

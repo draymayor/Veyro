@@ -12,7 +12,10 @@ const COLUMNS = [
   },
   {
     heading: "Company",
-    links: [{ label: "Contact Us", href: "/contact" }],
+    links: [
+      { label: "Careers", href: "/careers" },
+      { label: "Contact Us", href: "/contact" },
+    ],
   },
   {
     heading: "Legal",

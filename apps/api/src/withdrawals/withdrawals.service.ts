@@ -4,6 +4,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { WalletService } from '../wallet/wallet.service';
 import { CryptoWalletService } from '../crypto-wallet/crypto-wallet.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ScoutService } from '../scout/scout.service';
 
 export type WithdrawalMethod = 'bank_transfer' | 'paypal' | 'crypto';
 
@@ -51,6 +52,7 @@ export class WithdrawalsService {
     private readonly walletService: WalletService,
     private readonly cryptoWalletService: CryptoWalletService,
     private readonly notificationsService: NotificationsService,
+    private readonly scoutService: ScoutService,
   ) {}
 
   async create(
@@ -125,7 +127,31 @@ export class WithdrawalsService {
         .eq('currency', currency)
         .maybeSingle();
 
-      if (Number(wallet?.balance ?? 0) < amount) {
+      const balance = Number(wallet?.balance ?? 0);
+
+      // Scout withdrawal lock (docs/database-schema.md's Careers / Scout
+      // program section): a "floor" of the balance equal to everything
+      // ever paid out via approved scout_days must stay in the wallet
+      // until the user has 30 approved days, since scout earnings and
+      // regular money are otherwise indistinguishable once both land in
+      // the same fiat wallet. Only fiat (bank/paypal) is affected - crypto
+      // withdrawals debit the separate crypto_wallets ledger entirely,
+      // never touched by Scout payouts.
+      const scoutLock = await this.scoutService.getWithdrawalLock(
+        client,
+        user.id,
+      );
+      const available = scoutLock
+        ? Math.max(balance - scoutLock.lockedAmount, 0)
+        : balance;
+
+      if (scoutLock && amount > available) {
+        throw new BadRequestException(
+          `Your scout earnings become withdrawable once you've completed ${scoutLock.requiredDays} paid days (currently ${scoutLock.approvedDays}/${scoutLock.requiredDays}). You can withdraw up to ${available.toFixed(2)} ${currency} right now.`,
+        );
+      }
+
+      if (balance < amount) {
         throw new BadRequestException(
           'Insufficient wallet balance for this withdrawal.',
         );

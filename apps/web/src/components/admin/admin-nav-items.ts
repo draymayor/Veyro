@@ -8,6 +8,9 @@ import {
   ArrowUpCircleIcon,
   ChatBubbleLeftRightIcon,
   UsersIcon,
+  GiftIcon,
+  IdentificationIcon,
+  LinkIcon,
 } from "@heroicons/react/24/solid";
 
 export type AdminNavIcon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -46,4 +49,19 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: ChatBubbleLeftRightIcon,
   },
   { href: "/admin/users", label: "User Management", icon: UsersIcon },
+  {
+    href: "/admin/earn-claims",
+    label: "Earn Bonus Claims",
+    icon: GiftIcon,
+  },
+  {
+    href: "/admin/scout-applications",
+    label: "Scout Applications",
+    icon: IdentificationIcon,
+  },
+  {
+    href: "/admin/scout-days",
+    label: "Scout Day Review",
+    icon: LinkIcon,
+  },
 ];

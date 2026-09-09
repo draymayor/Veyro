@@ -43,6 +43,9 @@ function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const referredByCode = searchParams.get("ref");
+  // See login/page.tsx - carried through to verify-email so the whole
+  // chain lands back on the original target (e.g. /scout/apply).
+  const next = searchParams.get("next");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -156,7 +159,11 @@ function SignupForm() {
       return;
     }
 
-    router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+    router.push(
+      `/verify-email?email=${encodeURIComponent(email)}${
+        next ? `&next=${encodeURIComponent(next)}` : ""
+      }`,
+    );
   }
 
   return (
@@ -364,7 +371,7 @@ function SignupForm() {
           >
             Already have an account?{" "}
             <Link
-              href="/login"
+              href={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}
               className="text-ink font-semibold hover:underline"
             >
               Log in

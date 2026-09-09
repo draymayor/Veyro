@@ -5,9 +5,16 @@ import { AuthModule } from '../auth/auth.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { CryptoWalletModule } from '../crypto-wallet/crypto-wallet.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ScoutModule } from '../scout/scout.module';
 
 @Module({
-  imports: [AuthModule, WalletModule, CryptoWalletModule, NotificationsModule],
+  imports: [
+    AuthModule,
+    WalletModule,
+    CryptoWalletModule,
+    NotificationsModule,
+    ScoutModule,
+  ],
   controllers: [WithdrawalsController],
   providers: [WithdrawalsService],
 })

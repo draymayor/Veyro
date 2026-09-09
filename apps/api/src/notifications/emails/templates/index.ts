@@ -67,3 +67,19 @@ export {
   ProviderHealthAlert,
   type ProviderHealthAlertProps,
 } from './provider-health-alert';
+export {
+  EarnBonusClaimed,
+  type EarnBonusClaimedProps,
+} from './earn-bonus-claimed';
+export {
+  EarnBonusUnlocked,
+  type EarnBonusUnlockedProps,
+} from './earn-bonus-unlocked';
+export {
+  ScoutApplicationApproved,
+  type ScoutApplicationApprovedProps,
+} from './scout-application-approved';
+export {
+  ScoutDayApproved,
+  type ScoutDayApprovedProps,
+} from './scout-day-approved';

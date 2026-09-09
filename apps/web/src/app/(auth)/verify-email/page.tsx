@@ -42,6 +42,11 @@ function VerifyEmailForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
+  // See login/signup pages - the final destination once verification
+  // completes, when this chain started from somewhere other than the
+  // normal /welcome onboarding path (e.g. /scout/apply).
+  const nextParam = searchParams.get("next");
+  const next = nextParam && nextParam.startsWith("/") ? nextParam : null;
 
   const [digits, setDigits] = useState<string[]>(emptyOtp(CODE_LENGTH));
   const [submitting, setSubmitting] = useState(false);
@@ -107,7 +112,7 @@ function VerifyEmailForm() {
       }
 
       if (me?.emailVerified) {
-        router.replace(POST_AUTH_ENTRY_PATH);
+        router.replace(next ?? POST_AUTH_ENTRY_PATH);
         return;
       }
 
@@ -156,7 +161,7 @@ function VerifyEmailForm() {
       return;
     }
 
-    router.push(POST_AUTH_ENTRY_PATH);
+    router.push(next ?? POST_AUTH_ENTRY_PATH);
   }
 
   async function handleResend() {
