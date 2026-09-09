@@ -7,12 +7,15 @@ import { SupabaseService } from '../../supabase/supabase.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 
 export interface AdminSupportThreadListItem {
+  id: string;
   user_id: string;
   display_name: string | null;
   email: string | null;
+  profile_image_url: string | null;
   category: string;
   subject: string;
   status: string;
+  has_unread: boolean;
   last_message_body: string | null;
   last_message_at: string | null;
   created_at: string;
@@ -21,6 +24,7 @@ export interface AdminSupportThreadListItem {
 
 export interface AdminSupportMessage {
   id: string;
+  thread_id: string;
   user_id: string;
   sender: 'user' | 'admin';
   body: string;
@@ -29,9 +33,11 @@ export interface AdminSupportMessage {
 }
 
 export interface AdminSupportThreadDetail {
+  id: string;
   user_id: string;
   display_name: string | null;
   email: string | null;
+  profile_image_url: string | null;
   category: string;
   subject: string;
   status: string;
@@ -43,6 +49,7 @@ export interface AdminSupportThreadDetail {
 interface ListFilters {
   status?: string;
   category?: string;
+  unread?: boolean;
 }
 
 const VALID_STATUSES = ['open', 'resolved'];
@@ -75,7 +82,7 @@ export class AdminSupportService {
 
     let query = client
       .from('support_threads')
-      .select('user_id, category, subject, status, created_at, updated_at')
+      .select('id, user_id, category, subject, status, created_at, updated_at')
       .order('updated_at', { ascending: false });
 
     if (filters.status) query = query.eq('status', filters.status);
@@ -84,86 +91,125 @@ export class AdminSupportService {
     const { data: threadRows, error } = await query;
     if (error) throw new Error(error.message);
 
-    const threads = (threadRows ?? []) as Record<string, unknown>[];
+    let threads = (threadRows ?? []) as Record<string, unknown>[];
     if (threads.length === 0) return [];
 
-    const userIds = threads.map((row) => row.user_id as string);
+    const ticketIds = threads.map((row) => row.id as string);
+    const userIds = [...new Set(threads.map((row) => row.user_id as string))];
 
-    const [{ data: userRows }, emailByUserId, lastMessageByUserId] =
+    const [{ data: userRows }, emailByUserId, messageInfoByTicketId] =
       await Promise.all([
-        client.from('users').select('id, display_name').in('id', userIds),
+        client
+          .from('users')
+          .select('id, display_name, profile_image_url')
+          .in('id', userIds),
         this.supabaseService.getUserEmailsByIds(userIds),
-        this.lastMessagesByUserId(client, userIds),
+        this.messageInfoByTicketId(client, ticketIds),
       ]);
 
-    const displayNameByUserId = new Map(
-      ((userRows ?? []) as { id: string; display_name: string | null }[]).map(
-        (row) => [row.id, row.display_name],
-      ),
+    const userRowById = new Map(
+      (
+        (userRows ?? []) as {
+          id: string;
+          display_name: string | null;
+          profile_image_url: string | null;
+        }[]
+      ).map((row) => [row.id, row]),
     );
 
+    if (filters.unread) {
+      threads = threads.filter(
+        (row) => messageInfoByTicketId.get(row.id as string)?.hasUnread,
+      );
+    }
+
     return threads.map((row) => {
+      const ticketId = row.id as string;
       const userId = row.user_id as string;
-      const lastMessage = lastMessageByUserId.get(userId);
+      const messageInfo = messageInfoByTicketId.get(ticketId);
+      const userRow = userRowById.get(userId);
       return {
+        id: ticketId,
         user_id: userId,
-        display_name: displayNameByUserId.get(userId) ?? null,
+        display_name: userRow?.display_name ?? null,
         email: emailByUserId.get(userId) ?? null,
+        profile_image_url: userRow?.profile_image_url ?? null,
         category: row.category as string,
         subject: row.subject as string,
         status: row.status as string,
-        last_message_body: lastMessage?.body ?? null,
-        last_message_at: lastMessage?.created_at ?? null,
+        has_unread: messageInfo?.hasUnread ?? false,
+        last_message_body: messageInfo?.lastBody ?? null,
+        last_message_at: messageInfo?.lastCreatedAt ?? null,
         created_at: row.created_at as string,
         updated_at: row.updated_at as string,
       };
     });
   }
 
-  // One query for the latest message per thread rather than N queries,
-  // support_messages has an index on (user_id, created_at) so this stays
-  // cheap even as the message table grows.
-  private async lastMessagesByUserId(
+  // One query for the latest message and unread state per ticket rather
+  // than N queries, support_messages has an index on (thread_id,
+  // created_at) so this stays cheap even as the message table grows.
+  private async messageInfoByTicketId(
     client: ReturnType<SupabaseService['getClient']>,
-    userIds: string[],
-  ): Promise<Map<string, { body: string; created_at: string }>> {
+    ticketIds: string[],
+  ): Promise<
+    Map<
+      string,
+      {
+        lastBody: string;
+        lastCreatedAt: string;
+        hasUnread: boolean;
+      }
+    >
+  > {
     const { data, error } = await client
       .from('support_messages')
-      .select('user_id, body, created_at')
-      .in('user_id', userIds)
+      .select('thread_id, sender, body, read_at, created_at')
+      .in('thread_id', ticketIds)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
 
-    const result = new Map<string, { body: string; created_at: string }>();
+    const result = new Map<
+      string,
+      { lastBody: string; lastCreatedAt: string; hasUnread: boolean }
+    >();
     for (const row of (data ?? []) as Record<string, unknown>[]) {
-      const userId = row.user_id as string;
-      if (!result.has(userId)) {
-        result.set(userId, {
-          body: row.body as string,
-          created_at: row.created_at as string,
+      const ticketId = row.thread_id as string;
+      const existing = result.get(ticketId);
+      const isUnreadUserMessage = row.sender === 'user' && row.read_at === null;
+
+      if (!existing) {
+        result.set(ticketId, {
+          lastBody: row.body as string,
+          lastCreatedAt: row.created_at as string,
+          hasUnread: isUnreadUserMessage,
         });
+      } else if (isUnreadUserMessage) {
+        existing.hasUnread = true;
       }
     }
     return result;
   }
 
-  async detail(userId: string): Promise<AdminSupportThreadDetail> {
+  async detail(ticketId: string): Promise<AdminSupportThreadDetail> {
     const client = this.supabaseService.getClient();
 
     const { data: threadRow, error: threadError } = await client
       .from('support_threads')
-      .select('user_id, category, subject, status, created_at, updated_at')
-      .eq('user_id', userId)
+      .select('id, user_id, category, subject, status, created_at, updated_at')
+      .eq('id', ticketId)
       .maybeSingle();
 
     if (threadError) throw new Error(threadError.message);
     if (!threadRow) throw new NotFoundException('Support thread not found.');
 
+    const userId = threadRow.user_id as string;
+
     const { data: messageRows, error: messagesError } = await client
       .from('support_messages')
-      .select('id, user_id, sender, body, read_at, created_at')
-      .eq('user_id', userId)
+      .select('id, thread_id, user_id, sender, body, read_at, created_at')
+      .eq('thread_id', ticketId)
       .order('created_at', { ascending: true });
 
     if (messagesError) throw new Error(messagesError.message);
@@ -187,16 +233,18 @@ export class AdminSupportService {
     const [{ data: userRow }, emailByUserId] = await Promise.all([
       client
         .from('users')
-        .select('display_name')
+        .select('display_name, profile_image_url')
         .eq('id', userId)
         .maybeSingle(),
       this.supabaseService.getUserEmailsByIds([userId]),
     ]);
 
     return {
+      id: ticketId,
       user_id: userId,
       display_name: (userRow?.display_name as string | null) ?? null,
       email: emailByUserId.get(userId) ?? null,
+      profile_image_url: (userRow?.profile_image_url as string | null) ?? null,
       category: threadRow.category as string,
       subject: threadRow.subject as string,
       status: threadRow.status as string,
@@ -208,7 +256,7 @@ export class AdminSupportService {
 
   async sendMessage(
     adminId: string,
-    userId: string,
+    ticketId: string,
     body: string,
   ): Promise<AdminSupportMessage> {
     const trimmedBody = body?.trim();
@@ -221,15 +269,22 @@ export class AdminSupportService {
     const { data: threadRow } = await client
       .from('support_threads')
       .select('user_id')
-      .eq('user_id', userId)
+      .eq('id', ticketId)
       .maybeSingle();
 
     if (!threadRow) throw new NotFoundException('Support thread not found.');
 
+    const userId = threadRow.user_id as string;
+
     const { data, error } = await client
       .from('support_messages')
-      .insert({ user_id: userId, sender: 'admin', body: trimmedBody })
-      .select('id, user_id, sender, body, read_at, created_at')
+      .insert({
+        thread_id: ticketId,
+        user_id: userId,
+        sender: 'admin',
+        body: trimmedBody,
+      })
+      .select('id, thread_id, user_id, sender, body, read_at, created_at')
       .single();
 
     if (error || !data) {
@@ -243,19 +298,21 @@ export class AdminSupportService {
 
   async resolve(
     adminId: string,
-    userId: string,
+    ticketId: string,
   ): Promise<{ user_id: string; status: string }> {
     const client = this.supabaseService.getClient();
 
     const { data, error } = await client
       .from('support_threads')
       .update({ status: 'resolved', updated_at: new Date().toISOString() })
-      .eq('user_id', userId)
+      .eq('id', ticketId)
       .select('user_id, status, category')
       .maybeSingle();
 
     if (error) throw new Error(error.message);
     if (!data) throw new NotFoundException('Support thread not found.');
+
+    const userId = data.user_id as string;
 
     await this.logAction(client, adminId, userId, 'support_thread_resolved');
 

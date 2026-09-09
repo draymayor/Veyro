@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
@@ -14,6 +15,8 @@ interface InnerPageHeaderProps {
    * of how the user arrived (e.g. a deep link with no history to fall back on).
    */
   backHref?: string;
+  /** Right-aligned slot, e.g. a "New" action. Empty by default. */
+  action?: ReactNode;
 }
 
 /**
@@ -29,7 +32,11 @@ interface InnerPageHeaderProps {
  * row regardless of the back control's width, rather than just centered
  * in the remaining space next to it.
  */
-export function InnerPageHeader({ title, backHref }: InnerPageHeaderProps) {
+export function InnerPageHeader({
+  title,
+  backHref,
+  action,
+}: InnerPageHeaderProps) {
   return (
     <header className="bg-background sticky top-0 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4 sm:px-6">
       <div className="justify-self-start">
@@ -38,7 +45,12 @@ export function InnerPageHeader({ title, backHref }: InnerPageHeaderProps) {
       <h1 className="font-heading text-ink truncate text-center text-base font-semibold sm:text-lg">
         {title}
       </h1>
-      <div aria-hidden="true" />
+      <div
+        className="justify-self-end"
+        aria-hidden={action ? undefined : "true"}
+      >
+        {action}
+      </div>
     </header>
   );
 }

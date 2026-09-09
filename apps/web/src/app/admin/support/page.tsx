@@ -4,18 +4,24 @@ import { SupportFilters } from "@/components/admin/support/support-filters";
 import { SupportThreadRow } from "@/components/admin/support/support-thread-row";
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; category?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    category?: string;
+    unread?: string;
+  }>;
 }
 
-// Support Inbox (docs/admin-guide.md): categorized ticket list, filterable
-// by status and category, backed by real GET /admin/support/threads. Same
-// adminFetch null-vs-empty-array distinction as every other admin list.
+// Support Inbox (docs/admin-guide.md): every ticket across every user,
+// filterable by status, category, and unread, backed by real GET
+// /admin/support/threads. Same adminFetch null-vs-empty-array distinction
+// as every other admin list.
 export default async function AdminSupportPage({ searchParams }: PageProps) {
-  const { status, category } = await searchParams;
+  const { status, category, unread } = await searchParams;
 
   const query = new URLSearchParams();
   if (status) query.set("status", status);
   if (category) query.set("category", category);
+  if (unread) query.set("unread", unread);
   const queryString = query.toString();
 
   const threads = await adminFetch<AdminSupportThreadListItem[]>(
@@ -42,7 +48,7 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
       ) : (
         <div className="flex flex-col">
           {threads.map((thread) => (
-            <SupportThreadRow key={thread.user_id} thread={thread} />
+            <SupportThreadRow key={thread.id} thread={thread} />
           ))}
         </div>
       )}

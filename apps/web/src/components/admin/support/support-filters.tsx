@@ -57,6 +57,24 @@ export function SupportFilters() {
           </option>
         ))}
       </select>
+
+      <button
+        type="button"
+        aria-pressed={searchParams.get("unread") === "true"}
+        onClick={() =>
+          setParam(
+            "unread",
+            searchParams.get("unread") === "true" ? "" : "true",
+          )
+        }
+        className={
+          searchParams.get("unread") === "true"
+            ? "bg-primary text-primary-foreground h-9 rounded-lg px-3 text-sm font-medium"
+            : `${SELECT_CLASS} font-medium`
+        }
+      >
+        Unread
+      </button>
     </div>
   );
 }

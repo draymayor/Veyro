@@ -48,3 +48,44 @@ export function formatRelativeTime(
     year: then.getFullYear() === now.getFullYear() ? undefined : "numeric",
   });
 }
+
+/**
+ * Day-level label for a chat date divider ("Today", "Yesterday", a weekday
+ * name, or a full date) - the grouping half of the standard chat convention
+ * where formatMessageTime below handles the per-bubble clock time.
+ */
+export function formatDateDivider(iso: string, now: Date = new Date()): string {
+  const then = new Date(iso);
+
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  const startOfThen = new Date(
+    then.getFullYear(),
+    then.getMonth(),
+    then.getDate(),
+  );
+  const dayDiff = Math.round(
+    (startOfToday.getTime() - startOfThen.getTime()) / DAY,
+  );
+
+  if (dayDiff === 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  if (dayDiff < 7) return then.toLocaleDateString("en-US", { weekday: "long" });
+
+  return then.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: then.getFullYear() === now.getFullYear() ? undefined : "numeric",
+  });
+}
+
+/** Clock time for a single bubble, e.g. "3:45 PM" - the date lives in the divider above it. */
+export function formatMessageTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

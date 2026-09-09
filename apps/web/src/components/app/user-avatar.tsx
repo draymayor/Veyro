@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import type { AppUser } from "./app-user";
 
 interface UserAvatarProps {
-  user: AppUser;
+  user: Pick<AppUser, "id" | "profileImageUrl">;
   size?: number;
   className?: string;
 }
