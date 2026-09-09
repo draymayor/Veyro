@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { fetchWithTimeout } from '../../common/fetch-with-timeout';
-import { CryptoPriceService } from '../../crypto-price/crypto-price.service';
+import { fetchWithTimeout } from '../common/fetch-with-timeout';
+import { CryptoPriceService } from '../crypto-price/crypto-price.service';
 
 const TATUM_BASE_URL = 'https://api.tatum.io/v3';
 const REQUEST_TIMEOUT_MS = 8_000;
@@ -167,6 +167,71 @@ export class NetworkFeesService {
       asOf: new Date().toISOString(),
       fees: [bitcoin, litecoin, dogecoin, trc20, erc20, ...unavailable],
     };
+  }
+
+  /**
+   * Single-chain version of getNetworkFees() for the crypto withdrawal
+   * amount screen - same live lookups and formulas per chain, just scoped
+   * to the one network the user selected instead of fetching all of them
+   * on every page load. `network` must be a CHAIN_CONFIGS key (e.g.
+   * 'Bitcoin', 'ERC20', 'TRC20'), matching frontend CryptoNetwork.label.
+   */
+  async getNetworkFee(network: string): Promise<NetworkFeeRow> {
+    const prices = await this.cryptoPriceService.getRates();
+
+    switch (network) {
+      case 'Bitcoin':
+        return this.getUtxoFeeRow(
+          'Bitcoin',
+          'BTC',
+          'p2wpkh',
+          prices.BTC?.priceUsd,
+        );
+      case 'Litecoin':
+        return this.getUtxoFeeRow(
+          'Litecoin',
+          'LTC',
+          'p2wpkh',
+          prices.LTC?.priceUsd,
+        );
+      case 'Dogecoin':
+        return this.getUtxoFeeRow(
+          'Dogecoin',
+          'DOGE',
+          'p2pkh',
+          prices.DOGE?.priceUsd,
+        );
+      case 'ERC20':
+        return this.getEvmFeeRow(prices.ETH?.priceUsd);
+      case 'TRC20':
+        return {
+          network: 'TRC20',
+          nativeSymbol: 'TRX',
+          availability: 'fixed',
+          transferFeeNative: TRX_FEE_BUFFER,
+          transferFeeUsd: prices.TRX?.priceUsd
+            ? TRX_FEE_BUFFER * prices.TRX.priceUsd
+            : undefined,
+          source:
+            'Fixed bandwidth/energy buffer (apps/sweeper & apps/consolidator tron.ts) - no live TRON fee call exists yet.',
+          reason:
+            'TRON has no live fee-estimation call in this codebase today. Tracked as separate follow-up work to add one (Tatum account-resource/energy-price endpoints) and wire it into actual signing, not just this display.',
+        };
+      default: {
+        const unavailableNetwork = EVM_UNAVAILABLE_NETWORKS.find(
+          (n) => n.network === network,
+        );
+        return {
+          network,
+          nativeSymbol: unavailableNetwork?.nativeSymbol ?? network,
+          availability: 'unavailable',
+          source: 'Tatum GET /v3/blockchain/fee/{chain}',
+          reason: unavailableNetwork
+            ? EVM_UNAVAILABLE_REASON
+            : `Unrecognized network "${network}".`,
+        };
+      }
+    }
   }
 
   // Mirrors apps/sweeper/src/chains/utxo.ts's real-sweep vbyte formula

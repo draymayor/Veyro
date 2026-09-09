@@ -19,11 +19,22 @@
 # already exist in Secret Manager with GCP_RUNTIME_SERVICE_ACCOUNT
 # granted secretmanager.secretAccessor on it:
 #   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY,
-#   COINGECKO_API_KEY, TATUM_API_KEY, TATUM_BTC_XPUB, TATUM_LTC_XPUB,
+#   COINGECKO_API_KEY, COINPAPRIKA_API_KEY, COINMARKETCAP_API_KEY,
+#   TATUM_API_KEY, TATUM_BTC_XPUB, TATUM_LTC_XPUB,
 #   TATUM_DOGE_XPUB, TATUM_EVM_XPUB, TATUM_TRON_XPUB, FCA_API_KEY,
 #   CURRENCYFREAKS_API_KEY, TATUM_WEBHOOK_URL, TATUM_WEBHOOK_HMAC_SECRET,
 #   ALCHEMY_API_KEY, ALCHEMY_WEBHOOK_IDS, ALCHEMY_WEBHOOK_SIGNING_KEYS,
 #   BLOCK_WATCHER_SHARED_SECRET
+#
+# COINPAPRIKA_API_KEY/COINMARKETCAP_API_KEY back CryptoPriceService's
+# primary/fallback provider chain (CoinGecko -> CoinPaprika ->
+# CoinMarketCap - see crypto-price.service.ts). Read lazily via
+# ConfigService.get(), not getOrThrow(), so a missing value never fails
+# app boot the way the eager ALCHEMY_* checks below do - these are
+# fallbacks only reached when CoinGecko (and then CoinPaprika) has already
+# failed. Only apps/api's runtime service account needs
+# secretmanager.secretAccessor on these two; no other service
+# (apps/sweeper, apps/consolidator) reads CryptoPriceService's config.
 #
 # BLOCK_WATCHER_SHARED_SECRET backs /webhooks/block-watcher (Strategy 3's
 # self-hosted block-watcher, apps/block-watcher/BlockWatcherWebhookGuard) -
@@ -156,6 +167,8 @@ jobs:
             SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest
             RESEND_API_KEY=RESEND_API_KEY:latest
             COINGECKO_API_KEY=COINGECKO_API_KEY:latest
+            COINPAPRIKA_API_KEY=COINPAPRIKA_API_KEY:latest
+            COINMARKETCAP_API_KEY=COINMARKETCAP_API_KEY:latest
             TATUM_API_KEY=TATUM_API_KEY:latest
             TATUM_BTC_XPUB=TATUM_BTC_XPUB:latest
             TATUM_LTC_XPUB=TATUM_LTC_XPUB:latest
