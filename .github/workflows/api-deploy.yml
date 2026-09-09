@@ -171,6 +171,17 @@ jobs:
           # SSO-protected anyway, so they don't need to be listed).
           env_vars: |
             CORS_ORIGIN=https://veyro.best,https://veyro-draymayor.vercel.app,https://veyro-git-main-draymayor.vercel.app
+          # overwrite (not the action's default "merge"): merge only ever
+          # adds/updates secret refs on the live service, it never removes
+          # one that's no longer listed here - that's exactly what stranded
+          # a stale COINPAPRIKA_API_KEY secretKeyRef on the service after
+          # PR #21's deploy attempt merged it in, blocking every deploy
+          # after it was dropped from this file until it was manually
+          # stripped via `gcloud run services update --remove-secrets`.
+          # Overwrite makes this list the sole source of truth: a secret
+          # removed here is removed from the live service on the next
+          # deploy, no manual gcloud cleanup step required.
+          secrets_update_strategy: "overwrite"
           secrets: |
             SUPABASE_URL=SUPABASE_URL:latest
             SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest
