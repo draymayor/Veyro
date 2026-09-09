@@ -89,7 +89,11 @@ export function ScoutLinkForm({ disabled }: { disabled: boolean }) {
 
       {error ? <p className="text-error text-sm">{error}</p> : null}
 
-      <Button type="submit" disabled={disabled || submitting} className="w-full">
+      <Button
+        type="submit"
+        disabled={disabled || submitting}
+        className="w-full"
+      >
         {submitting ? "Submitting..." : "Submit Link"}
       </Button>
     </form>

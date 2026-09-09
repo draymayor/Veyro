@@ -11,9 +11,7 @@ interface PageProps {
 // (docs/database-schema.md's earn_bonus_claims section). Read-only: every
 // state change (claim/unlock/pay/expire) happens server-side via
 // EarnService, never from an admin action here.
-export default async function AdminEarnClaimsPage({
-  searchParams,
-}: PageProps) {
+export default async function AdminEarnClaimsPage({ searchParams }: PageProps) {
   const { status } = await searchParams;
 
   const query = new URLSearchParams();

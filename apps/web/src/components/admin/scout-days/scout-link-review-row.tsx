@@ -45,10 +45,9 @@ export function ScoutLinkReviewRow({
     setError(null);
     setApproving(true);
     try {
-      await authFetch(
-        `/admin/scout-days/${dayId}/links/${link.id}/approve`,
-        { method: "POST" },
-      );
+      await authFetch(`/admin/scout-days/${dayId}/links/${link.id}/approve`, {
+        method: "POST",
+      });
       router.refresh();
     } catch (err) {
       setError(

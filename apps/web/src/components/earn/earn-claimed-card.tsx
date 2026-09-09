@@ -82,8 +82,8 @@ export function EarnClaimedCard({
         {claim.status === "claimed" ? (
           <>
             <p className="text-primary-foreground/85 text-sm">
-              Sell ${requiredVolume} or more in gift cards or crypto to
-              unlock it
+              Sell ${requiredVolume} or more in gift cards or crypto to unlock
+              it
             </p>
             <div className="border-primary-foreground/15 bg-primary-foreground/10 w-full rounded-xl border p-4">
               <div className="flex items-center justify-between text-xs">

@@ -1,8 +1,5 @@
 export type AdminScoutDayStatus =
-  | "in_progress"
-  | "pending_review"
-  | "approved"
-  | "rejected";
+  "in_progress" | "pending_review" | "approved" | "rejected";
 
 export interface AdminScoutDayListItem {
   id: string;

@@ -71,7 +71,11 @@ export default async function AdminScoutApplicationDetailPage({
         ) : (
           <div className="flex flex-col gap-1.5">
             {application.platforms.map((p) => (
-              <Row key={p.platform} label={scoutPlatformLabel(p.platform)} value={p.handle} />
+              <Row
+                key={p.platform}
+                label={scoutPlatformLabel(p.platform)}
+                value={p.handle}
+              />
             ))}
             {application.other_platform ? (
               <Row

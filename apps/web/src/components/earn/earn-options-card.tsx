@@ -37,7 +37,9 @@ export function EarnOptionsCard({
       router.refresh();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Something went wrong. Please try again.",
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.",
       );
       setPendingAmount(null);
     }

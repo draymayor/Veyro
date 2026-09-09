@@ -17,11 +17,7 @@ export function CareersApplyButton({
   size?: "default" | "lg";
 }) {
   return (
-    <Button
-      asChild
-      size={size}
-      className="h-12 rounded-full px-7 text-base"
-    >
+    <Button asChild size={size} className="h-12 rounded-full px-7 text-base">
       <Link href={applyHref}>Apply to be a Scout</Link>
     </Button>
   );

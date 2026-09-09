@@ -80,7 +80,11 @@ export function ScoutDayActions({
         </Button>
       </div>
 
-      <RejectDayDialog dayId={dayId} open={rejectOpen} onOpenChange={setRejectOpen} />
+      <RejectDayDialog
+        dayId={dayId}
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+      />
     </div>
   );
 }

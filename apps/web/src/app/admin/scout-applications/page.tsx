@@ -42,7 +42,10 @@ export default async function AdminScoutApplicationsPage({
       ) : (
         <div className="flex flex-col">
           {applications.map((application) => (
-            <ScoutApplicationRow key={application.id} application={application} />
+            <ScoutApplicationRow
+              key={application.id}
+              application={application}
+            />
           ))}
         </div>
       )}

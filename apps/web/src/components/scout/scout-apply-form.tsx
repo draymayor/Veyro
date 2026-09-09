@@ -21,11 +21,12 @@ interface PlatformFieldState {
 export function ScoutApplyForm() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
-  const [platforms, setPlatforms] = useState<Record<string, PlatformFieldState>>(
-    () =>
-      Object.fromEntries(
-        SCOUT_PLATFORMS.map((p) => [p.key, { checked: false, handle: "" }]),
-      ),
+  const [platforms, setPlatforms] = useState<
+    Record<string, PlatformFieldState>
+  >(() =>
+    Object.fromEntries(
+      SCOUT_PLATFORMS.map((p) => [p.key, { checked: false, handle: "" }]),
+    ),
   );
   const [otherChecked, setOtherChecked] = useState(false);
   const [otherPlatform, setOtherPlatform] = useState("");
@@ -92,7 +93,8 @@ export function ScoutApplyForm() {
           otherPlatform: otherChecked ? otherPlatform.trim() : undefined,
           otherHandle: otherChecked ? otherHandle.trim() : undefined,
           motivation: motivation.trim(),
-          canCommit: canCommit === "yes" ? true : canCommit === "no" ? false : null,
+          canCommit:
+            canCommit === "yes" ? true : canCommit === "no" ? false : null,
           commitmentNote: commitmentNote.trim() || undefined,
         }),
       });
@@ -107,12 +109,10 @@ export function ScoutApplyForm() {
   if (submitted) {
     return (
       <div className="border-border flex flex-col items-center gap-3 rounded-2xl border border-dashed px-4 py-12 text-center">
-        <p className="text-ink text-base font-semibold">
-          Application received
-        </p>
+        <p className="text-ink text-base font-semibold">Application received</p>
         <p className="text-ink/60 max-w-sm text-sm">
-          We&apos;ll review it and let you know. You&apos;ll get a
-          notification either way.
+          We&apos;ll review it and let you know. You&apos;ll get a notification
+          either way.
         </p>
         <Button size="lg" onClick={() => router.push("/home")}>
           Back to Home

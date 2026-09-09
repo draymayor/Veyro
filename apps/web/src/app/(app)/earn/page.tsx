@@ -42,8 +42,8 @@ export default async function EarnPage() {
             <StaggerItem>
               <p className="text-ink/50 text-center text-xs">
                 One claim per account. Your bonus unlocks once you sell that
-                much in gift cards or crypto on Veyro within 3 days of
-                claiming, deposits don&apos;t count.
+                much in gift cards or crypto on Veyro within 3 days of claiming,
+                deposits don&apos;t count.
               </p>
             </StaggerItem>
           </>

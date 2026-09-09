@@ -58,8 +58,8 @@ export default async function WithdrawRequestPage() {
         {scoutLock ? (
           <div className="bg-secondary mb-4 rounded-2xl p-4">
             <p className="text-ink text-sm">
-              Your scout earnings become withdrawable once you&apos;ve
-              completed {scoutLock.requiredDays} paid days (currently{" "}
+              Your scout earnings become withdrawable once you&apos;ve completed{" "}
+              {scoutLock.requiredDays} paid days (currently{" "}
               {scoutLock.approvedDays}/{scoutLock.requiredDays}).
             </p>
           </div>
