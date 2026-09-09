@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AdminRatesService } from './admin-rates.service';
-import { NetworkFeesService } from './network-fees.service';
+import { NetworkFeesService } from '../../network-fees/network-fees.service';
 import { AdminAuthGuard } from '../admin-auth.guard';
 import { SupabaseAuthGuard } from '../../auth/supabase-auth.guard';
 import type { AuthenticatedRequest } from '../../auth/supabase-auth.guard';

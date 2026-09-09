@@ -12,7 +12,7 @@ import { AdminDashboardController } from './dashboard/admin-dashboard.controller
 import { AdminDashboardService } from './dashboard/admin-dashboard.service';
 import { AdminRatesController } from './rates/admin-rates.controller';
 import { AdminRatesService } from './rates/admin-rates.service';
-import { NetworkFeesService } from './rates/network-fees.service';
+import { NetworkFeesModule } from '../network-fees/network-fees.module';
 import { AdminSupportController } from './support/admin-support.controller';
 import { AdminSupportService } from './support/admin-support.service';
 import { AdminDepositsController } from './deposits/admin-deposits.controller';
@@ -44,6 +44,7 @@ import { EarnModule } from '../earn/earn.module';
     CryptoWalletModule,
     ProviderHealthModule,
     EarnModule,
+    NetworkFeesModule,
   ],
   controllers: [
     AdminController,
@@ -67,7 +68,6 @@ import { EarnModule } from '../earn/earn.module';
     AdminUsersService,
     AdminDashboardService,
     AdminRatesService,
-    NetworkFeesService,
     AdminSupportService,
     AdminDepositsService,
     AdminTransactionsService,

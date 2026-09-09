@@ -13,6 +13,8 @@ import { AssetIcon } from "@/components/crypto/asset-icon";
 import { NetworkField } from "@/components/crypto/network-field";
 import type { CryptoAsset } from "@/lib/crypto/data";
 import { networkById } from "@/lib/crypto/data";
+import { useNetworkFee } from "@/lib/crypto/use-network-fee";
+import { NetworkFeeSummary } from "@/components/withdraw/network-fee-summary";
 import {
   looksLikeValidAddress,
   type CreateWithdrawalPayload,
@@ -51,6 +53,7 @@ export function CryptoWithdrawForm({
   const [confirmationOpen, setConfirmationOpen] = useState(false);
 
   const network = networkById(asset, networkId);
+  const { fee, loading: feeLoading } = useNetworkFee(network.label);
 
   const availableBalanceText = `${availableBalance.toLocaleString("en-US", {
     maximumFractionDigits: 8,
@@ -232,6 +235,15 @@ export function CryptoWithdrawForm({
             </span>
           ) : null}
         </div>
+        {amountValid ? (
+          <NetworkFeeSummary
+            asset={asset}
+            network={network}
+            amount={parsedAmount}
+            fee={fee}
+            loading={feeLoading}
+          />
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-1.5">
