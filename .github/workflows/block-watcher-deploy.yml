@@ -35,10 +35,12 @@
 # error was confirmed live). Create a SEPARATE Alchemy app at
 # dashboard.alchemy.com with those three networks enabled, and store its
 # key under this secret name; without it, main.ts holds the UTXO watchers
-# off even if UTXO_DETECTION_ENABLED is "true". NOT YET GRANTED as of this
-# comment - GCP_BLOCK_WATCHER_RUNTIME_SERVICE_ACCOUNT needs
-# secretmanager.secretAccessor on this secret added by hand before the
-# `secrets:` line below will actually resolve at deploy time.)
+# off even if UTXO_DETECTION_ENABLED is "true". CONFIRMED live (2026-09-09,
+# `gcloud secrets get-iam-policy BLOCK_WATCHER_ALCHEMY_API_KEY`) that
+# GCP_BLOCK_WATCHER_RUNTIME_SERVICE_ACCOUNT already has
+# secretmanager.secretAccessor on this secret, and that it holds a real
+# enabled version - the earlier "NOT YET GRANTED" note here was stale, not
+# still true. UTXO_DETECTION_ENABLED below was the only remaining gap.)
 #
 # --min-instances=1 --max-instances=1 --no-cpu-throttling: exactly one
 # instance, always warm, with CPU available outside of request handling.
@@ -149,6 +151,7 @@ jobs:
           env_vars: |
             API_BASE_URL=https://veyro-api-479708499599.us-central1.run.app
             ADDRESS_MAP_REFRESH_MS=60000
+            UTXO_DETECTION_ENABLED=true
             EVM_RPC_URL_Celo=https://forno.celo.org
             EVM_RPC_URL_Flare=https://flare-api.flare.network/ext/C/rpc
             EVM_RPC_URL_Fantom=https://rpcapi.fantom.network

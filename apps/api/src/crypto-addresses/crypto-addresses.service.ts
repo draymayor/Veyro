@@ -15,6 +15,26 @@ for (const [network, config] of Object.entries(CHAIN_CONFIGS)) {
   (NETWORKS_BY_ADDRESS_GROUP[group] ??= []).push(network);
 }
 
+// Every network key sharing a given Alchemy webhook (keyed by
+// chainConfig.alchemyNetwork) - same precomputation pattern as
+// NETWORKS_BY_ADDRESS_GROUP above, but a DIFFERENT grouping: address-group
+// membership (all 14 EVM chains) is broader than "shares this specific
+// Alchemy webhook" (only the 5 chains with alchemyNetwork set, one group
+// per chain since Alchemy's own enum is 1:1 with our network codes today).
+// ensureAlchemyWebhookCoverage's covered-check and its webhook_id write
+// both need this narrower scope - confirmed live 2026-09-09 that scoping
+// either one by bare `address` instead let one network's real webhookId
+// get written onto every OTHER EVM network's row sharing that same
+// derived address (e.g. a real ETH_MAINNET registration silently stamped
+// its webhook id onto that user's untouched Base and Polygon rows too),
+// which reads as "covered" for chains that were never actually added to
+// Alchemy at all.
+const NETWORKS_BY_ALCHEMY_NETWORK: Record<string, string[]> = {};
+for (const [network, config] of Object.entries(CHAIN_CONFIGS)) {
+  if (!config.alchemyNetwork) continue;
+  (NETWORKS_BY_ALCHEMY_NETWORK[config.alchemyNetwork] ??= []).push(network);
+}
+
 export interface CryptoDepositAddress {
   address: string;
   destinationTag: string | null;
@@ -254,24 +274,33 @@ export class CryptoAddressesService {
   // at most once ever - mirrors ensureWebhookSubscription's exact
   // dedupe-by-address pattern below (multiple user_crypto_addresses rows
   // can share one address, e.g. every symbol on a shared EVM network, so
-  // this checks whether ANY row for this exact address already carries an
-  // alchemy_webhook_id first). Not perfectly race-free against two truly
-  // simultaneous first-time requests for the same brand-new address for
-  // the same reason ensureWebhookSubscription isn't - Alchemy's own
-  // update-webhook-addresses endpoint is documented idempotent ("identical
-  // requests can be made once or several times with the same effect"), so
-  // a duplicate add from a losing concurrent request is harmless on
-  // Alchemy's side even though it wastes a redundant call.
+  // this checks whether any row for this exact address ON THIS SAME
+  // ALCHEMY WEBHOOK already carries an alchemy_webhook_id first) - scoped
+  // to networksOnThisWebhook, NOT bare address, since an address is
+  // shared across every EVM network in the user's addressGroup while a
+  // given alchemy_webhook_id only ever covers ONE of them (see
+  // NETWORKS_BY_ALCHEMY_NETWORK's comment for the incident this fixes).
+  // Not perfectly race-free against two truly simultaneous first-time
+  // requests for the same brand-new address for the same reason
+  // ensureWebhookSubscription isn't - Alchemy's own update-webhook-addresses
+  // endpoint is documented idempotent ("identical requests can be made
+  // once or several times with the same effect"), so a duplicate add from
+  // a losing concurrent request is harmless on Alchemy's side even though
+  // it wastes a redundant call.
   private async ensureAlchemyWebhookCoverage(
     client: Client,
     address: string,
     alchemyNetwork: string,
     networkCode: string,
   ): Promise<void> {
+    const networksOnThisWebhook =
+      NETWORKS_BY_ALCHEMY_NETWORK[alchemyNetwork] ?? [networkCode];
+
     const { data: covered } = await client
       .from('user_crypto_addresses')
       .select('alchemy_webhook_id')
       .eq('address', address)
+      .in('network', networksOnThisWebhook)
       .not('alchemy_webhook_id', 'is', null)
       .limit(1)
       .maybeSingle();
@@ -297,10 +326,15 @@ export class CryptoAddressesService {
     );
     if (!added) return; // request failed - stays on the manual-check path, logged inside AlchemyService already
 
+    // Scoped to networksOnThisWebhook, same reasoning as the covered-check
+    // above - this address's OTHER EVM-network rows (a different
+    // alchemyNetwork, or none at all) must never get this webhookId
+    // written onto them just because they share the same physical address.
     const { error } = await client
       .from('user_crypto_addresses')
       .update({ alchemy_webhook_id: webhookId })
-      .eq('address', address);
+      .eq('address', address)
+      .in('network', networksOnThisWebhook);
 
     if (error) {
       // The registration is real and live on Alchemy's side even though
