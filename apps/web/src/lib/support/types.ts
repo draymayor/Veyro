@@ -8,6 +8,7 @@ export type SupportStatus = "open" | "resolved";
 /** Mirrors public.support_messages (docs/database-schema.md). */
 export interface SupportMessage {
   id: string;
+  threadId: string;
   userId: string;
   sender: "user" | "admin";
   body: string;
@@ -17,6 +18,7 @@ export interface SupportMessage {
 
 /** Mirrors public.support_threads (docs/database-schema.md). */
 export interface SupportThread {
+  id: string;
   userId: string;
   category: SupportCategory;
   subject: string;

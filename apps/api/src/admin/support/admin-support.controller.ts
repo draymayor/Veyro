@@ -21,26 +21,37 @@ export class AdminSupportController {
   constructor(private readonly adminSupportService: AdminSupportService) {}
 
   @Get('threads')
-  list(@Query('status') status?: string, @Query('category') category?: string) {
-    return this.adminSupportService.list({ status, category });
+  list(
+    @Query('status') status?: string,
+    @Query('category') category?: string,
+    @Query('unread') unread?: string,
+  ) {
+    return this.adminSupportService.list({
+      status,
+      category,
+      unread: unread === 'true',
+    });
   }
 
-  @Get('threads/:userId')
-  detail(@Param('userId') userId: string) {
-    return this.adminSupportService.detail(userId);
+  @Get('threads/:ticketId')
+  detail(@Param('ticketId') ticketId: string) {
+    return this.adminSupportService.detail(ticketId);
   }
 
-  @Post('threads/:userId/messages')
+  @Post('threads/:ticketId/messages')
   sendMessage(
     @Req() req: AuthenticatedRequest,
-    @Param('userId') userId: string,
+    @Param('ticketId') ticketId: string,
     @Body('body') body: string,
   ) {
-    return this.adminSupportService.sendMessage(req.user.id, userId, body);
+    return this.adminSupportService.sendMessage(req.user.id, ticketId, body);
   }
 
-  @Post('threads/:userId/resolve')
-  resolve(@Req() req: AuthenticatedRequest, @Param('userId') userId: string) {
-    return this.adminSupportService.resolve(req.user.id, userId);
+  @Post('threads/:ticketId/resolve')
+  resolve(
+    @Req() req: AuthenticatedRequest,
+    @Param('ticketId') ticketId: string,
+  ) {
+    return this.adminSupportService.resolve(req.user.id, ticketId);
   }
 }

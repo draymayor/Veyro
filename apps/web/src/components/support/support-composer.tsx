@@ -35,21 +35,23 @@ export function SupportComposer({ onSend }: SupportComposerProps) {
         e.preventDefault();
         void handleSend();
       }}
-      className="border-border bg-background flex items-end gap-2 border-t px-4 py-3 sm:px-6"
+      className="bg-background flex items-end gap-2 px-4 py-3 sm:px-6"
     >
-      <textarea
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            void handleSend();
-          }
-        }}
-        placeholder="Type a message..."
-        rows={1}
-        className="text-ink placeholder:text-ink/40 max-h-32 min-h-10 flex-1 resize-none bg-transparent py-2 text-sm outline-none"
-      />
+      <div className="bg-secondary flex flex-1 items-end rounded-3xl px-4 py-1">
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void handleSend();
+            }
+          }}
+          placeholder="Type a message..."
+          rows={1}
+          className="text-ink placeholder:text-ink/40 max-h-32 min-h-10 flex-1 resize-none bg-transparent py-2.5 text-sm outline-none"
+        />
+      </div>
       <button
         type="submit"
         disabled={!draft.trim() || sending}

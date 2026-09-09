@@ -2,23 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type {
-  SupportCategory,
-  SupportMessage,
-  SupportThread,
-} from "@/lib/support/types";
+import type { SupportCategory, SupportMessage } from "@/lib/support/types";
 import { SUPPORT_CATEGORIES } from "@/lib/support/categories";
+import { groupMessagesByDay } from "@/lib/support/group-messages";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { SupportMessageBubble } from "@/components/support/support-message-bubble";
-import { SupportTicketForm } from "@/components/support/support-ticket-form";
+import { SupportDateDivider } from "@/components/support/support-date-divider";
 import { SupportComposer } from "@/components/support/support-composer";
 
-interface SupportChatProps {
-  userId: string;
+interface SupportTicketChatProps {
+  ticketId: string;
+  ticketOwner: { id: string; profileImageUrl: string | null };
 }
 
 interface SupportMessageRow {
   id: string;
+  thread_id: string;
   user_id: string;
   sender: "user" | "admin";
   body: string;
@@ -27,17 +26,14 @@ interface SupportMessageRow {
 }
 
 interface SupportThreadRow {
-  user_id: string;
-  category: SupportCategory;
-  subject: string;
+  id: string;
   status: "open" | "resolved";
-  created_at: string;
-  updated_at: string;
 }
 
 function toSupportMessage(row: SupportMessageRow): SupportMessage {
   return {
     id: row.id,
+    threadId: row.thread_id,
     userId: row.user_id,
     sender: row.sender,
     body: row.body,
@@ -46,43 +42,26 @@ function toSupportMessage(row: SupportMessageRow): SupportMessage {
   };
 }
 
-function toSupportThread(row: SupportThreadRow): SupportThread {
-  return {
-    userId: row.user_id,
-    category: row.category,
-    subject: row.subject,
-    status: row.status,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-const MAX_SUBJECT_LENGTH = 80;
-
-function subjectFromMessage(message: string): string {
-  return message.length > MAX_SUBJECT_LENGTH
-    ? `${message.slice(0, MAX_SUBJECT_LENGTH)}...`
-    : message;
-}
-
 const CATEGORY_LABEL: Record<SupportCategory, string> = Object.fromEntries(
   SUPPORT_CATEGORIES.map((option) => [option.value, option.label]),
 ) as Record<SupportCategory, string>;
 
 /**
- * One ongoing "ticket" per user (docs/context.md, docs/database-schema.md's
- * support_threads + support_messages): opens with a short issue form, then
- * behaves as a live chat, no polling anywhere. `thread === undefined` means
- * still loading, `thread === null` means no ticket exists yet (show the
- * form), and a resolved thread reopens itself server-side (the
- * reopen_support_thread_on_user_message trigger) the moment the user sends
- * another message, so this component never has to manage that transition.
+ * One ticket's conversation (docs/database-schema.md's support_threads +
+ * support_messages, keyed by thread id since a user may have many
+ * tickets). Behaves as a live chat, no polling anywhere. A resolved ticket
+ * reopens itself server-side (the reopen_support_thread_on_user_message
+ * trigger) the moment the user sends another message, so this component
+ * never has to manage that transition.
  */
-export function SupportChat({ userId }: SupportChatProps) {
-  const [thread, setThread] = useState<SupportThread | null | undefined>(
-    undefined,
-  );
+export function SupportTicketChat({
+  ticketId,
+  ticketOwner,
+}: SupportTicketChatProps) {
+  const [status, setStatus] = useState<"open" | "resolved" | null>(null);
+  const [category, setCategory] = useState<SupportCategory | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -96,30 +75,30 @@ export function SupportChat({ userId }: SupportChatProps) {
         await Promise.all([
           supabase
             .from("support_threads")
-            .select("*")
-            .eq("user_id", userId)
+            .select("id, category, status")
+            .eq("id", ticketId)
             .maybeSingle(),
           supabase
             .from("support_messages")
             .select("*")
-            .eq("user_id", userId)
+            .eq("thread_id", ticketId)
             .order("created_at", { ascending: true }),
         ]);
 
       if (cancelled) return;
 
-      if (fetchError) {
-        setError("Could not load your conversation. Please try again.");
-        setThread(null);
+      if (fetchError || !threadRow) {
+        setError("Could not load this conversation. Please try again.");
+        setLoaded(true);
         return;
       }
 
-      setThread(
-        threadRow ? toSupportThread(threadRow as SupportThreadRow) : null,
-      );
+      setStatus(threadRow.status as "open" | "resolved");
+      setCategory(threadRow.category as SupportCategory);
 
       const rows = (messageRows as SupportMessageRow[]) ?? [];
       setMessages(rows.map(toSupportMessage));
+      setLoaded(true);
 
       const unreadAdminIds = rows
         .filter((row) => row.sender === "admin" && row.read_at === null)
@@ -133,19 +112,10 @@ export function SupportChat({ userId }: SupportChatProps) {
       }
     }
 
-    // Realtime's postgres_changes RLS check is evaluated against whichever
-    // JWT was current when the channel *joins*, and the server never
-    // re-evaluates it later even after a fresher token is pushed to an
-    // already-joined channel. createClient()'s auth session resolves
-    // asynchronously (it's read from cookies on client construction), so
-    // calling .subscribe() immediately can join before that resolves,
-    // silently registering the subscription as anon - auth.uid() then
-    // evaluates null forever and every event gets RLS-filtered out, with
-    // no error surfaced anywhere. Resolving the session and calling
-    // realtime.setAuth() before .subscribe() guarantees the join always
-    // carries the real, authenticated JWT. (A page reload doesn't fix this
-    // on its own: loadAndMarkRead's initial fetch is a plain REST call,
-    // unaffected by which role the realtime join used.)
+    // Same realtime-auth-timing fix as before: resolve the session and
+    // call realtime.setAuth() before .subscribe() so the join always
+    // carries the real, authenticated JWT (see the original support-chat
+    // implementation this was lifted from for the full rationale).
     async function subscribeToLiveUpdates() {
       const {
         data: { session },
@@ -158,14 +128,14 @@ export function SupportChat({ userId }: SupportChatProps) {
       if (cancelled) return;
 
       channel = supabase
-        .channel(`support-messages-${userId}`)
+        .channel(`support-ticket-${ticketId}`)
         .on(
           "postgres_changes",
           {
             event: "INSERT",
             schema: "public",
             table: "support_messages",
-            filter: `user_id=eq.${userId}`,
+            filter: `thread_id=eq.${ticketId}`,
           },
           (payload) => {
             const row = payload.new as SupportMessageRow;
@@ -191,10 +161,11 @@ export function SupportChat({ userId }: SupportChatProps) {
             event: "UPDATE",
             schema: "public",
             table: "support_threads",
-            filter: `user_id=eq.${userId}`,
+            filter: `id=eq.${ticketId}`,
           },
           (payload) => {
-            setThread(toSupportThread(payload.new as SupportThreadRow));
+            const row = payload.new as SupportThreadRow;
+            setStatus(row.status);
           },
         )
         .subscribe();
@@ -207,44 +178,22 @@ export function SupportChat({ userId }: SupportChatProps) {
       cancelled = true;
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [ticketId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function openTicket(category: SupportCategory, message: string) {
-    const supabase = createClient();
-
-    const { data: threadRow, error: threadError } = await supabase
-      .from("support_threads")
-      .insert({
-        user_id: userId,
-        category,
-        subject: subjectFromMessage(message),
-      })
-      .select()
-      .single();
-
-    if (threadError) throw threadError;
-
-    const { data: messageRow, error: messageError } = await supabase
-      .from("support_messages")
-      .insert({ user_id: userId, sender: "user", body: message })
-      .select()
-      .single();
-
-    if (messageError) throw messageError;
-
-    setThread(toSupportThread(threadRow as SupportThreadRow));
-    setMessages([toSupportMessage(messageRow as SupportMessageRow)]);
-  }
-
   async function handleSend(body: string) {
     const supabase = createClient();
     const { data, error: insertError } = await supabase
       .from("support_messages")
-      .insert({ user_id: userId, sender: "user", body })
+      .insert({
+        thread_id: ticketId,
+        user_id: ticketOwner.id,
+        sender: "user",
+        body,
+      })
       .select()
       .single();
 
@@ -266,37 +215,30 @@ export function SupportChat({ userId }: SupportChatProps) {
     const { error: updateError } = await supabase
       .from("support_threads")
       .update({ status: "resolved", updated_at: new Date().toISOString() })
-      .eq("user_id", userId);
+      .eq("id", ticketId);
 
     if (updateError) {
       setError("Could not update this ticket. Please try again.");
       return;
     }
 
-    setThread((prev) => (prev ? { ...prev, status: "resolved" } : prev));
+    setStatus("resolved");
   }
 
-  if (thread === undefined) return null;
-
-  if (thread === null) {
-    return <SupportTicketForm onSubmit={openTicket} />;
-  }
+  if (!loaded) return null;
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-between gap-3 pb-4">
-        <div>
-          <p className="text-ink text-sm font-medium">
-            {CATEGORY_LABEL[thread.category]}
-          </p>
-          <p className="text-ink/45 mt-0.5 text-xs">{thread.subject}</p>
-        </div>
+      <div className="flex items-center justify-between gap-3 pb-3">
+        <p className="text-ink/40 text-xs font-medium tracking-wide uppercase">
+          {category ? CATEGORY_LABEL[category] : ""}
+        </p>
         <div className="flex shrink-0 items-center gap-2">
           <StatusBadge
-            label={thread.status === "resolved" ? "Resolved" : "Open"}
-            tone={thread.status === "resolved" ? "success" : "neutral"}
+            label={status === "resolved" ? "Resolved" : "Ongoing"}
+            tone={status === "resolved" ? "success" : "neutral"}
           />
-          {thread.status === "open" ? (
+          {status === "open" ? (
             <button
               type="button"
               onClick={handleResolve}
@@ -312,8 +254,17 @@ export function SupportChat({ userId }: SupportChatProps) {
         {error ? (
           <p className="text-error text-center text-sm">{error}</p>
         ) : null}
-        {messages.map((message) => (
-          <SupportMessageBubble key={message.id} message={message} />
+        {groupMessagesByDay(messages).map((group) => (
+          <div key={group.dateKey} className="flex flex-col gap-3">
+            <SupportDateDivider iso={group.messages[0].createdAt} />
+            {group.messages.map((message) => (
+              <SupportMessageBubble
+                key={message.id}
+                message={message}
+                ticketOwner={ticketOwner}
+              />
+            ))}
+          </div>
         ))}
         <div ref={bottomRef} />
       </div>

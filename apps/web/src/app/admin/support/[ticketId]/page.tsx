@@ -8,7 +8,7 @@ import type { SupportCategory } from "@/lib/support/types";
 import { AdminSupportThread } from "@/components/admin/support/admin-support-thread";
 
 interface PageProps {
-  params: Promise<{ userId: string }>;
+  params: Promise<{ ticketId: string }>;
 }
 
 const CATEGORY_LABEL: Record<SupportCategory, string> = Object.fromEntries(
@@ -24,9 +24,9 @@ function userLabel(displayName: string | null, userId: string): string {
 // Realtime subscription. This server component only supplies the initial
 // snapshot, everything after that is client-driven.
 export default async function AdminSupportThreadPage({ params }: PageProps) {
-  const { userId } = await params;
+  const { ticketId } = await params;
   const thread = await adminFetch<AdminSupportThreadDetail>(
-    `/admin/support/threads/${userId}`,
+    `/admin/support/threads/${ticketId}`,
   );
 
   if (!thread) notFound();
@@ -53,7 +53,14 @@ export default async function AdminSupportThreadPage({ params }: PageProps) {
         </p>
       </div>
 
-      <AdminSupportThread userId={thread.user_id} initialThread={thread} />
+      <AdminSupportThread
+        ticketId={thread.id}
+        ticketOwner={{
+          id: thread.user_id,
+          profileImageUrl: thread.profile_image_url,
+        }}
+        initialThread={thread}
+      />
     </div>
   );
 }
