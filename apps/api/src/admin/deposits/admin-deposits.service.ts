@@ -29,6 +29,20 @@ export interface ManualDepositResult extends ManualDepositQuote {
   newBalance: number;
 }
 
+export interface ManualDepositHistoryItem {
+  actionId: string;
+  createdAt: string;
+  depositType: ManualDepositType;
+  adminId: string;
+  adminDisplayName: string | null;
+  userId: string | null;
+  userDisplayName: string | null;
+  amount: number | null;
+  walletCurrency: string | null;
+  symbol: string | null;
+  reason: string | null;
+}
+
 interface ManualDepositInput {
   userId: string;
   depositType: ManualDepositType;
@@ -207,6 +221,132 @@ export class AdminDepositsService {
       ledgerEntryId,
       newBalance,
     };
+  }
+
+  // Manual Deposit history: every credit this feature has ever made is
+  // already logged to admin_actions (execute() above), so this reads that
+  // log rather than a new table. admin_actions.target_id is polymorphic
+  // (it points at whichever ledger table action_type implies), so it can't
+  // be embedded via a normal PostgREST relationship - the ledger rows are
+  // fetched in two batched follow-up queries (one per deposit type) and
+  // joined back onto the action rows in memory instead.
+  async history(): Promise<ManualDepositHistoryItem[]> {
+    const client = this.supabaseService.getClient();
+
+    const { data: actions, error } = await client
+      .from('admin_actions')
+      .select('id, admin_id, action_type, target_id, notes, created_at')
+      .in('action_type', ['manual_deposit', 'manual_crypto_deposit'])
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw new Error(error.message);
+    if (!actions || actions.length === 0) return [];
+
+    const fiatIds = actions
+      .filter((a) => a.action_type === 'manual_deposit')
+      .map((a) => a.target_id as string);
+    const cryptoIds = actions
+      .filter((a) => a.action_type === 'manual_crypto_deposit')
+      .map((a) => a.target_id as string);
+    const adminIds = [...new Set(actions.map((a) => a.admin_id as string))];
+
+    const [fiatResult, cryptoResult, adminResult] = await Promise.all([
+      fiatIds.length
+        ? client
+            .from('wallet_transactions')
+            .select(
+              'id, amount, wallets(user_id, currency, users(display_name))',
+            )
+            .in('id', fiatIds)
+        : Promise.resolve({ data: [], error: null }),
+      cryptoIds.length
+        ? client
+            .from('crypto_wallet_transactions')
+            .select('id, amount, symbol, user_id, users(display_name)')
+            .in('id', cryptoIds)
+        : Promise.resolve({ data: [], error: null }),
+      adminIds.length
+        ? client.from('users').select('id, display_name').in('id', adminIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (fiatResult.error) throw new Error(fiatResult.error.message);
+    if (cryptoResult.error) throw new Error(cryptoResult.error.message);
+    if (adminResult.error) throw new Error(adminResult.error.message);
+
+    interface FiatLedgerRow {
+      id: string;
+      amount: number;
+      wallets: {
+        user_id: string;
+        currency: string;
+        users: { display_name: string | null } | null;
+      } | null;
+    }
+    interface CryptoLedgerRow {
+      id: string;
+      amount: number;
+      symbol: string;
+      user_id: string;
+      users: { display_name: string | null } | null;
+    }
+
+    const fiatMap = new Map(
+      ((fiatResult.data ?? []) as unknown as FiatLedgerRow[]).map((row) => [
+        row.id,
+        row,
+      ]),
+    );
+    const cryptoMap = new Map(
+      ((cryptoResult.data ?? []) as unknown as CryptoLedgerRow[]).map((row) => [
+        row.id,
+        row,
+      ]),
+    );
+    const adminNameMap = new Map(
+      (
+        (adminResult.data ?? []) as {
+          id: string;
+          display_name: string | null;
+        }[]
+      ).map((row) => [row.id, row.display_name]),
+    );
+
+    return actions.map((action) => {
+      const depositType: ManualDepositType =
+        action.action_type === 'manual_deposit' ? 'fiat' : 'crypto';
+      const ledger =
+        depositType === 'fiat'
+          ? fiatMap.get(action.target_id as string)
+          : cryptoMap.get(action.target_id as string);
+
+      const fiatLedger =
+        depositType === 'fiat'
+          ? (ledger as FiatLedgerRow | undefined)
+          : undefined;
+      const cryptoLedger =
+        depositType === 'crypto'
+          ? (ledger as CryptoLedgerRow | undefined)
+          : undefined;
+
+      return {
+        actionId: action.id as string,
+        createdAt: action.created_at as string,
+        depositType,
+        adminId: action.admin_id as string,
+        adminDisplayName: adminNameMap.get(action.admin_id as string) ?? null,
+        userId: fiatLedger?.wallets?.user_id ?? cryptoLedger?.user_id ?? null,
+        userDisplayName:
+          fiatLedger?.wallets?.users?.display_name ??
+          cryptoLedger?.users?.display_name ??
+          null,
+        amount: fiatLedger?.amount ?? cryptoLedger?.amount ?? null,
+        walletCurrency: fiatLedger?.wallets?.currency ?? null,
+        symbol: cryptoLedger?.symbol ?? null,
+        reason: action.notes as string | null,
+      };
+    });
   }
 
   private async executeFiat(

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { AdminDepositsService } from './admin-deposits.service';
 import { AdminAuthGuard } from '../admin-auth.guard';
 import { SupabaseAuthGuard } from '../../auth/supabase-auth.guard';
@@ -31,6 +31,11 @@ export class AdminDepositsController {
       symbol: body.symbol,
       network: body.network,
     });
+  }
+
+  @Get('history')
+  history() {
+    return this.adminDepositsService.history();
   }
 
   @Post()

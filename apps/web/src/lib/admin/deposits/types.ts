@@ -17,3 +17,17 @@ export interface ManualDepositResult extends ManualDepositQuote {
   ledgerEntryId: string;
   newBalance: number;
 }
+
+export interface ManualDepositHistoryItem {
+  actionId: string;
+  createdAt: string;
+  depositType: ManualDepositType;
+  adminId: string;
+  adminDisplayName: string | null;
+  userId: string | null;
+  userDisplayName: string | null;
+  amount: number | null;
+  walletCurrency: string | null;
+  symbol: string | null;
+  reason: string | null;
+}
