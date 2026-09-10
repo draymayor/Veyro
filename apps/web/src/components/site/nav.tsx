@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X, House, Gift, Coins, Mail } from "lucide-react";
+import { Menu, X, House, Gift, Coins, Mail, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,8 +11,13 @@ const NAV_LINKS = [
   { label: "Home", href: "/", icon: House },
   { label: "Gift Cards", href: "/gift-cards", icon: Gift },
   { label: "Crypto", href: "/crypto", icon: Coins },
+  { label: "Careers/Job", href: "/careers", icon: Briefcase },
   { label: "Contact Us", href: "/contact", icon: Mail },
 ];
+
+// Mobile dropdown drops Contact Us - it's still reachable from the
+// footer, no need to duplicate it in the nav menu.
+const MOBILE_NAV_LINKS = NAV_LINKS.filter((link) => link.href !== "/contact");
 
 function MenuTile({
   item,
@@ -104,7 +109,7 @@ export function Nav() {
         <div className="overflow-hidden">
           <div className="border-border bg-background rounded-2xl border p-4 shadow-[0_10px_30px_rgba(28,27,41,0.08)]">
             <div className="grid grid-cols-2 gap-2">
-              {NAV_LINKS.map((link) => (
+              {MOBILE_NAV_LINKS.map((link) => (
                 <MenuTile
                   key={link.href}
                   item={link}

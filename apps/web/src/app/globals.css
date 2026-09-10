@@ -108,6 +108,16 @@ body {
   }
 }
 
+@keyframes gentle-pulse {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
 /* Hides the scrollbar on an overflow-x-auto container (e.g. a
    horizontally-scrollable number that's too wide for its card) while
    keeping it touch/drag-scrollable. */
@@ -118,5 +128,10 @@ body {
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+  /* Subtle attention-drawing motion for promo copy (e.g. the Earn banner) -
+     a soft opacity/lift breathe, not a jarring bounce. */
+  .animate-gentle-pulse {
+    animation: gentle-pulse 2.4s ease-in-out infinite;
   }
 }

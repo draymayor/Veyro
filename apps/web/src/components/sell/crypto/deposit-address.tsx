@@ -190,6 +190,15 @@ export function DepositAddress({
 
         {error ? <p className="text-error text-xs">{error}</p> : null}
 
+        {/* Always a flat $0.00, deliberately not a live per-chain lookup like
+            NetworkFeeSummary on the withdraw side - Veyro covers the
+            incoming network fee on deposits, so there's nothing to
+            estimate here. */}
+        <div className="border-border bg-secondary/40 flex items-center justify-between gap-2 rounded-xl border p-3 text-xs">
+          <span className="text-ink/60">Network fee</span>
+          <span className="text-ink font-medium tabular-nums">$0.00</span>
+        </div>
+
         {destinationTag ? (
           <div className="border-primary/30 bg-primary/5 flex items-start gap-3 rounded-2xl border px-4 py-3">
             <ExclamationTriangleIcon

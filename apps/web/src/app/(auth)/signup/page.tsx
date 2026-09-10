@@ -12,7 +12,7 @@ import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { CountrySelect } from "@/components/auth/country-select";
 import { PasswordInput } from "@/components/auth/password-input";
 import { PasswordStrength } from "@/components/auth/password-strength";
-import { GiftCardFan } from "@/components/home/gift-card-fan";
+import { AuthCryptoVisual } from "@/components/auth/auth-crypto-visual";
 import { getApiBaseUrl } from "@/lib/api-base-url";
 
 const containerVariants: Variants = {
@@ -196,18 +196,18 @@ function SignupForm() {
           </Link>
         </div>
 
-        <div className="relative z-10 -mx-4 mt-8 hidden lg:mt-0 lg:block">
-          <GiftCardFan />
+        <div className="relative z-10 mt-8 hidden lg:mt-0 lg:block">
+          <AuthCryptoVisual />
         </div>
 
         <div className="relative z-10 mt-8 lg:mt-0">
           <h1 className="text-background mb-4 max-w-xl text-4xl leading-[1.1] font-medium tracking-tight sm:text-5xl lg:text-6xl">
-            Turn what you
+            Hold your crypto.
             <br />
-            have into cash.
+            Sell on your terms.
           </h1>
           <p className="text-background/85 max-w-md text-base leading-relaxed sm:text-lg">
-            See your rate instantly. Get paid the moment we confirm.
+            See your rate instantly, deposit into your own real Veyro balance.
           </p>
         </div>
       </div>

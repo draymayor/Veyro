@@ -1,6 +1,6 @@
 import {
   UserPlus,
-  Gift,
+  Coins,
   Gauge,
   UploadCloud,
   ShieldCheck,
@@ -19,35 +19,35 @@ const STEPS = [
     orbit: true,
   },
   {
-    icon: Gift,
-    title: "Select your gift card or crypto",
-    copy: "Choose the brand, denomination, or crypto asset you're selling.",
+    icon: Coins,
+    title: "Select your crypto asset",
+    copy: "Choose the crypto asset and network you're depositing.",
   },
   {
     icon: Gauge,
     title: "See your rate instantly",
-    copy: "Your payout is calculated up front, before you submit anything.",
+    copy: "Your sell rate is shown up front, before you submit anything.",
   },
   {
     icon: UploadCloud,
-    title: "Submit your card or send your crypto",
-    copy: "Enter your card code and photos, or send crypto to our address.",
+    title: "Send your crypto",
+    copy: "Send crypto to your Veyro deposit address from any wallet.",
     orbit: true,
   },
   {
     icon: ShieldCheck,
     title: "We confirm",
-    copy: "Our team verifies your submission, usually within minutes.",
+    copy: "Your deposit is confirmed on-chain, usually within minutes.",
   },
   {
     icon: Wallet,
     title: "Your wallet is credited",
-    copy: "Once approved, your gift card payout lands as cash, and your crypto lands as a real balance you hold, automatically.",
+    copy: "Once confirmed, your crypto lands as a real balance you hold, automatically, never converted for you.",
   },
   {
     icon: Banknote,
     title: "Sell or withdraw, on your terms",
-    copy: "Cash out by bank transfer, PayPal, or crypto, whenever you're ready, and sell held crypto only when you choose to.",
+    copy: "Sell at the live rate whenever you choose, or withdraw it to any wallet.",
     orbit: true,
   },
 ];

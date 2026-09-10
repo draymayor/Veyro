@@ -1,13 +1,10 @@
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { GiftIcon } from "@heroicons/react/24/solid";
 import { BrandMark } from "@/components/gift-cards/brand-mark";
 import {
   COUNTRIES,
   type CardType,
   type GiftCardBrand,
 } from "@/lib/gift-cards/data";
-import { useDisplayCurrency } from "@/lib/display-currency/context";
-import { formatDisplayAmount } from "@/lib/display-currency/format";
 
 interface BrandCardProps {
   brand: GiftCardBrand;
@@ -17,21 +14,22 @@ interface BrandCardProps {
   cardType: CardType;
 }
 
+// Rendered as a plain (non-navigating) card, and rate is "Coming Soon"
+// rather than a real number, while Sell Gift Cards is locked platform-wide -
+// the gift card API isn't integrated yet, so there's neither a real rate
+// nor a working flow for this card to link into.
 export function BrandCard({
   brand,
-  rate,
   country,
   countryCount,
   cardType,
 }: BrandCardProps) {
   const countryMeta = COUNTRIES[country];
-  const displayCurrency = useDisplayCurrency();
 
   return (
-    <Link
-      href={`/sell?brand=${brand.id}`}
+    <div
       data-flip-id={brand.id}
-      className="group border-border bg-card hover:border-primary/40 relative flex flex-col gap-4 rounded-[1.4rem] border p-5 shadow-[0_8px_24px_rgba(28,27,41,0.05)] transition-[border-color,box-shadow,transform] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(28,27,41,0.1)]"
+      className="border-border bg-card relative flex flex-col gap-4 rounded-[1.4rem] border p-5 opacity-70 shadow-[0_8px_24px_rgba(28,27,41,0.05)]"
     >
       <div className="flex items-start justify-between">
         <BrandMark brand={brand} />
@@ -59,17 +57,14 @@ export function BrandCard({
       <div className="mt-auto flex items-end justify-between">
         <div>
           <p className="text-ink/40 text-[11px] tracking-wide uppercase">
-            Up to
+            Rate
           </p>
-          <p className="font-heading text-primary text-xl font-semibold tabular-nums">
-            {formatDisplayAmount(rate, displayCurrency)}{" "}
-            <span className="text-ink/40 text-sm font-normal">/ $1</span>
-          </p>
+          <p className="text-ink/60 text-lg font-semibold">Coming Soon</p>
         </div>
-        <span className="text-ink/30 group-hover:text-primary group-hover:border-primary/40 border-border flex size-8 items-center justify-center rounded-full border transition-colors duration-300">
-          <ArrowUpRight className="size-4" />
+        <span className="text-ink/30 border-border flex size-8 items-center justify-center rounded-full border">
+          <GiftIcon className="size-4" />
         </span>
       </div>
-    </Link>
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AssetIcon } from "@/components/crypto/asset-icon";
 import { PriceChangeBadge } from "@/components/crypto/price-change-badge";
 import { splitPriceUsd, type CryptoAsset } from "@/lib/crypto/data";
@@ -20,10 +21,13 @@ export function CryptoRateRow({
   const price = hasRate ? splitPriceUsd(rate.priceUsd) : null;
 
   return (
-    // Home's Crypto tab is a live rate ticker only (docs/context.md) - no
-    // navigation on tap here, unlike the real Sell Crypto asset picker
-    // which uses its own separate row component.
-    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4 rounded-2xl px-4 py-4 sm:px-5">
+    // Tapping a row routes straight to that coin's Deposit Crypto page
+    // (pre-selected via the [asset] route param), the quick-access "get my
+    // address" utility - not the Sell Crypto flow.
+    <Link
+      href={`/deposit/crypto/${asset.id}`}
+      className="hover:bg-secondary/60 grid grid-cols-[1fr_auto_auto] items-center gap-4 rounded-2xl px-4 py-4 transition-colors sm:px-5"
+    >
       <span className="flex min-w-0 items-center gap-3">
         <span className="bg-secondary flex size-9 shrink-0 items-center justify-center rounded-full p-1.5">
           <AssetIcon iconKey={asset.iconKey} className="size-full" />
@@ -48,6 +52,6 @@ export function CryptoRateRow({
       <span className="min-w-16 justify-self-end">
         {hasRate && <PriceChangeBadge change={rate.change24h} />}
       </span>
-    </div>
+    </Link>
   );
 }

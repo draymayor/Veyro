@@ -143,15 +143,14 @@ export function RateShowcase() {
             <div className="bg-background flex h-full flex-col justify-between rounded-3xl px-6 py-10 sm:px-8">
               <div>
                 <span className="text-ink/50 text-xs font-medium tracking-[0.2em] uppercase">
-                  Gift Cards & Crypto
+                  Crypto
                 </span>
                 <h3 className="font-heading text-ink mt-3 text-2xl font-medium text-balance">
-                  Sell gift cards in minutes, hold crypto on your terms
+                  Hold crypto on your terms
                 </h3>
                 <p className="text-ink/60 mt-4 text-sm">
-                  From Steam and Apple to USDT and Bitcoin, submit your assets.
-                  Gift cards pay out straight to your wallet; crypto lands as a
-                  real balance you sell or withdraw whenever you choose.
+                  From Bitcoin to USDT, deposit from any wallet into a real
+                  Veyro balance, then sell or withdraw whenever you choose.
                 </p>
               </div>
               <Button asChild className="mt-8 w-fit rounded-full">

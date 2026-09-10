@@ -26,7 +26,7 @@ export function CryptoCarousel() {
               Crypto
             </span>
             <h2 className="font-heading text-primary-foreground mt-3 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-              Hold your crypto, too
+              Hold your crypto
             </h2>
           </ScrollReveal>
           <ScrollReveal direction="up" delay={80}>

@@ -12,7 +12,7 @@ interface SplashWord {
 // Stacked top to bottom, each entering from a different direction so the
 // three don't read as one repeated motion.
 const WORDS: SplashWord[] = [
-  { text: "Gift Card", from: { x: -60, y: 0 } },
+  { text: "Hold", from: { x: -60, y: 0 } },
   { text: "Crypto", from: { x: 60, y: 0 } },
   { text: "Trade", from: { x: 0, y: 60 } },
 ];

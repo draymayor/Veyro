@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from "@heroicons/react/24/solid";
 import { BalancePnlChart } from "./balance-pnl-chart";
 import { DepositWithdrawButtons } from "./deposit-withdraw-panel";
 import { WalletCurrencySelect } from "./wallet-currency-select";
@@ -78,6 +83,10 @@ export function BalanceCard({
   // below, it's just never the silent default.
   const [currency, setCurrency] = useState<WalletCurrency>("USD");
   const [hidden, toggleHidden] = useBalanceVisibility();
+  // Assets-page-only chart collapse (showChart is never true elsewhere),
+  // local UI state rather than a persisted preference - just lets someone
+  // who doesn't want to see it hide it for this visit.
+  const [chartVisible, setChartVisible] = useState(true);
   const { rates: fxRates } = useFxRates(FX_REFRESH_MS);
   const { rates: cryptoRates } = useCryptoRates(FX_REFRESH_MS);
 
@@ -185,20 +194,37 @@ export function BalanceCard({
             )}
           </button>
         </div>
-        <p className="text-ink/50 mt-2 text-sm">
-          Today&apos;s P&amp;L{" "}
-          <span
-            className={cn(
-              "font-medium tabular-nums",
-              pnlPositive ? "text-success" : "text-error",
-            )}
-          >
-            {hidden
-              ? HIDDEN_AMOUNT_PLACEHOLDER
-              : `${pnlPositive ? "+" : ""}${pnlText} (${pnlPositive ? "+" : ""}${combinedPnlPercent.toFixed(2)}%)`}
-          </span>
-        </p>
-        {showChart && !hidden && history && asOf && (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-ink/50 mt-2 text-sm">
+            Today&apos;s P&amp;L{" "}
+            <span
+              className={cn(
+                "font-medium tabular-nums",
+                pnlPositive ? "text-success" : "text-error",
+              )}
+            >
+              {hidden
+                ? HIDDEN_AMOUNT_PLACEHOLDER
+                : `${pnlPositive ? "+" : ""}${pnlText} (${pnlPositive ? "+" : ""}${combinedPnlPercent.toFixed(2)}%)`}
+            </span>
+          </p>
+          {showChart && !hidden && history && asOf && (
+            <button
+              type="button"
+              onClick={() => setChartVisible((v) => !v)}
+              aria-expanded={chartVisible}
+              className="text-ink/40 hover:text-ink/60 mt-2 flex shrink-0 items-center gap-1 text-xs font-medium transition-colors"
+            >
+              {chartVisible ? "Hide chart" : "Show chart"}
+              {chartVisible ? (
+                <ChevronUpIcon className="size-3.5" aria-hidden="true" />
+              ) : (
+                <ChevronDownIcon className="size-3.5" aria-hidden="true" />
+              )}
+            </button>
+          )}
+        </div>
+        {showChart && !hidden && chartVisible && history && asOf && (
           <BalancePnlChart
             currency={currency}
             baseCurrency={homeCurrency}

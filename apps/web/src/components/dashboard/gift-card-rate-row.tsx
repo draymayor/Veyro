@@ -4,11 +4,7 @@ import {
   defaultBrandRate,
   type GiftCardBrand,
 } from "@/lib/gift-cards/data";
-import {
-  formatWalletAmount,
-  type WalletCurrency,
-} from "@/lib/dashboard/wallet-currency";
-import { useFxRates } from "@/lib/fx/use-fx-rates";
+import type { WalletCurrency } from "@/lib/dashboard/wallet-currency";
 
 interface GiftCardRateRowProps {
   brand: GiftCardBrand;
@@ -16,9 +12,11 @@ interface GiftCardRateRowProps {
   homeCurrency: WalletCurrency;
 }
 
-export function GiftCardRateRow({ brand, homeCurrency }: GiftCardRateRowProps) {
+// Rate is deliberately not rendered ("Coming Soon" instead) while Sell Gift
+// Cards is locked platform-wide - the gift card API isn't integrated yet,
+// so this can't be a real, tradeable rate.
+export function GiftCardRateRow({ brand }: GiftCardRateRowProps) {
   const best = defaultBrandRate(brand);
-  const { rates: fxRates } = useFxRates();
 
   return (
     // Home's Gift Cards tab is a live rate ticker only (docs/context.md) -
@@ -51,13 +49,8 @@ export function GiftCardRateRow({ brand, homeCurrency }: GiftCardRateRowProps) {
         </span>
       </span>
 
-      <span className="text-ink justify-self-end text-right text-sm font-medium tabular-nums">
-        {formatWalletAmount(
-          best?.rate ?? 0,
-          "NGN",
-          homeCurrency,
-          fxRates ?? undefined,
-        )}
+      <span className="text-ink/40 justify-self-end text-right text-sm font-medium">
+        Coming Soon
       </span>
 
       <span className="text-ink/40 min-w-16 justify-self-end text-right text-xs">

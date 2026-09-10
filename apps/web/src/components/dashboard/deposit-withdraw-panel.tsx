@@ -22,6 +22,8 @@ interface PanelOption {
   title: string;
   description: string;
   icon: PanelIcon;
+  /** True for a flow that isn't usable yet (e.g. gift cards, API not integrated) - renders as a non-navigating row with a "Coming Soon" pill instead of a link. */
+  locked?: boolean;
 }
 
 // Order matters: Deposit Crypto first, per docs/context.md's Home page
@@ -39,6 +41,7 @@ const DEPOSIT_OPTIONS: PanelOption[] = [
     title: "Sell Gift Cards",
     description: "Submit a code or photos and get paid instantly.",
     icon: GiftIcon,
+    locked: true,
   },
   {
     href: "/sell/crypto",
@@ -159,18 +162,36 @@ function ListPanel({ open, onOpenChange, title, options }: ListPanelProps) {
                       {option.description}
                     </span>
                   </span>
-                  <ChevronRightIcon
-                    className="text-ink/30 size-4 shrink-0"
-                    aria-hidden="true"
-                  />
+                  {option.locked ? (
+                    <span className="bg-secondary text-ink/50 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap">
+                      Coming Soon
+                    </span>
+                  ) : (
+                    <ChevronRightIcon
+                      className="text-ink/30 size-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                  )}
                 </>
               );
-              const rowClassName =
-                "hover:bg-secondary border-border flex w-full items-center gap-3 rounded-2xl border p-3 text-left";
+
+              if (option.locked) {
+                return (
+                  <div
+                    key={option.href}
+                    className="border-border flex w-full items-center gap-3 rounded-2xl border p-3 text-left opacity-60"
+                  >
+                    {rowContent}
+                  </div>
+                );
+              }
 
               return (
                 <Dialog.Close key={option.href} asChild>
-                  <Link href={option.href} className={rowClassName}>
+                  <Link
+                    href={option.href}
+                    className="hover:bg-secondary border-border flex w-full items-center gap-3 rounded-2xl border p-3 text-left"
+                  >
                     {rowContent}
                   </Link>
                 </Dialog.Close>

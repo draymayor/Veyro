@@ -10,17 +10,28 @@ interface SellEntryCardProps {
   title: string;
   blurb: string;
   visual: React.ReactNode;
+  /** True while the flow this card leads to isn't usable yet (e.g. gift cards, API not integrated). Renders as a non-navigating card with a "Coming Soon" pill instead of a Link. */
+  locked?: boolean;
 }
 
-function SellEntryCard({ href, title, blurb, visual }: SellEntryCardProps) {
-  return (
-    <Link
-      href={href}
-      className="bg-card border-border hover:border-primary/30 group flex flex-1 flex-col justify-between gap-4 rounded-2xl border p-3 transition-colors sm:gap-6 sm:p-5"
-    >
+function SellEntryCard({
+  href,
+  title,
+  blurb,
+  visual,
+  locked = false,
+}: SellEntryCardProps) {
+  const content = (
+    <>
       <div className="flex items-center justify-between">
         {visual}
-        <ArrowRightCircleIcon className="text-ink/20 group-hover:text-primary size-5 shrink-0 transition-colors sm:size-6" />
+        {locked ? (
+          <span className="bg-secondary text-ink/50 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap">
+            Coming Soon
+          </span>
+        ) : (
+          <ArrowRightCircleIcon className="text-ink/20 group-hover:text-primary size-5 shrink-0 transition-colors sm:size-6" />
+        )}
       </div>
       <div>
         <p className="text-ink font-heading text-sm font-medium sm:text-base">
@@ -28,6 +39,23 @@ function SellEntryCard({ href, title, blurb, visual }: SellEntryCardProps) {
         </p>
         <p className="text-ink/50 mt-1 text-xs sm:text-sm">{blurb}</p>
       </div>
+    </>
+  );
+
+  if (locked) {
+    return (
+      <div className="bg-card border-border flex flex-1 flex-col justify-between gap-4 rounded-2xl border p-3 opacity-60 sm:gap-6 sm:p-5">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="bg-card border-border hover:border-primary/30 group flex flex-1 flex-col justify-between gap-4 rounded-2xl border p-3 transition-colors sm:gap-6 sm:p-5"
+    >
+      {content}
     </Link>
   );
 }
@@ -56,6 +84,7 @@ export function SellEntryCards() {
         href="/sell/gift-card"
         title="Sell Gift Cards"
         blurb="Amazon, Steam, Apple, and more."
+        locked
         visual={
           <div className="flex -space-x-2">
             {[

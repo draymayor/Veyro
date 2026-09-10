@@ -239,7 +239,7 @@ export function RateBrowser() {
         )}
 
         <p className="text-primary-foreground/60 mt-8 text-center text-xs">
-          Platform Rates shown are subject to confirmation at submission time.
+          Selling gift cards isn&apos;t available yet - rates are coming soon.
         </p>
       </div>
     </section>
