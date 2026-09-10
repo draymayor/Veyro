@@ -4,6 +4,7 @@ import { Footer } from "@/components/site/footer";
 import { createClient } from "@/lib/supabase/server";
 import { CareersHero } from "@/components/careers/hero";
 import { CareersProgramDetails } from "@/components/careers/program-details";
+import { CareersWhatScoutsDo } from "@/components/careers/what-scouts-do";
 import { CareersHowItWorks } from "@/components/careers/how-it-works";
 import { CareersFaq } from "@/components/careers/faq";
 import { CareersFinalCta } from "@/components/careers/final-cta";
@@ -35,6 +36,7 @@ export default async function CareersPage() {
       <main>
         <CareersHero applyHref={applyHref} />
         <CareersProgramDetails />
+        <CareersWhatScoutsDo />
         <CareersHowItWorks />
         <CareersFaq />
         <CareersFinalCta applyHref={applyHref} />

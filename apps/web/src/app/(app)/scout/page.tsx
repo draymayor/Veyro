@@ -32,8 +32,8 @@ export default async function ScoutDashboardPage() {
     pastDays,
   } = dashboard;
 
-  const linkCount = currentDay?.linkCount ?? 0;
-  const progressPct = Math.min((linkCount / minLinksPerDay) * 100, 100);
+  const approvedLinkCount = currentDay?.approvedLinkCount ?? 0;
+  const progressPct = Math.min((approvedLinkCount / minLinksPerDay) * 100, 100);
 
   return (
     <>
@@ -73,7 +73,7 @@ export default async function ScoutDashboardPage() {
                 {currentDay ? "Current day" : "Start a new day"}
               </p>
               <p className="text-ink/60 text-xs tabular-nums">
-                {linkCount}/{minLinksPerDay} links
+                {approvedLinkCount}/{minLinksPerDay}+ approved
               </p>
             </div>
             <div className="bg-secondary h-1.5 overflow-hidden rounded-full">
@@ -82,6 +82,12 @@ export default async function ScoutDashboardPage() {
                 style={{ width: `${progressPct}%` }}
               />
             </div>
+            <p className="text-ink/50 text-xs">
+              {minLinksPerDay}+ approved links needed, with every submission
+              reviewed - a rejected link needs an approved replacement. Submit
+              as many as you like - the day closes for review once all of that
+              is true AND 24 hours have passed since it opened.
+            </p>
             <ScoutLinkForm disabled={blocked} />
           </div>
         )}

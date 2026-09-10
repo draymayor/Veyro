@@ -1,7 +1,9 @@
 export interface ScoutCurrentDay {
   id: string;
   openedAt: string;
+  closesAt: string;
   linkCount: number;
+  approvedLinkCount: number;
 }
 
 export type ScoutDayStatus = "pending_review" | "approved" | "rejected";

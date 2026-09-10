@@ -24,6 +24,12 @@ export const SCOUT_SETTING_KEYS = {
   maxPendingDaysBeforeBlock: 'scout_max_pending_days_before_block',
 } as const;
 
+// A scout day stays open for a full 24h from opened_at regardless of how
+// fast the link minimum is hit - see ScoutService's class-level comment.
+// Not a platform_setting since it's a fixed program rule, not something
+// admins are expected to tune per-cohort like the link/day counts above.
+export const SCOUT_DAY_DURATION_MS = 24 * 60 * 60 * 1000;
+
 // Matches the values seeded live in platform_settings (docs/database-schema.md);
 // only ever used if a row is somehow missing.
 export const SCOUT_SETTING_FALLBACKS = {

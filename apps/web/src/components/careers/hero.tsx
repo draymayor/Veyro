@@ -34,9 +34,9 @@ export function CareersHero({ applyHref }: { applyHref: string }) {
 
         <ScrollReveal direction="up" delay={160}>
           <p className="text-ink/65 mt-5 max-w-lg text-base text-pretty sm:text-lg">
-            Post and comment on Reddit, X, and anywhere else you&apos;re active.
-            Recruit new Scouts or new Veyro users with your own referral link.
-            Earn $240 a day.
+            Bring people to Veyro, grow the Scout network, and talk up the
+            platform wherever you&apos;re active - Reddit, X, anywhere. Earn
+            $240 a day.
           </p>
         </ScrollReveal>
 

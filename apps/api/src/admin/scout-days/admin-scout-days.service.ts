@@ -8,6 +8,7 @@ import { SupabaseService } from '../../supabase/supabase.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { WalletService } from '../../wallet/wallet.service';
 import { FxRateService } from '../../fx/fx.service';
+import { ScoutService } from '../../scout/scout.service';
 import {
   SCOUT_SETTING_FALLBACKS,
   SCOUT_SETTING_KEYS,
@@ -43,6 +44,7 @@ export class AdminScoutDaysService {
     private readonly notificationsService: NotificationsService,
     private readonly walletService: WalletService,
     private readonly fxRateService: FxRateService,
+    private readonly scoutService: ScoutService,
   ) {}
 
   async list(filters: ListFilters): Promise<AdminScoutDayListItem[]> {
@@ -141,14 +143,32 @@ export class AdminScoutDaysService {
       .eq('id', linkId)
       .eq('scout_day_id', dayId)
       .eq('link_status', 'pending')
-      .select('id')
-      .maybeSingle<{ id: string }>();
+      .select('id, user_id')
+      .maybeSingle<{ id: string; user_id: string }>();
 
     if (error) throw new Error(error.message);
     if (!data) {
       throw new ConflictException(
         'This link has already been reviewed or does not exist.',
       );
+    }
+
+    // Day-level approve/reject already notifies the scout (below); a single
+    // rejected link within an otherwise-still-open day previously notified
+    // no one, so a scout had no way to know a link needed replacing short
+    // of the day eventually closing and showing up in their history.
+    if (action === 'reject') {
+      await client.from('notifications').insert({
+        user_id: data.user_id,
+        category: 'account',
+        title: 'A submitted link was rejected',
+        body: `One of your Scout links was rejected: ${trimmedReason}. The day stays open - submit another link to reach the required total.`,
+      });
+      await this.notificationsService.sendPushToUser(data.user_id, {
+        title: 'A submitted link was rejected',
+        body: trimmedReason ?? '',
+        url: '/scout',
+      });
     }
 
     await this.logAction(
@@ -158,6 +178,13 @@ export class AdminScoutDaysService {
       action === 'approve' ? 'scout_link_approved' : 'scout_link_rejected',
       trimmedReason,
     );
+
+    // An approval can be the last of the two closing conditions to land
+    // (the 24h window may have already elapsed while waiting on review) -
+    // check right away instead of waiting on the periodic sweep.
+    if (action === 'approve') {
+      await this.scoutService.maybeCloseDay(client, dayId);
+    }
 
     return {
       id: data.id,
@@ -274,6 +301,12 @@ export class AdminScoutDaysService {
     } catch {
       // The credit already succeeded; a failed email is non-critical.
     }
+
+    await this.notificationsService.sendPushToUser(dayRow.user_id, {
+      title: 'Scout day approved',
+      body: `${this.formatMoney(amountInUserCurrency, user.currency)} has been credited to your wallet as Scout Program income.`,
+      url: '/scout',
+    });
 
     return { id: dayRow.id, status: 'approved', credited: true };
   }

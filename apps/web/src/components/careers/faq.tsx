@@ -9,7 +9,7 @@ const FAQS = [
   {
     question: "What exactly do I have to do?",
     answer:
-      "Post and comment on social media, Reddit, X, and anywhere else you're active, recruiting either new Scouts or new Veyro users through your own referral link. There's no separate job for each, it's one role and it pays the same either way.",
+      "Drive real signups who claim the Earn bonus, recruit new Scouts, and generally advocate for Veyro - commenting, engaging, and posting wherever you're active. A referral link is useful but not mandatory on every single post. There's no separate job for each type of activity, it's one role and it pays the same either way.",
   },
   {
     question: "How much does it pay?",

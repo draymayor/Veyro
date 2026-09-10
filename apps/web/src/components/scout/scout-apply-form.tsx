@@ -14,7 +14,7 @@ interface PlatformFieldState {
 /**
  * Careers Part E's exact field list: full name, at least one
  * platform+handle (checkboxes from the fixed list, plus a free-text
- * "Other"), why/posting style, and a commit-realistically question. Kept
+ * "Other"), posting style, and a commit-realistically question. Kept
  * genuinely minimal per the "lightweight review" design goal - no work
  * history, references, or ID upload.
  */
@@ -79,7 +79,7 @@ export function ScoutApplyForm() {
       return;
     }
     if (!motivation.trim()) {
-      setError("Tell us why you want to do this and your posting style.");
+      setError("Tell us about your posting style.");
       return;
     }
 
@@ -201,7 +201,7 @@ export function ScoutApplyForm() {
         </div>
       </div>
 
-      <Field label="Why do you want to do this? What's your posting style?">
+      <Field label="What's your posting style?">
         <textarea
           required
           rows={4}

@@ -3,10 +3,13 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
+  SCOUT_DAY_DURATION_MS,
   SCOUT_PLATFORM_KEYS,
   SCOUT_SETTING_FALLBACKS,
   SCOUT_SETTING_KEYS,
@@ -52,13 +55,26 @@ export interface ScoutWithdrawalLock {
 const URL_PATTERN = /^https?:\/\/[^\s]+\.[^\s]+/i;
 
 // Careers/Scout program (docs/database-schema.md's Careers / Scout program
-// section). One "day" is submission-count based, not time based: it opens
-// on a scout's first link submission and stays open across any number of
-// real calendar days until scout_min_links_per_day submissions land, then
-// closes to 'pending_review' for admin. 30 days means 30 APPROVED days
-// specifically - a rejected day never counts and never reduces the total.
+// section). A "day" opens on a scout's first link submission and stays
+// open for a full 24h from opened_at - the scout can submit any number of
+// links during that window, there is no ceiling. scout_min_links_per_day
+// is a MINIMUM, not a target: the day only closes to 'pending_review' once
+// ALL of (a) every submitted link has been reviewed - none left 'pending',
+// (b) at least that many are APPROVED (not merely submitted), and (c) 24h
+// have passed since opened_at, are true (see maybeCloseDay for how (a)+(b)
+// together force replacements for any rejection). A link admin rejects
+// doesn't count toward the minimum and doesn't end the day - the scout
+// just needs to submit a replacement that gets approved; a single
+// unresolved rejection holds the whole day open until then, however many
+// hours have passed. Because closing can become due purely from time
+// passing (no new link submission or admin action to trigger the check),
+// runDueDayClosures() below sweeps for and closes any day that already
+// qualifies. 30 days means 30 APPROVED days specifically - a rejected day
+// never counts and never reduces the total.
 @Injectable()
 export class ScoutService {
+  private readonly logger = new Logger(ScoutService.name);
+
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly notificationsService: NotificationsService,
@@ -96,9 +112,7 @@ export class ScoutService {
       throw new BadRequestException('Full name is required.');
     }
     if (!motivation) {
-      throw new BadRequestException(
-        'Tell us why you want to do this and your posting style.',
-      );
+      throw new BadRequestException('Tell us about your posting style.');
     }
 
     const platforms = (input.platforms ?? []).filter(
@@ -215,12 +229,20 @@ export class ScoutService {
       .maybeSingle<{ id: string; opened_at: string }>();
 
     let currentDayLinkCount = 0;
+    let currentDayApprovedLinkCount = 0;
     if (currentDay) {
       const { count } = await client
         .from('scout_link_submissions')
         .select('id', { count: 'exact', head: true })
         .eq('scout_day_id', currentDay.id);
       currentDayLinkCount = count ?? 0;
+
+      const { count: approvedCount } = await client
+        .from('scout_link_submissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('scout_day_id', currentDay.id)
+        .eq('link_status', 'approved');
+      currentDayApprovedLinkCount = approvedCount ?? 0;
     }
 
     const { data: pastDaysRaw } = await client
@@ -255,7 +277,11 @@ export class ScoutService {
         ? {
             id: currentDay.id,
             openedAt: currentDay.opened_at,
+            closesAt: new Date(
+              new Date(currentDay.opened_at).getTime() + SCOUT_DAY_DURATION_MS,
+            ).toISOString(),
             linkCount: currentDayLinkCount,
+            approvedLinkCount: currentDayApprovedLinkCount,
           }
         : null,
       pastDays,
@@ -327,41 +353,118 @@ export class ScoutService {
 
     if (insertError) throw new Error(insertError.message);
 
-    const minLinksPerDay = await this.getSetting(
-      client,
-      SCOUT_SETTING_KEYS.minLinksPerDay,
-      SCOUT_SETTING_FALLBACKS.minLinksPerDay,
-    );
     const { count: linkCount } = await client
       .from('scout_link_submissions')
       .select('id', { count: 'exact', head: true })
       .eq('scout_day_id', day.id);
 
-    let closed = false;
-    if ((linkCount ?? 0) >= minLinksPerDay) {
-      const { data: closedDay } = await client
-        .from('scout_days')
-        .update({
-          status: 'pending_review',
-          closed_at: new Date().toISOString(),
-        })
-        .eq('id', day.id)
-        .eq('status', 'in_progress')
-        .select('id')
-        .maybeSingle<{ id: string }>();
+    // A fresh submission is always 'pending' - it can never itself push the
+    // approved count over the minimum, so it can never close the day. The
+    // day only closes via admin approval (AdminScoutDaysService.reviewLink)
+    // or the time-based sweep below.
+    return { dayId: day.id, linkCount: linkCount ?? 0 };
+  }
 
-      if (closedDay) {
-        closed = true;
-        await client.from('notifications').insert({
-          user_id: userId,
-          category: 'account',
-          title: 'Scout day submitted for review',
-          body: `You've submitted ${linkCount} links. This day is now pending Veyro's review.`,
-        });
-      }
+  // Closes `dayId` to 'pending_review' if (and only if) ALL of these hold:
+  // (a) no link on the day is still 'pending' - every submission has been
+  //     reviewed one way or the other, so nothing is left hanging;
+  // (b) >= minLinksPerDay of them are 'approved'. A rejected link never
+  //     itself becomes approved, so this forces the scout to submit and
+  //     get enough replacements approved to still clear the minimum -
+  //     which (b) alone enforces once combined with (a): a freshly
+  //     submitted replacement is 'pending' until reviewed, which keeps (a)
+  //     false and the day open until it's actually resolved;
+  // (c) >= 24h elapsed since opened_at.
+  // Safe to call speculatively any time one of these might have just
+  // become true - a no-op otherwise. Returns whether it actually closed
+  // the day.
+  async maybeCloseDay(
+    client: SupabaseClientType,
+    dayId: string,
+  ): Promise<boolean> {
+    const { data: day } = await client
+      .from('scout_days')
+      .select('user_id, opened_at')
+      .eq('id', dayId)
+      .eq('status', 'in_progress')
+      .maybeSingle<{ user_id: string; opened_at: string }>();
+
+    if (!day) return false;
+
+    const elapsedMs = Date.now() - new Date(day.opened_at).getTime();
+    if (elapsedMs < SCOUT_DAY_DURATION_MS) return false;
+
+    const { count: pendingCount } = await client
+      .from('scout_link_submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('scout_day_id', dayId)
+      .eq('link_status', 'pending');
+
+    if ((pendingCount ?? 0) > 0) return false;
+
+    const minLinksPerDay = await this.getSetting(
+      client,
+      SCOUT_SETTING_KEYS.minLinksPerDay,
+      SCOUT_SETTING_FALLBACKS.minLinksPerDay,
+    );
+    const { count: approvedCount } = await client
+      .from('scout_link_submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('scout_day_id', dayId)
+      .eq('link_status', 'approved');
+
+    if ((approvedCount ?? 0) < minLinksPerDay) return false;
+
+    const { data: closedDay } = await client
+      .from('scout_days')
+      .update({ status: 'pending_review', closed_at: new Date().toISOString() })
+      .eq('id', dayId)
+      .eq('status', 'in_progress')
+      .select('id')
+      .maybeSingle<{ id: string }>();
+
+    if (!closedDay) return false;
+
+    await client.from('notifications').insert({
+      user_id: day.user_id,
+      category: 'account',
+      title: 'Scout day submitted for review',
+      body: `You've reached ${approvedCount} approved links and 24 hours have passed. This day is now pending Veyro's review.`,
+    });
+
+    return true;
+  }
+
+  // Time can be the last condition to finish (e.g. a scout hits the
+  // approved-link minimum well before 24h is up), with no further link
+  // submission or admin review to trigger maybeCloseDay - so this sweeps
+  // for and closes any in-progress day that already qualifies on both
+  // counts once the clock alone catches up.
+  @Cron('*/5 * * * *')
+  async runDueDayClosures(): Promise<void> {
+    const client = this.supabaseService.getClient();
+    const cutoff = new Date(Date.now() - SCOUT_DAY_DURATION_MS).toISOString();
+
+    const { data: dueDays, error } = await client
+      .from('scout_days')
+      .select('id')
+      .eq('status', 'in_progress')
+      .lte('opened_at', cutoff);
+
+    if (error) {
+      this.logger.error(`Failed to list due scout days: ${error.message}`);
+      return;
     }
 
-    return { dayId: day.id, linkCount: linkCount ?? 0, closed };
+    for (const { id } of dueDays ?? []) {
+      try {
+        await this.maybeCloseDay(client, id);
+      } catch (err) {
+        this.logger.error(
+          `Failed to close scout day ${id}: ${(err as Error).message}`,
+        );
+      }
+    }
   }
 
   // The withdrawal-lock "floor" mechanic (docs/database-schema.md): the

@@ -33,6 +33,7 @@ import { WalletModule } from '../wallet/wallet.module';
 import { CryptoWalletModule } from '../crypto-wallet/crypto-wallet.module';
 import { ProviderHealthModule } from '../provider-health/provider-health.module';
 import { EarnModule } from '../earn/earn.module';
+import { ScoutModule } from '../scout/scout.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { EarnModule } from '../earn/earn.module';
     ProviderHealthModule,
     EarnModule,
     NetworkFeesModule,
+    ScoutModule,
   ],
   controllers: [
     AdminController,

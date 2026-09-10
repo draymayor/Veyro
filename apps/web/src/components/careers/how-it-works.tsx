@@ -23,8 +23,8 @@ const STEPS = [
   },
   {
     icon: Share2,
-    title: "Post and comment",
-    copy: "Share your referral link on Reddit, X, or anywhere else you're active, recruiting Scouts or Veyro users.",
+    title: "Get active",
+    copy: "Post, comment, and engage wherever you're active - Reddit, X, anywhere. Bring in new users who claim the Earn bonus, refer new Scouts, or just talk up Veyro. A referral link helps but isn't required on every post.",
     orbit: true,
   },
   {

@@ -87,7 +87,7 @@ export default async function AdminScoutApplicationDetailPage({
         )}
       </Section>
 
-      <Section title="Why / posting style">
+      <Section title="Posting style">
         <p className="text-ink text-sm leading-relaxed whitespace-pre-wrap">
           {application.motivation ?? "-"}
         </p>
