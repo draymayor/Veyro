@@ -566,5 +566,10 @@ export class AdminWithdrawalsService {
       body,
       related_withdrawal_id: withdrawalId,
     });
+    await this.notificationsService.sendPushToUser(userId, {
+      title,
+      body,
+      url: '/assets',
+    });
   }
 }

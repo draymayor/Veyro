@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import * as webpush from 'web-push';
 import { withTimeout } from '../common/fetch-with-timeout';
+import { SupabaseService } from '../supabase/supabase.service';
 import type { ReactElement } from 'react';
 import { render } from '@react-email/render';
 import {
@@ -48,8 +50,21 @@ export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly resend: Resend;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly supabaseService: SupabaseService,
+  ) {
     this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+
+    const vapidPublicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = this.configService.get<string>('VAPID_PRIVATE_KEY');
+    if (vapidPublicKey && vapidPrivateKey) {
+      webpush.setVapidDetails(
+        'mailto:support@veyro.best',
+        vapidPublicKey,
+        vapidPrivateKey,
+      );
+    }
   }
 
   // Throws on failure so callers (e.g. AuthService.sendOtp) don't report
@@ -519,6 +534,85 @@ export class NotificationsService {
       email,
       `${params.amount} credited for your Scout day`,
       ScoutDayApproved({ ...props, walletUrl }),
+    );
+  }
+
+  async savePushSubscription(
+    userId: string,
+    subscription: {
+      endpoint: string;
+      keys: { p256dh: string; auth: string };
+    },
+  ): Promise<void> {
+    const client = this.supabaseService.getClient();
+    const { error } = await client.from('push_subscriptions').upsert(
+      {
+        user_id: userId,
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+      },
+      { onConflict: 'endpoint' },
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  async deletePushSubscription(
+    userId: string,
+    endpoint: string,
+  ): Promise<void> {
+    const client = this.supabaseService.getClient();
+    await client
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('endpoint', endpoint);
+  }
+
+  // Best-effort fan-out to every device a user has subscribed on. Never
+  // throws - called alongside an in-app notification insert / email send
+  // that has already committed by the time this runs, so a push failure
+  // must not undo or fail whatever real event triggered it.
+  async sendPushToUser(
+    userId: string,
+    payload: { title: string; body: string; url?: string },
+  ): Promise<void> {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client
+      .from('push_subscriptions')
+      .select('endpoint, p256dh, auth')
+      .eq('user_id', userId);
+
+    if (error || !data?.length) return;
+
+    await Promise.all(
+      (data as { endpoint: string; p256dh: string; auth: string }[]).map(
+        async (sub) => {
+          try {
+            await webpush.sendNotification(
+              {
+                endpoint: sub.endpoint,
+                keys: { p256dh: sub.p256dh, auth: sub.auth },
+              },
+              JSON.stringify(payload),
+            );
+          } catch (err) {
+            const statusCode = (err as { statusCode?: number }).statusCode;
+            if (statusCode === 404 || statusCode === 410) {
+              // Subscription no longer exists on the push service (browser
+              // uninstalled/reset it) - clean up rather than retrying forever.
+              await client
+                .from('push_subscriptions')
+                .delete()
+                .eq('endpoint', sub.endpoint);
+            } else {
+              this.logger.warn(
+                `Push send failed for user ${userId}: ${err instanceof Error ? err.message : err}`,
+              );
+            }
+          }
+        },
+      ),
     );
   }
 

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
 import { BottomNav } from "./bottom-nav";
+import { PushRegistration } from "./push-registration";
 import type { AppUser } from "./app-user";
 
 interface AppShellProps {
@@ -14,6 +15,7 @@ interface AppShellProps {
 export function AppShell({ children, user, isScout = false }: AppShellProps) {
   return (
     <div className="flex min-h-screen">
+      <PushRegistration />
       <SidebarNav user={user} isScout={isScout} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar user={user} />

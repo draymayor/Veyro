@@ -24,7 +24,7 @@
 #   TATUM_DOGE_XPUB, TATUM_EVM_XPUB, TATUM_TRON_XPUB, FCA_API_KEY,
 #   CURRENCYFREAKS_API_KEY, TATUM_WEBHOOK_URL, TATUM_WEBHOOK_HMAC_SECRET,
 #   ALCHEMY_API_KEY, ALCHEMY_WEBHOOK_IDS, ALCHEMY_WEBHOOK_SIGNING_KEYS,
-#   BLOCK_WATCHER_SHARED_SECRET
+#   BLOCK_WATCHER_SHARED_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY
 #
 # COINPAPRIKA_API_KEY is deliberately NOT one of these secrets, and is
 # never passed to Cloud Run at all. CryptoPriceService's fallback chain
@@ -169,8 +169,24 @@ jobs:
           # aliases as a fallback (unique per-deploy URLs like
           # veyro-<hash>-draymayor.vercel.app change every deploy and are
           # SSO-protected anyway, so they don't need to be listed).
+          #
+          # WEB_APP_URL is the same class of miss as the TATUM_WEBHOOK_URL
+          # incident described above, just undetected until now: every
+          # link this API builds into an email body (welcome, earn bonus
+          # claimed/unlocked, notification settings, admin trade-approved
+          # "view referrals", admin withdrawal-rejected "contact support",
+          # scout/wallet links - see notifications.service.ts,
+          # earn.service.ts, admin-trades.service.ts,
+          # admin-withdrawals.service.ts, all via
+          # ConfigService.get('WEB_APP_URL') ?? 'http://localhost:3000')
+          # reads this exact env var. Never having been set here meant
+          # every one of those emails went out from production with a
+          # localhost:3000 link baked in. Also not a secret - it's just
+          # the production site's own public URL - so it belongs beside
+          # CORS_ORIGIN as a plain env var, not in Secret Manager.
           env_vars: |
             CORS_ORIGIN=https://veyro.best,https://veyro-draymayor.vercel.app,https://veyro-git-main-draymayor.vercel.app
+            WEB_APP_URL=https://veyro.best
           # overwrite (not the action's default "merge"): merge only ever
           # adds/updates secret refs on the live service, it never removes
           # one that's no longer listed here - that's exactly what stranded
@@ -202,3 +218,5 @@ jobs:
             ALCHEMY_WEBHOOK_IDS=ALCHEMY_WEBHOOK_IDS:latest
             ALCHEMY_WEBHOOK_SIGNING_KEYS=ALCHEMY_WEBHOOK_SIGNING_KEYS:latest
             BLOCK_WATCHER_SHARED_SECRET=BLOCK_WATCHER_SHARED_SECRET:latest
+            VAPID_PUBLIC_KEY=VAPID_PUBLIC_KEY:latest
+            VAPID_PRIVATE_KEY=VAPID_PRIVATE_KEY:latest
