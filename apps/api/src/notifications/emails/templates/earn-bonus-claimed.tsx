@@ -64,7 +64,7 @@ export function EarnBonusClaimed({
             color: emailTheme.ink,
           }}
         >
-          Sell gift cards or crypto worth {requiredVolume} or more on Veyro
+          Deposit crypto worth {requiredVolume} to withdraw this bonus
         </Text>
         <Text
           style={{ margin: '8px 0 0', fontSize: 13, color: emailTheme.muted }}

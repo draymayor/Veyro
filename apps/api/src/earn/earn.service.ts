@@ -31,11 +31,15 @@ export interface EarnStatusResponse {
   claim: EarnClaimRow | null;
   tiers: EarnBonusTier[];
   tradeVolumeUsd: number | null;
+  poolTotalUsd: number;
+  poolRemainingUsd: number;
 }
 
 const REFERRAL_BONUS_SETTING_KEY = 'referral_bonus_usd';
 const REFERRAL_BONUS_FALLBACK_USD = 10;
 const CLAIM_WINDOW_DAYS = 3;
+const EARN_POOL_TOTAL_SETTING_KEY = 'earn_pool_total_usd';
+const EARN_POOL_TOTAL_FALLBACK_USD = 50000;
 
 // The two options shown on the Earn page (docs/database-schema.md's
 // earn_bonus_claims section) - admin-tunable platform_settings, same
@@ -79,6 +83,8 @@ export class EarnService {
   async getStatus(userId: string): Promise<EarnStatusResponse> {
     const client = this.supabaseService.getClient();
     const tiers = await this.getBonusTiers(client);
+    const { poolTotalUsd, poolRemainingUsd } =
+      await this.getPoolBalance(client);
 
     const { data: existing } = await client
       .from('earn_bonus_claims')
@@ -87,7 +93,13 @@ export class EarnService {
       .maybeSingle<EarnClaimRow>();
 
     if (!existing) {
-      return { claim: null, tiers, tradeVolumeUsd: null };
+      return {
+        claim: null,
+        tiers,
+        tradeVolumeUsd: null,
+        poolTotalUsd,
+        poolRemainingUsd,
+      };
     }
 
     // Check-on-access: a claim that's quietly gone past its 3-day window,
@@ -103,7 +115,13 @@ export class EarnService {
         ? await this.computeTradeVolumeUsd(client, userId, current.claimed_at)
         : (current?.required_trade_volume_usd ?? null);
 
-    return { claim: current ?? existing, tiers, tradeVolumeUsd };
+    return {
+      claim: current ?? existing,
+      tiers,
+      tradeVolumeUsd,
+      poolTotalUsd,
+      poolRemainingUsd,
+    };
   }
 
   async claim(
@@ -140,7 +158,50 @@ export class EarnService {
 
     await this.notifyClaimed(client, claim);
 
-    return { claim, tiers, tradeVolumeUsd: 0 };
+    const { poolTotalUsd, poolRemainingUsd } =
+      await this.getPoolBalance(client);
+
+    return { claim, tiers, tradeVolumeUsd: 0, poolTotalUsd, poolRemainingUsd };
+  }
+
+  // Display-only figure for the Earn page's big pool card: the pool is
+  // denominated and settled in USD internally (every claim, unlock and
+  // payout above works in USD), this only relabels it as USDT for the
+  // user-facing "$X of $50,000 USDT pool remaining" copy since the pool is
+  // actually funded in USDT - it does not change how amounts are computed
+  // or stored. "Remaining" = the admin-set total (platform_settings,
+  // read live like the tier amounts) minus every bonus_amount_usd already
+  // paid out (status = 'paid', i.e. real wallet_transactions credits) -
+  // claimed-but-not-yet-unlocked amounts aren't real money out yet, so
+  // they don't reduce the balance shown here.
+  private async getPoolBalance(
+    client: ReturnType<SupabaseService['getClient']>,
+  ): Promise<{ poolTotalUsd: number; poolRemainingUsd: number }> {
+    const { data: settingRow } = await client
+      .from('platform_settings')
+      .select('value')
+      .eq('key', EARN_POOL_TOTAL_SETTING_KEY)
+      .maybeSingle();
+    const parsedTotal = settingRow?.value ? Number(settingRow.value) : NaN;
+    const poolTotalUsd =
+      Number.isFinite(parsedTotal) && parsedTotal > 0
+        ? parsedTotal
+        : EARN_POOL_TOTAL_FALLBACK_USD;
+
+    const { data: paidClaims } = await client
+      .from('earn_bonus_claims')
+      .select('bonus_amount_usd')
+      .eq('status', 'paid');
+
+    const paidOutUsd = (paidClaims ?? []).reduce(
+      (sum, row) => sum + Number(row.bonus_amount_usd),
+      0,
+    );
+
+    return {
+      poolTotalUsd,
+      poolRemainingUsd: Math.max(0, poolTotalUsd - paidOutUsd),
+    };
   }
 
   // Reads the four admin-editable tier settings live (Rate Management's
@@ -333,6 +394,7 @@ export class EarnService {
     claim: EarnClaimRow,
   ): Promise<void> {
     const bonusAmount = this.formatUsd(Number(claim.bonus_amount_usd));
+    const bonusAmountUsdt = this.formatUsdt(Number(claim.bonus_amount_usd));
     const requiredVolume = this.formatUsd(
       Number(claim.required_trade_volume_usd),
     );
@@ -375,7 +437,7 @@ export class EarnService {
       await this.notificationsService.sendEarnBonusClaimedEmail({
         email,
         name: (user?.display_name as string | null) ?? 'there',
-        bonusAmount,
+        bonusAmount: bonusAmountUsdt,
         requiredVolume,
         expiryDays: CLAIM_WINDOW_DAYS,
         referralLink,
@@ -433,6 +495,12 @@ export class EarnService {
 
   private formatUsd(amount: number): string {
     return this.formatMoney(amount, 'USD');
+  }
+
+  // Display-only relabel matching the web app's Earn page - the amount is
+  // still USD under the hood (bonus_amount_usd), this just shows it as USDT.
+  private formatUsdt(amount: number): string {
+    return `${Math.round(amount).toLocaleString('en-US')} USDT`;
   }
 
   private formatMoney(amount: number, currency: string): string {

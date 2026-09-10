@@ -4,7 +4,13 @@ import type { EarnStatus } from "./data";
 
 export type { EarnStatus, EarnClaim, EarnBonusTier } from "./data";
 
-const FALLBACK: EarnStatus = { claim: null, tiers: [], tradeVolumeUsd: null };
+const FALLBACK: EarnStatus = {
+  claim: null,
+  tiers: [],
+  tradeVolumeUsd: null,
+  poolTotalUsd: 50000,
+  poolRemainingUsd: 50000,
+};
 
 /**
  * Server-component fetch for GET /earn, the same getSession -> bearer-header
@@ -23,12 +29,18 @@ export async function getEarnStatus(
 
   if (!session?.access_token) return FALLBACK;
 
-  const res = await fetch(`${getApiBaseUrl()}/earn`, {
-    headers: { Authorization: `Bearer ${session.access_token}` },
-    cache: "no-store",
-  });
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/earn`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      cache: "no-store",
+    });
 
-  if (!res.ok) return FALLBACK;
+    if (!res.ok) return FALLBACK;
 
-  return (await res.json()) as EarnStatus;
+    return (await res.json()) as EarnStatus;
+  } catch {
+    // API unreachable (e.g. down for maintenance) - same fail-open posture
+    // as a non-ok response, must never take the whole page down with it.
+    return FALLBACK;
+  }
 }

@@ -6,8 +6,10 @@ import { getWalletSummary } from "@/lib/dashboard/get-wallet-summary";
 import { getTransactionHistory } from "@/lib/dashboard/get-transaction-history";
 import { getAllCryptoWalletBalances } from "@/lib/dashboard/get-crypto-wallet-balance";
 import { getNotifications } from "@/lib/notifications/get-notifications";
+import { getEarnStatus } from "@/lib/earn/get-status";
 import { BalanceCard } from "@/components/dashboard/balance-card";
 import { SellEntryCards } from "@/components/dashboard/sell-entry-cards";
+import { EarnBanner } from "@/components/dashboard/earn-banner";
 import { RatesSection } from "@/components/dashboard/rates-section";
 import { ReferralsWidget } from "@/components/dashboard/widgets/referrals-widget";
 import { NotificationsWidget } from "@/components/dashboard/widgets/notifications-widget";
@@ -50,23 +52,27 @@ export default async function HomePage() {
   // Home's balance card never shows the trend chart, but it does show
   // today's P&L, so this still needs the fuller wallet summary (same call
   // Assets makes), just without ever passing its `history` down.
-  const [walletSummary, transactions, notifications, cryptoBalances] =
-    await Promise.all([
-      user
-        ? getWalletSummary(supabase, user.id, homeCurrency)
-        : Promise.resolve({
-            balance: 0,
-            currency: homeCurrency,
-            todayPnl: { amount: 0, percent: 0 },
-          }),
-      user
-        ? getTransactionHistory(supabase, user.id, homeCurrency)
-        : Promise.resolve([]),
-      user ? getNotifications(supabase, user.id) : Promise.resolve([]),
-      user
-        ? getAllCryptoWalletBalances(supabase, user.id)
-        : Promise.resolve([]),
-    ]);
+  const [
+    walletSummary,
+    transactions,
+    notifications,
+    cryptoBalances,
+    earnStatus,
+  ] = await Promise.all([
+    user
+      ? getWalletSummary(supabase, user.id, homeCurrency)
+      : Promise.resolve({
+          balance: 0,
+          currency: homeCurrency,
+          todayPnl: { amount: 0, percent: 0 },
+        }),
+    user
+      ? getTransactionHistory(supabase, user.id, homeCurrency)
+      : Promise.resolve([]),
+    user ? getNotifications(supabase, user.id) : Promise.resolve([]),
+    user ? getAllCryptoWalletBalances(supabase, user.id) : Promise.resolve([]),
+    getEarnStatus(supabase),
+  ]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 pt-3 pb-6 sm:px-6 lg:px-8 lg:py-8">
@@ -82,6 +88,9 @@ export default async function HomePage() {
           </StaggerItem>
           <StaggerItem>
             <SellEntryCards />
+          </StaggerItem>
+          <StaggerItem>
+            <EarnBanner poolTotalUsd={earnStatus.poolTotalUsd} />
           </StaggerItem>
           <StaggerItem>
             <RatesSection homeCurrency={homeCurrency} />

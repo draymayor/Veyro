@@ -37,13 +37,16 @@ export default async function EarnPage() {
         ) : (
           <>
             <StaggerItem>
-              <EarnOptionsCard tiers={status.tiers} alreadyClaimed={false} />
+              <EarnOptionsCard
+                tiers={status.tiers}
+                alreadyClaimed={false}
+                poolTotalUsd={status.poolTotalUsd}
+              />
             </StaggerItem>
             <StaggerItem>
               <p className="text-ink/50 text-center text-xs">
-                One claim per account. Your bonus unlocks once you sell that
-                much in gift cards or crypto on Veyro within 3 days of claiming,
-                deposits don&apos;t count.
+                One claim per account. Your bonus unlocks once you deposit the
+                equivalent or higher, within 3 days of claiming.
               </p>
             </StaggerItem>
           </>

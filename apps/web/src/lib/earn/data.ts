@@ -20,4 +20,8 @@ export interface EarnStatus {
   claim: EarnClaim | null;
   tiers: EarnBonusTier[];
   tradeVolumeUsd: number | null;
+  /** Admin-set total pool size in USD, displayed to users as a USDT amount. */
+  poolTotalUsd: number;
+  /** poolTotalUsd minus bonuses already paid out, in USD, displayed as USDT. */
+  poolRemainingUsd: number;
 }

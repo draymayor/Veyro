@@ -28,6 +28,13 @@ function formatUsd(amount: number): string {
   }).format(amount);
 }
 
+// Display-only relabel, same as the Earn page's pool card - the bonus and
+// required amounts are still computed and stored in USD (bonus_amount_usd,
+// required_trade_volume_usd), this just shows the figure as USDT.
+function formatUsdt(amount: number): string {
+  return `${Math.round(amount).toLocaleString("en-US")} USDT`;
+}
+
 function timeLeftLabel(expiresAt: string): string {
   const ms = new Date(expiresAt).getTime() - Date.now();
   if (ms <= 0) return "Expired";
@@ -74,7 +81,7 @@ export function EarnClaimedCard({
 
         <div className="flex items-center gap-2">
           <span className="font-heading text-primary-foreground text-3xl font-semibold sm:text-4xl">
-            ${claim.bonus_amount_usd}
+            {formatUsdt(claim.bonus_amount_usd)}
           </span>
           <StatusBadge label={label} tone={tone} />
         </div>
@@ -82,8 +89,8 @@ export function EarnClaimedCard({
         {claim.status === "claimed" ? (
           <>
             <p className="text-primary-foreground/85 text-sm">
-              Sell ${requiredVolume} or more in gift cards or crypto to unlock
-              it
+              Deposit crypto worth {formatUsd(requiredVolume)} to withdraw this
+              bonus
             </p>
             <div className="border-primary-foreground/15 bg-primary-foreground/10 w-full rounded-xl border p-4">
               <div className="flex items-center justify-between text-xs">
