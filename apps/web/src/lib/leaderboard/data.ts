@@ -41,7 +41,6 @@ export interface ReferralLeaderboardEntry {
 export const CURRENT_USER_TRADING_RANK = 47;
 export const CURRENT_USER_TRADING_VOLUME = 128_400;
 export const CURRENT_USER_REFERRAL_RANK = 132;
-export const CURRENT_USER_REFERRAL_COUNT = 1;
 
 export const TRADING_LEADERBOARD: TradingLeaderboardEntry[] = [
   {

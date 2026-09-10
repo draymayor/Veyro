@@ -2,7 +2,6 @@ import { UserGroupIcon } from "@heroicons/react/24/solid";
 import {
   REFERRALS_LEADERBOARD,
   CURRENT_USER_REFERRAL_RANK,
-  CURRENT_USER_REFERRAL_COUNT,
   LEADERBOARD_PERIOD_LABEL,
 } from "@/lib/leaderboard/data";
 import type { AppUser } from "@/components/app/app-user";
@@ -11,6 +10,14 @@ import { LeaderboardRow } from "./leaderboard-row";
 interface ReferralsPanelProps {
   /** The signed-in viewer, so their pinned row uses their real avatar/identity. */
   currentUser: AppUser;
+  /**
+   * The viewer's real referral count for the period (from getReferralSummary,
+   * the same real `referrals` query the Referrals page and the teaser card
+   * above use) - never the illustrative REFERRALS_LEADERBOARD mock data,
+   * which stands in only for other users' rows until real leaderboard
+   * aggregation is wired in.
+   */
+  currentUserReferralCount: number;
 }
 
 function formatReferralCount(count: number): string {
@@ -25,7 +32,10 @@ function formatReferralCount(count: number): string {
  * sections rather than two near-identical cards told apart only by a
  * subtle color difference.
  */
-export function ReferralsPanel({ currentUser }: ReferralsPanelProps) {
+export function ReferralsPanel({
+  currentUser,
+  currentUserReferralCount,
+}: ReferralsPanelProps) {
   const isViewerVisible = REFERRALS_LEADERBOARD.some(
     (entry) => entry.user.id === currentUser.id,
   );
@@ -60,7 +70,7 @@ export function ReferralsPanel({ currentUser }: ReferralsPanelProps) {
           <LeaderboardRow
             rank={CURRENT_USER_REFERRAL_RANK}
             user={currentUser}
-            statValue={formatReferralCount(CURRENT_USER_REFERRAL_COUNT)}
+            statValue={formatReferralCount(currentUserReferralCount)}
             isCurrentUser
             pinned
           />

@@ -10,6 +10,7 @@ const TAB_TRIGGER =
 
 interface LeaderboardTabsProps {
   currentUser: AppUser;
+  currentUserReferralCount: number;
 }
 
 /**
@@ -18,7 +19,10 @@ interface LeaderboardTabsProps {
  * LeaderboardPage's lg:grid). Same tab pill pattern as RatesSection's
  * Crypto/Gift Cards tabs, not a new tab component.
  */
-export function LeaderboardTabs({ currentUser }: LeaderboardTabsProps) {
+export function LeaderboardTabs({
+  currentUser,
+  currentUserReferralCount,
+}: LeaderboardTabsProps) {
   return (
     <Tabs.Root defaultValue="trading" className="lg:hidden">
       <Tabs.List className="bg-secondary/70 mb-4 inline-flex gap-1 rounded-full p-1">
@@ -34,7 +38,10 @@ export function LeaderboardTabs({ currentUser }: LeaderboardTabsProps) {
         <TradingPanel currentUser={currentUser} />
       </Tabs.Content>
       <Tabs.Content value="referrals">
-        <ReferralsPanel currentUser={currentUser} />
+        <ReferralsPanel
+          currentUser={currentUser}
+          currentUserReferralCount={currentUserReferralCount}
+        />
       </Tabs.Content>
     </Tabs.Root>
   );

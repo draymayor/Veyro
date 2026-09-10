@@ -76,7 +76,10 @@ export default async function LeaderboardPage() {
 
         {/* Mobile: switchable tabs, one panel visible at a time. */}
         <StaggerItem className="lg:hidden">
-          <LeaderboardTabs currentUser={currentUser} />
+          <LeaderboardTabs
+            currentUser={currentUser}
+            currentUserReferralCount={referralSummary?.totalReferrals ?? 0}
+          />
         </StaggerItem>
 
         {/* Desktop: both panels side by side, always visible, no tab
@@ -85,7 +88,10 @@ export default async function LeaderboardPage() {
             their already-distinct icon badges. */}
         <StaggerItem className="lg:divide-border hidden gap-6 lg:grid lg:grid-cols-2 lg:divide-x">
           <TradingPanel currentUser={currentUser} />
-          <ReferralsPanel currentUser={currentUser} />
+          <ReferralsPanel
+            currentUser={currentUser}
+            currentUserReferralCount={referralSummary?.totalReferrals ?? 0}
+          />
         </StaggerItem>
       </StaggerIn>
     </main>

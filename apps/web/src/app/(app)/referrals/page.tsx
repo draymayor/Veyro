@@ -79,7 +79,6 @@ export default async function ReferralsPage({ searchParams }: PageProps) {
           <StaggerItem>
             <ReferralHeroCard
               bonusAmountUsd={bonusAmountUsd}
-              code={summary.code}
               link={summary.link}
             />
           </StaggerItem>
