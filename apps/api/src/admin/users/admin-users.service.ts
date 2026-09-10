@@ -38,6 +38,9 @@ export interface AdminUserWithdrawal {
   status: string;
   transaction_reference: string | null;
   created_at: string;
+  // Only set for method: 'crypto' rows - the amount is a raw asset
+  // quantity, not priced in the user's fiat wallet currency.
+  crypto_asset_symbol: string | null;
 }
 
 export interface AdminUserLedgerEntry {
@@ -214,7 +217,7 @@ export class AdminUsersService {
         client
           .from('withdrawals')
           .select(
-            'id, amount, method, status, transaction_reference, created_at',
+            'id, amount, method, status, transaction_reference, created_at, crypto_assets(symbol)',
           )
           .eq('user_id', userId)
           .order('created_at', { ascending: false }),
@@ -349,14 +352,18 @@ export class AdminUsersService {
 
     const withdrawals: AdminUserWithdrawal[] = (
       (withdrawalsRes.data ?? []) as Record<string, unknown>[]
-    ).map((row) => ({
-      id: row.id as string,
-      amount: Number(row.amount),
-      method: row.method as string,
-      status: row.status as string,
-      transaction_reference: row.transaction_reference as string | null,
-      created_at: row.created_at as string,
-    }));
+    ).map((row) => {
+      const asset = row.crypto_assets as { symbol: string } | null;
+      return {
+        id: row.id as string,
+        amount: Number(row.amount),
+        method: row.method as string,
+        status: row.status as string,
+        transaction_reference: row.transaction_reference as string | null,
+        created_at: row.created_at as string,
+        crypto_asset_symbol: asset?.symbol ?? null,
+      };
+    });
 
     const emailByUserId = await this.supabaseService.getUserEmailsByIds([
       userId,

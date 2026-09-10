@@ -6,6 +6,7 @@ import type { AdminUserDetail } from "@/lib/admin/users/types";
 import {
   userLabel,
   formatMoney,
+  formatWithdrawalAmount,
   formatDateTime,
   formatLedgerAmount,
   formatLedgerBalanceAfter,
@@ -132,7 +133,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                     : ""}
                 </span>
                 <span className="text-ink shrink-0 text-xs font-medium tabular-nums">
-                  {formatMoney(withdrawal.amount, user.currency)}
+                  {formatWithdrawalAmount(withdrawal, user.currency)}
                 </span>
               </div>
             ))}

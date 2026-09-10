@@ -2,7 +2,7 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 import { withdrawalStatusInfo } from "@/lib/dashboard/trade-status";
 import {
   withdrawalUserLabel,
-  formatMoney,
+  formatWithdrawalAmount,
   formatDateTime,
   bankDetailEntries,
 } from "@/lib/admin/withdrawals/display";
@@ -46,7 +46,7 @@ export function WithdrawalRow({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="text-ink text-sm font-medium tabular-nums">
-            {formatMoney(withdrawal.amount, withdrawal.currency)}
+            {formatWithdrawalAmount(withdrawal)}
           </span>
           <StatusBadge label={label} tone={tone} />
         </div>

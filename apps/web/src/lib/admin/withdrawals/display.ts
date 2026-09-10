@@ -23,6 +23,25 @@ export function formatMoney(amount: number, currency: string | null): string {
   }
 }
 
+// Crypto amounts are a raw asset quantity, not a fiat currency
+// Intl.NumberFormat can price - shown as a plain quantity with up to 8
+// decimal places suffixed by the symbol instead, same pattern as the All
+// Transactions view's formatCrypto (lib/admin/transactions/display.ts).
+export function formatCrypto(amount: number, symbol: string): string {
+  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 8 })} ${symbol}`;
+}
+
+export function formatWithdrawalAmount(withdrawal: {
+  method: string;
+  amount: number;
+  currency: string | null;
+  crypto_asset_symbol: string | null;
+}): string {
+  return withdrawal.method === "crypto"
+    ? formatCrypto(withdrawal.amount, withdrawal.crypto_asset_symbol ?? "")
+    : formatMoney(withdrawal.amount, withdrawal.currency);
+}
+
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-US", {
     month: "short",

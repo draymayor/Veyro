@@ -133,7 +133,11 @@ export class AdminWithdrawalsService {
         user_display_name: user?.display_name ?? null,
         user_withdrawals_suspended: Boolean(user?.withdrawals_suspended),
         amount: Number(row.amount),
-        currency: user?.currency ?? null,
+        // Crypto withdrawals never carry a fiat currency - the amount is a
+        // raw asset quantity (crypto_asset_symbol above), not priced in the
+        // user's home currency, so overloading this field for both meanings
+        // rounded crypto dust to 2dp and mislabeled it with the fiat symbol.
+        currency: row.method === 'crypto' ? null : (user?.currency ?? null),
         method: row.method as string,
         status: row.status as string,
         bank_details:

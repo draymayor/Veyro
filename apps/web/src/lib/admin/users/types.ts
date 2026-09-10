@@ -32,6 +32,9 @@ export interface AdminUserWithdrawal {
   status: string;
   transaction_reference: string | null;
   created_at: string;
+  // Only set for method: "crypto" rows - the amount is a raw asset
+  // quantity, not priced in the user's fiat wallet currency.
+  crypto_asset_symbol: string | null;
 }
 
 export interface AdminUserLedgerEntry {

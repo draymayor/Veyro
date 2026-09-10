@@ -1,5 +1,9 @@
 import type { BadgeTone } from "@/lib/dashboard/trade-status";
-import type { AccountStatus, AdminUserLedgerEntry } from "./types";
+import type {
+  AccountStatus,
+  AdminUserLedgerEntry,
+  AdminUserWithdrawal,
+} from "./types";
 
 export function userLabel(displayName: string | null, userId: string): string {
   return displayName ?? `User ${userId.slice(0, 8)}`;
@@ -38,6 +42,15 @@ export function formatMoney(amount: number, currency: string | null): string {
 // suffixed by the symbol instead.
 export function formatCrypto(amount: number, symbol: string): string {
   return `${amount.toLocaleString("en-US", { maximumFractionDigits: 8 })} ${symbol}`;
+}
+
+export function formatWithdrawalAmount(
+  withdrawal: AdminUserWithdrawal,
+  fallbackCurrency: string | null,
+): string {
+  return withdrawal.method === "crypto"
+    ? formatCrypto(withdrawal.amount, withdrawal.crypto_asset_symbol ?? "")
+    : formatMoney(withdrawal.amount, fallbackCurrency);
 }
 
 export function formatLedgerAmount(entry: AdminUserLedgerEntry): string {
