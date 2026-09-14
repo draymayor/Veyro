@@ -1,24 +1,66 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { InnerPageHeader } from "@/components/app/inner-page-header";
 import { ScoutLinkForm } from "@/components/scout/scout-link-form";
 import { ScoutPastDays } from "@/components/scout/scout-past-days";
+import { ScoutExplainer } from "@/components/scout/scout-explainer";
 import { adminFetch } from "@/lib/admin/admin-fetch";
-import type { ScoutDashboard } from "@/lib/scout/types";
+import { getScoutProgramDetails } from "@/lib/scout/get-program-details";
+import type {
+  ScoutApplicationStatusResponse,
+  ScoutDashboard,
+} from "@/lib/scout/types";
 
 export const metadata: Metadata = {
   title: "Scout",
 };
 
-// Scout dashboard (Part B): only reachable by an approved scout - the
-// backend's GET /scout/dashboard 403s for anyone else (ScoutApprovedGuard),
-// which this page treats the same as "not a scout" and bounces to the
-// application entry point rather than showing a broken/empty dashboard.
-export default async function ScoutDashboardPage() {
+// Single in-app Scout entry point (Parts A/E and B merged into one route):
+// a logged-in user who isn't an approved scout sees the live
+// requirements/earnings explainer with an inline Apply form
+// (ScoutExplainer); once approved, this same route renders the working
+// dashboard below instead. /scout/apply now just redirects here for any
+// old links/bookmarks.
+export default async function ScoutPage() {
+  const status = await adminFetch<ScoutApplicationStatusResponse>(
+    "/scout/application-status",
+  );
+
+  if (status?.status !== "approved") {
+    const programDetails = await getScoutProgramDetails();
+    return (
+      <>
+        <InnerPageHeader title="Scout" backHref="/home" />
+        <main className="mx-auto max-w-md px-4 pt-4 pb-16 sm:px-6">
+          <ScoutExplainer
+            programDetails={programDetails}
+            status={status?.status ?? "not_applied"}
+            rejectionReason={status?.rejectionReason ?? null}
+          />
+        </main>
+      </>
+    );
+  }
+
   const dashboard = await adminFetch<ScoutDashboard>("/scout/dashboard");
 
+  // Approved per application-status but the dashboard call itself failed
+  // (network/API hiccup) - fall back to the explainer's shape rather than
+  // rendering a broken/empty dashboard, same defensive posture the old
+  // page had for the null case.
   if (!dashboard) {
-    redirect("/scout/apply");
+    const programDetails = await getScoutProgramDetails();
+    return (
+      <>
+        <InnerPageHeader title="Scout" backHref="/home" />
+        <main className="mx-auto max-w-md px-4 pt-4 pb-16 sm:px-6">
+          <ScoutExplainer
+            programDetails={programDetails}
+            status="pending"
+            rejectionReason={null}
+          />
+        </main>
+      </>
+    );
   }
 
   const {

@@ -4,57 +4,74 @@ import { Accordion } from "radix-ui";
 import { Plus } from "lucide-react";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { JsonLd } from "@/components/seo/json-ld";
+import type { ScoutProgramDetails } from "@/lib/scout/types";
 
-const FAQS = [
-  {
-    question: "What exactly do I have to do?",
-    answer:
-      "Drive real signups who claim the Earn bonus, recruit new Scouts, and generally advocate for Veyro - commenting, engaging, and posting wherever you're active. A referral link is useful but not mandatory on every single post. There's no separate job for each type of activity, it's one role and it pays the same either way.",
-  },
-  {
-    question: "How much does it pay?",
-    answer:
-      "$240 for each paid day. A day closes once you've submitted at least 10 links, and it gets credited once we review and approve it.",
-  },
-  {
-    question: "When can I withdraw my Scout earnings?",
-    answer:
-      "Once you've completed 30 approved paid days. Your regular Veyro balance, from trades, referrals, or anything else, is never affected by this and stays withdrawable as normal.",
-  },
-  {
-    question: "How long does a day take?",
-    answer:
-      "A day isn't time-based, it stays open across as many calendar days as you need until you submit 10 links, then it closes for our review.",
-  },
-  {
-    question: "How many days can I have waiting for review at once?",
-    answer:
-      "Up to 5. Once you have 5 completed days awaiting review, you'll need to wait for us to review at least one before starting a new one.",
-  },
-  {
-    question: "What if a day or a link gets rejected?",
-    answer:
-      "We review every link individually before deciding on the day. A rejected day doesn't count toward your 30-day total, and doesn't pay out, but it also doesn't undo any day you've already had approved.",
-  },
-];
+// Fallbacks only used if CareersPage's fetch failed (programDetails null) -
+// the "10"/"$240"/"30" baked into these answers used to be permanently
+// hardcoded, the same staleness bug program-details.tsx and how-it-works.tsx
+// had elsewhere on this page.
+const FALLBACK_DAILY_RATE_USD = 240;
+const FALLBACK_MIN_LINKS = 10;
+const FALLBACK_REQUIRED_DAYS = 30;
 
-const FAQ_SCHEMA = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQS.map((item) => ({
-    "@type": "Question",
-    name: item.question,
-    acceptedAnswer: {
-      "@type": "Answer",
-      text: item.answer,
+function buildFaqs(programDetails: ScoutProgramDetails | null) {
+  const dailyRateUsd = programDetails?.dailyRateUsd ?? FALLBACK_DAILY_RATE_USD;
+  const minLinksPerDay = programDetails?.minLinksPerDay ?? FALLBACK_MIN_LINKS;
+  const requiredPaidDays =
+    programDetails?.requiredPaidDays ?? FALLBACK_REQUIRED_DAYS;
+
+  return [
+    {
+      question: "What exactly do I have to do?",
+      answer:
+        "Drive real signups who claim the Earn bonus, recruit new Scouts, and generally advocate for Veyro - commenting, engaging, and posting wherever you're active. A referral link is useful but not mandatory on every single post. There's no separate job for each type of activity, it's one role and it pays the same either way.",
     },
-  })),
-};
+    {
+      question: "How much does it pay?",
+      answer: `$${dailyRateUsd} for each paid day. A day closes once you've submitted at least ${minLinksPerDay} links, and it gets credited once we review and approve it.`,
+    },
+    {
+      question: "When can I withdraw my Scout earnings?",
+      answer: `Once you've completed ${requiredPaidDays} approved paid days. Your regular Veyro balance, from trades, referrals, or anything else, is never affected by this and stays withdrawable as normal.`,
+    },
+    {
+      question: "How long does a day take?",
+      answer: `A day isn't time-based, it stays open across as many calendar days as you need until you submit ${minLinksPerDay} links, then it closes for our review.`,
+    },
+    {
+      question: "How many days can I have waiting for review at once?",
+      answer:
+        "Up to 5. Once you have 5 completed days awaiting review, you'll need to wait for us to review at least one before starting a new one.",
+    },
+    {
+      question: "What if a day or a link gets rejected?",
+      answer: `We review every link individually before deciding on the day. A rejected day doesn't count toward your ${requiredPaidDays}-day total, and doesn't pay out, but it also doesn't undo any day you've already had approved.`,
+    },
+  ];
+}
 
-export function CareersFaq() {
+export function CareersFaq({
+  programDetails,
+}: {
+  programDetails: ScoutProgramDetails | null;
+}) {
+  const faqs = buildFaqs(programDetails);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
+
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
-      <JsonLd data={FAQ_SCHEMA} />
+      <JsonLd data={faqSchema} />
       <div className="grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
         <ScrollReveal
           direction="up"
@@ -73,7 +90,7 @@ export function CareersFaq() {
 
         <ScrollReveal direction="up" delay={100}>
           <Accordion.Root type="single" collapsible className="flex flex-col">
-            {FAQS.map((item, i) => (
+            {faqs.map((item, i) => (
               <Accordion.Item
                 key={item.question}
                 value={`item-${i}`}

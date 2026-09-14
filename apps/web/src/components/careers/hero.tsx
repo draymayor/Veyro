@@ -1,8 +1,18 @@
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { OrbitRings } from "@/components/home/orbit-rings";
 import { CareersApplyButton } from "./apply-button";
+import type { ScoutProgramDetails } from "@/lib/scout/types";
 
-export function CareersHero({ applyHref }: { applyHref: string }) {
+const FALLBACK_DAILY_RATE_USD = 240;
+
+export function CareersHero({
+  applyHref,
+  programDetails,
+}: {
+  applyHref: string;
+  programDetails: ScoutProgramDetails | null;
+}) {
+  const dailyRateUsd = programDetails?.dailyRateUsd ?? FALLBACK_DAILY_RATE_USD;
   return (
     <section className="bg-background relative overflow-hidden pb-14 sm:pb-16">
       <OrbitRings
@@ -35,8 +45,8 @@ export function CareersHero({ applyHref }: { applyHref: string }) {
         <ScrollReveal direction="up" delay={160}>
           <p className="text-ink/65 mt-5 max-w-lg text-base text-pretty sm:text-lg">
             Bring people to Veyro, grow the Scout network, and talk up the
-            platform wherever you&apos;re active - Reddit, X, anywhere. Earn
-            $240 a day.
+            platform wherever you&apos;re active - Reddit, X, anywhere. Earn $
+            {dailyRateUsd} a day.
           </p>
         </ScrollReveal>
 

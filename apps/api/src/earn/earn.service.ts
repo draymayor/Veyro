@@ -86,10 +86,18 @@ export class EarnService {
     const { poolTotalUsd, poolRemainingUsd } =
       await this.getPoolBalance(client);
 
+    // A user can now hold more than one row over time (a fresh claim is
+    // allowed once a prior one has resolved to 'expired' or 'paid' - see
+    // the earn_bonus_claims_one_active_per_user partial unique index in
+    // earn_bonus_allow_reclaim_after_expiry.sql), so this is no longer a
+    // maybeSingle() lookup - only the most recent row is ever "the" claim
+    // for display/claim-eligibility purposes.
     const { data: existing } = await client
       .from('earn_bonus_claims')
       .select('*')
       .eq('user_id', userId)
+      .order('claimed_at', { ascending: false })
+      .limit(1)
       .maybeSingle<EarnClaimRow>();
 
     if (!existing) {
@@ -109,6 +117,19 @@ export class EarnService {
       existing.status === 'claimed'
         ? await this.checkAndUnlockBonus(client, userId)
         : existing;
+
+    // An expired claim reads exactly like "no claim" to the frontend -
+    // same two-option selection a first-time user sees, per the product
+    // requirement that expiry doesn't leave the user stuck.
+    if (current?.status === 'expired') {
+      return {
+        claim: null,
+        tiers,
+        tradeVolumeUsd: null,
+        poolTotalUsd,
+        poolRemainingUsd,
+      };
+    }
 
     const tradeVolumeUsd =
       current && current.status === 'claimed'
@@ -146,12 +167,16 @@ export class EarnService {
       .single<EarnClaimRow>();
 
     if (error) {
-      // 23505 = unique_violation on earn_bonus_claims_user_id_key, the
-      // real one-claim-per-user-ever enforcement. The frontend also checks
-      // this before ever calling here, but that only covers the common
-      // case, not a race between two concurrent claim requests.
+      // 23505 = unique_violation on earn_bonus_claims_one_active_per_user,
+      // the real one-active-claim-per-user enforcement (a prior claim that
+      // has resolved to 'expired' or 'paid' doesn't block a new one). The
+      // frontend also checks this before ever calling here, but that only
+      // covers the common case, not a race between two concurrent claim
+      // requests.
       if (error.code === '23505') {
-        throw new ConflictException('You have already claimed an Earn bonus.');
+        throw new ConflictException(
+          'You already have an active Earn bonus claim.',
+        );
       }
       throw new Error(error.message);
     }

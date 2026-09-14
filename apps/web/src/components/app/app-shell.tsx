@@ -8,7 +8,7 @@ import type { AppUser } from "./app-user";
 interface AppShellProps {
   children: ReactNode;
   user: AppUser;
-  /** Scout nav item only shows for an approved scout_applications row. */
+  /** Mobile Scout tab only shows for an approved scout - see BottomNav. */
   isScout?: boolean;
 }
 
@@ -16,7 +16,7 @@ export function AppShell({ children, user, isScout = false }: AppShellProps) {
   return (
     <div className="flex min-h-screen">
       <PushRegistration />
-      <SidebarNav user={user} isScout={isScout} />
+      <SidebarNav user={user} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar user={user} />
         <div className="flex-1 pb-16 md:pb-0">{children}</div>

@@ -76,6 +76,10 @@ export {
   type EarnBonusUnlockedProps,
 } from './earn-bonus-unlocked';
 export {
+  EarnBonusExpiringSoon,
+  type EarnBonusExpiringSoonProps,
+} from './earn-bonus-expiring-soon';
+export {
   ScoutApplicationApproved,
   type ScoutApplicationApprovedProps,
 } from './scout-application-approved';

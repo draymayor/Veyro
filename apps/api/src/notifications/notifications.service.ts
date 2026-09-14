@@ -31,6 +31,7 @@ import {
   ProviderHealthAlert,
   EarnBonusClaimed,
   EarnBonusUnlocked,
+  EarnBonusExpiringSoon,
   ScoutApplicationApproved,
   ScoutDayApproved,
   type TradeAssetType,
@@ -507,6 +508,23 @@ export class NotificationsService {
       email,
       'Bonus unlocked and credited',
       EarnBonusUnlocked(props),
+    );
+  }
+
+  // Sent by EarnExpiryWarningService's poller, ~1 day before a still-
+  // 'claimed' row's expires_at.
+  async sendEarnBonusExpiringSoonEmail(params: {
+    email: string;
+    name: string;
+    bonusAmount: string;
+    requiredVolume: string;
+    earnUrl: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      `Your ${params.bonusAmount} bonus expires tomorrow`,
+      EarnBonusExpiringSoon(props),
     );
   }
 

@@ -10,6 +10,7 @@ import { getEarnStatus } from "@/lib/earn/get-status";
 import { BalanceCard } from "@/components/dashboard/balance-card";
 import { SellEntryCards } from "@/components/dashboard/sell-entry-cards";
 import { EarnBanner } from "@/components/dashboard/earn-banner";
+import { ScoutBanner } from "@/components/dashboard/scout-banner";
 import { RatesSection } from "@/components/dashboard/rates-section";
 import { ReferralsWidget } from "@/components/dashboard/widgets/referrals-widget";
 import { NotificationsWidget } from "@/components/dashboard/widgets/notifications-widget";
@@ -42,6 +43,18 @@ export default async function HomePage() {
   const referralSummary = user
     ? await getReferralSummary(supabase, user.id, REFERRAL_BONUS_FALLBACK_USD)
     : null;
+
+  // Mobile-only Scout discovery card (bottom nav stays at 4 core tabs) -
+  // shown to anyone not yet an approved scout, same "not_applied/pending/
+  // rejected all still see it" posture as the in-app explainer at /scout.
+  const { data: scoutApplication } = user
+    ? await supabase
+        .from("scout_applications")
+        .select("status")
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null };
+  const showScoutBanner = scoutApplication?.status !== "approved";
 
   // AppLayout already redirects unauthenticated/incomplete profiles before
   // this page renders, so profile.currency should always be set. The
@@ -92,6 +105,11 @@ export default async function HomePage() {
           <StaggerItem>
             <EarnBanner poolTotalUsd={earnStatus.poolTotalUsd} />
           </StaggerItem>
+          {showScoutBanner ? (
+            <StaggerItem>
+              <ScoutBanner />
+            </StaggerItem>
+          ) : null}
           <StaggerItem>
             <RatesSection homeCurrency={homeCurrency} />
           </StaggerItem>

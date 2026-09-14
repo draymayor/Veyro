@@ -3,12 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { MOBILE_NAV_ITEMS, SCOUT_NAV_ITEM } from "./nav-items";
+import { MOBILE_NAV_ITEMS, SCOUT_MOBILE_NAV_ITEM } from "./nav-items";
 
-export function BottomNav({ isScout = false }: { isScout?: boolean }) {
+interface BottomNavProps {
+  /** Appends the Scout tab for an approved scout only - see nav-items.ts. */
+  isScout?: boolean;
+}
+
+// Core 4 tabs (docs/context.md) plus a 5th Scout tab once approved - a
+// pre-approval user gets discoverability from the /home dashboard card
+// (ScoutBanner) instead, since a permanent 5th slot for a page most
+// visitors can't do anything with yet isn't worth the crowding.
+export function BottomNav({ isScout = false }: BottomNavProps) {
   const pathname = usePathname();
   const items = isScout
-    ? [...MOBILE_NAV_ITEMS, SCOUT_NAV_ITEM]
+    ? [...MOBILE_NAV_ITEMS, SCOUT_MOBILE_NAV_ITEM]
     : MOBILE_NAV_ITEMS;
 
   return (

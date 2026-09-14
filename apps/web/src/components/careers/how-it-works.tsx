@@ -8,38 +8,54 @@ import {
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { OrbitRings } from "@/components/home/orbit-rings";
 import { cn } from "@/lib/utils";
+import type { ScoutProgramDetails } from "@/lib/scout/types";
 
-const STEPS = [
-  {
-    icon: FileText,
-    title: "Apply",
-    copy: "Tell us your platforms, handles, and posting style. Takes a couple of minutes.",
-    orbit: true,
-  },
-  {
-    icon: BadgeCheck,
-    title: "Get approved",
-    copy: "We review your application and let you know either way.",
-  },
-  {
-    icon: Share2,
-    title: "Get active",
-    copy: "Post, comment, and engage wherever you're active - Reddit, X, anywhere. Bring in new users who claim the Earn bonus, refer new Scouts, or just talk up Veyro. A referral link helps but isn't required on every post.",
-    orbit: true,
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Submit 10 links",
-    copy: "Submit at least 10 links a day. Once you hit 10, that day closes for review.",
-  },
-  {
-    icon: Wallet,
-    title: "Get paid",
-    copy: "We review your links, approve the day, and credit $240 to your wallet.",
-  },
-];
+// Program facts (link minimum, daily rate) folded into steps 4/5 - live,
+// passed down from CareersPage rather than fetched here. Used to hardcode
+// "Submit 10 links" / "$240" directly, the same staleness bug
+// program-details.tsx had. A missing programDetails (fetch failure) falls
+// back to these last-known static figures rather than breaking the page.
+const FALLBACK_MIN_LINKS = 10;
+const FALLBACK_DAILY_RATE_USD = 240;
 
-export function CareersHowItWorks() {
+export function CareersHowItWorks({
+  programDetails,
+}: {
+  programDetails: ScoutProgramDetails | null;
+}) {
+  const minLinksPerDay = programDetails?.minLinksPerDay ?? FALLBACK_MIN_LINKS;
+  const dailyRateUsd = programDetails?.dailyRateUsd ?? FALLBACK_DAILY_RATE_USD;
+
+  const steps = [
+    {
+      icon: FileText,
+      title: "Apply",
+      copy: "Tell us your platforms, handles, and posting style. Takes a couple of minutes.",
+      orbit: true,
+    },
+    {
+      icon: BadgeCheck,
+      title: "Get approved",
+      copy: "We review your application and let you know either way.",
+    },
+    {
+      icon: Share2,
+      title: "Get active",
+      copy: "Post, comment, and engage wherever you're active - Reddit, X, anywhere. Bring in new users who claim the Earn bonus, refer new Scouts, or just talk up Veyro. A referral link helps but isn't required on every post.",
+      orbit: true,
+    },
+    {
+      icon: ClipboardCheck,
+      title: `Submit ${minLinksPerDay} links`,
+      copy: `Submit at least ${minLinksPerDay} links a day. Once you hit ${minLinksPerDay}, that day closes for review.`,
+    },
+    {
+      icon: Wallet,
+      title: "Get paid",
+      copy: `We review your links, approve the day, and credit $${dailyRateUsd} to your wallet.`,
+    },
+  ];
+
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
       <ScrollReveal direction="up" className="max-w-xl">
@@ -52,7 +68,7 @@ export function CareersHowItWorks() {
       </ScrollReveal>
 
       <div className="mt-12 flex snap-x snap-mandatory [scrollbar-width:none] gap-5 overflow-x-auto pb-4 [&::-webkit-scrollbar]:hidden">
-        {STEPS.map((step, i) => (
+        {steps.map((step, i) => (
           <ScrollReveal
             key={step.title}
             as="div"
