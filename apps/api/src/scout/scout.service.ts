@@ -80,6 +80,38 @@ export class ScoutService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  // Public program facts (rate/links/days) - no user-specific data, so this
+  // is safe to expose without auth for both the public /careers page and
+  // the in-app pre-application explainer, and reads live from
+  // platform_settings the same way getDashboard does rather than
+  // duplicating the numbers as static copy.
+  async getProgramDetails(): Promise<{
+    dailyRateUsd: number;
+    minLinksPerDay: number;
+    requiredPaidDays: number;
+  }> {
+    const client = this.supabaseService.getClient();
+    const [dailyRateUsd, minLinksPerDay, requiredPaidDays] = await Promise.all([
+      this.getSetting(
+        client,
+        SCOUT_SETTING_KEYS.dailyRateUsd,
+        SCOUT_SETTING_FALLBACKS.dailyRateUsd,
+      ),
+      this.getSetting(
+        client,
+        SCOUT_SETTING_KEYS.minLinksPerDay,
+        SCOUT_SETTING_FALLBACKS.minLinksPerDay,
+      ),
+      this.getSetting(
+        client,
+        SCOUT_SETTING_KEYS.requiredPaidDays,
+        SCOUT_SETTING_FALLBACKS.requiredPaidDays,
+      ),
+    ]);
+
+    return { dailyRateUsd, minLinksPerDay, requiredPaidDays };
+  }
+
   async getApplicationStatus(
     userId: string,
   ): Promise<ScoutApplicationStatusResponse> {

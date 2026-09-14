@@ -28,6 +28,18 @@ export interface ScoutPastDay {
   links: ScoutPastDayLink[];
 }
 
+export interface ScoutApplicationStatusResponse {
+  status: "not_applied" | "pending" | "approved" | "rejected";
+  rejectionReason: string | null;
+  appliedAt: string | null;
+}
+
+export interface ScoutProgramDetails {
+  dailyRateUsd: number;
+  minLinksPerDay: number;
+  requiredPaidDays: number;
+}
+
 export interface ScoutDashboard {
   minLinksPerDay: number;
   dailyRateUsd: number;

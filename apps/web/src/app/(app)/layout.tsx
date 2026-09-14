@@ -44,17 +44,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     .eq("id", user.id)
     .maybeSingle();
 
-  // Scout nav item only shows for an approved scout_applications row
-  // (docs/database-schema.md's Careers / Scout program section). Read
-  // directly rather than via the backend since the RLS "select own" policy
-  // already scopes this correctly for a plain read.
-  const { data: scoutApplication } = await supabase
-    .from("scout_applications")
-    .select("status")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const isScout = scoutApplication?.status === "approved";
-
   if (profile?.is_admin) {
     redirect(ADMIN_ENTRY_PATH);
   }
@@ -68,6 +57,19 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!profile?.country) {
     redirect("/select-country");
   }
+
+  // Mobile Scout tab only shows for an approved scout_applications row
+  // (docs/database-schema.md's Careers / Scout program section) - see
+  // BottomNav/nav-items.ts. Desktop's sidebar doesn't need this: it lists
+  // Scout unconditionally. Read directly rather than via the backend since
+  // the RLS "select own" policy already scopes this correctly for a plain
+  // read.
+  const { data: scoutApplication } = await supabase
+    .from("scout_applications")
+    .select("status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const isScout = scoutApplication?.status === "approved";
 
   const fullName =
     (user.user_metadata?.full_name as string | undefined)?.trim() || null;
