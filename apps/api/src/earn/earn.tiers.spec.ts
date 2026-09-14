@@ -22,7 +22,7 @@ import type { ConfigService } from '@nestjs/config';
 
 function makeQuery(result: { data: unknown }) {
   const query: Record<string, jest.Mock> = {};
-  const chainable = ['select', 'eq', 'in', 'order'];
+  const chainable = ['select', 'eq', 'in', 'order', 'limit'];
   for (const method of chainable) {
     query[method] = jest.fn().mockReturnValue(query);
   }
