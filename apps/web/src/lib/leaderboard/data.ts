@@ -32,15 +32,15 @@ export interface ReferralLeaderboardEntry {
   referralCount: number;
 }
 
-// The viewer's own rank and stat, illustrative until real aggregation is
-// wired in. Identity (id/email/avatar) deliberately isn't included here,
-// unlike the other rows: the viewer's row always uses their actual signed-in
-// AppUser (see LeaderboardPage), so their avatar matches Profile, the
-// sidebar, and everywhere else it's shown, one source of truth, not a
-// second placeholder identity that could drift from the real one.
-export const CURRENT_USER_TRADING_RANK = 47;
-export const CURRENT_USER_TRADING_VOLUME = 128_400;
-export const CURRENT_USER_REFERRAL_RANK = 132;
+// The viewer's own rank and stat used to be one flat hardcoded constant
+// here (same number for every single user, and never moved). Replaced by
+// getLeaderboardStatus (./get-status.ts): a real trade-volume query plus a
+// per-user deterministic placeholder rank that climbs with real activity.
+// Identity (id/email/avatar) deliberately isn't included here, unlike the
+// other rows: the viewer's row always uses their actual signed-in AppUser
+// (see LeaderboardPage), so their avatar matches Profile, the sidebar, and
+// everywhere else it's shown, one source of truth, not a second placeholder
+// identity that could drift from the real one.
 
 export const TRADING_LEADERBOARD: TradingLeaderboardEntry[] = [
   {

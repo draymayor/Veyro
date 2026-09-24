@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getReferralSummary } from "@/lib/referrals/get-summary";
+import { getLeaderboardStatus } from "@/lib/leaderboard/get-status";
 import { ReferralTeaserCard } from "@/components/leaderboard/referral-teaser-card";
 import { LeaderboardTabs } from "@/components/leaderboard/leaderboard-tabs";
 import { TradingPanel } from "@/components/leaderboard/trading-panel";
@@ -32,7 +33,7 @@ export default async function LeaderboardPage() {
   const { data: profile } = user
     ? await supabase
         .from("users")
-        .select("profile_image_url")
+        .select("profile_image_url, currency")
         .eq("id", user.id)
         .maybeSingle()
     : { data: null };
@@ -63,6 +64,15 @@ export default async function LeaderboardPage() {
     ? await getReferralSummary(supabase, user.id, bonusAmountUsd)
     : null;
 
+  const leaderboardStatus = user
+    ? await getLeaderboardStatus(
+        supabase,
+        user.id,
+        profile?.currency ?? "USD",
+        referralSummary?.totalReferrals ?? 0,
+      )
+    : { tradingVolume: 0, tradingRank: 0, referralRank: 0 };
+
   return (
     <main className="mx-auto max-w-7xl px-4 pt-3 pb-6 sm:px-6 lg:px-8 lg:py-8">
       <StaggerIn className="flex flex-col gap-6">
@@ -79,6 +89,9 @@ export default async function LeaderboardPage() {
           <LeaderboardTabs
             currentUser={currentUser}
             currentUserReferralCount={referralSummary?.totalReferrals ?? 0}
+            currentUserTradingRank={leaderboardStatus.tradingRank}
+            currentUserTradingVolume={leaderboardStatus.tradingVolume}
+            currentUserReferralRank={leaderboardStatus.referralRank}
           />
         </StaggerItem>
 
@@ -87,10 +100,15 @@ export default async function LeaderboardPage() {
             gives the two panels a clear structural boundary on top of
             their already-distinct icon badges. */}
         <StaggerItem className="lg:divide-border hidden gap-6 lg:grid lg:grid-cols-2 lg:divide-x">
-          <TradingPanel currentUser={currentUser} />
+          <TradingPanel
+            currentUser={currentUser}
+            currentUserRank={leaderboardStatus.tradingRank}
+            currentUserVolume={leaderboardStatus.tradingVolume}
+          />
           <ReferralsPanel
             currentUser={currentUser}
             currentUserReferralCount={referralSummary?.totalReferrals ?? 0}
+            currentUserRank={leaderboardStatus.referralRank}
           />
         </StaggerItem>
       </StaggerIn>

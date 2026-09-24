@@ -1,7 +1,6 @@
 import { UserGroupIcon } from "@heroicons/react/24/solid";
 import {
   REFERRALS_LEADERBOARD,
-  CURRENT_USER_REFERRAL_RANK,
   LEADERBOARD_PERIOD_LABEL,
 } from "@/lib/leaderboard/data";
 import type { AppUser } from "@/components/app/app-user";
@@ -18,6 +17,8 @@ interface ReferralsPanelProps {
    * aggregation is wired in.
    */
   currentUserReferralCount: number;
+  /** The viewer's (per-user, activity-driven) placeholder referral rank, from getLeaderboardStatus. */
+  currentUserRank: number;
 }
 
 function formatReferralCount(count: number): string {
@@ -35,6 +36,7 @@ function formatReferralCount(count: number): string {
 export function ReferralsPanel({
   currentUser,
   currentUserReferralCount,
+  currentUserRank,
 }: ReferralsPanelProps) {
   const isViewerVisible = REFERRALS_LEADERBOARD.some(
     (entry) => entry.user.id === currentUser.id,
@@ -68,7 +70,7 @@ export function ReferralsPanel({
       {!isViewerVisible ? (
         <div className="border-border/60 mt-1 border-t border-dashed pt-1">
           <LeaderboardRow
-            rank={CURRENT_USER_REFERRAL_RANK}
+            rank={currentUserRank}
             user={currentUser}
             statValue={formatReferralCount(currentUserReferralCount)}
             isCurrentUser

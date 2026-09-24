@@ -58,7 +58,7 @@ export function LeaderboardRow({
       <span className="min-w-0 flex-1">
         <span className="text-ink block truncate text-sm font-medium">
           {pinned
-            ? `You: #${rank}`
+            ? `You: #${rank.toLocaleString("en-US")}`
             : isCurrentUser
               ? "You"
               : maskIdentifier(user.email)}

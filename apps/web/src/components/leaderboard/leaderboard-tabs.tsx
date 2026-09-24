@@ -11,6 +11,9 @@ const TAB_TRIGGER =
 interface LeaderboardTabsProps {
   currentUser: AppUser;
   currentUserReferralCount: number;
+  currentUserTradingRank: number;
+  currentUserTradingVolume: number;
+  currentUserReferralRank: number;
 }
 
 /**
@@ -22,6 +25,9 @@ interface LeaderboardTabsProps {
 export function LeaderboardTabs({
   currentUser,
   currentUserReferralCount,
+  currentUserTradingRank,
+  currentUserTradingVolume,
+  currentUserReferralRank,
 }: LeaderboardTabsProps) {
   return (
     <Tabs.Root defaultValue="trading" className="lg:hidden">
@@ -35,12 +41,17 @@ export function LeaderboardTabs({
       </Tabs.List>
 
       <Tabs.Content value="trading">
-        <TradingPanel currentUser={currentUser} />
+        <TradingPanel
+          currentUser={currentUser}
+          currentUserRank={currentUserTradingRank}
+          currentUserVolume={currentUserTradingVolume}
+        />
       </Tabs.Content>
       <Tabs.Content value="referrals">
         <ReferralsPanel
           currentUser={currentUser}
           currentUserReferralCount={currentUserReferralCount}
+          currentUserRank={currentUserReferralRank}
         />
       </Tabs.Content>
     </Tabs.Root>

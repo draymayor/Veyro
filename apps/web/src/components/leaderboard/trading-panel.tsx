@@ -1,8 +1,6 @@
 import { ArrowsRightLeftIcon } from "@heroicons/react/24/solid";
 import {
   TRADING_LEADERBOARD,
-  CURRENT_USER_TRADING_RANK,
-  CURRENT_USER_TRADING_VOLUME,
   LEADERBOARD_PERIOD_LABEL,
   LEADERBOARD_CURRENCY,
 } from "@/lib/leaderboard/data";
@@ -12,6 +10,9 @@ import { LeaderboardRow } from "./leaderboard-row";
 interface TradingPanelProps {
   /** The signed-in viewer, so their pinned row uses their real avatar/identity. */
   currentUser: AppUser;
+  /** The viewer's real trade volume and their (per-user, activity-driven) placeholder rank, from getLeaderboardStatus. */
+  currentUserRank: number;
+  currentUserVolume: number;
 }
 
 function formatVolume(amount: number): string {
@@ -35,7 +36,11 @@ function formatVolume(amount: number): string {
  * sections rather than two near-identical cards told apart only by a
  * subtle color difference.
  */
-export function TradingPanel({ currentUser }: TradingPanelProps) {
+export function TradingPanel({
+  currentUser,
+  currentUserRank,
+  currentUserVolume,
+}: TradingPanelProps) {
   const isViewerVisible = TRADING_LEADERBOARD.some(
     (entry) => entry.user.id === currentUser.id,
   );
@@ -68,9 +73,9 @@ export function TradingPanel({ currentUser }: TradingPanelProps) {
       {!isViewerVisible ? (
         <div className="border-border/60 mt-1 border-t border-dashed pt-1">
           <LeaderboardRow
-            rank={CURRENT_USER_TRADING_RANK}
+            rank={currentUserRank}
             user={currentUser}
-            statValue={formatVolume(CURRENT_USER_TRADING_VOLUME)}
+            statValue={formatVolume(currentUserVolume)}
             isCurrentUser
             pinned
           />
