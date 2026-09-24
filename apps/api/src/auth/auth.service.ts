@@ -3,6 +3,7 @@ import { randomInt, randomBytes, createHash } from 'crypto';
 import { User } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { WelcomeBonusService } from '../welcome-bonus/welcome-bonus.service';
 
 const OTP_EXPIRY_MINUTES = 10;
 const OTP_RESEND_COOLDOWN_SECONDS = 60;
@@ -51,6 +52,7 @@ export class AuthService {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly notificationsService: NotificationsService,
+    private readonly welcomeBonusService: WelcomeBonusService,
   ) {}
 
   private generateCode(): string {
@@ -254,6 +256,13 @@ export class AuthService {
       // notificationsService.send() already logged the real cause.
     }
 
+    try {
+      await this.welcomeBonusService.grantOnSignupComplete(user.id);
+    } catch {
+      // Same posture as the welcome email above - signup completion
+      // itself must never fail because the bonus grant did.
+    }
+
     return { verified: true };
   }
 
@@ -425,6 +434,15 @@ export class AuthService {
         .from('users')
         .update({ email_verified_at: new Date().toISOString() })
         .eq('id', user.id);
+
+      try {
+        await this.welcomeBonusService.grantOnSignupComplete(user.id);
+      } catch {
+        // Same fail-open posture as verifyOtp's grant - OAuth bootstrap
+        // must never fail because the bonus grant did. Guarded by the
+        // same "was email_verified_at previously unset" check as this
+        // whole block, so a returning Google user never re-grants.
+      }
     }
 
     // Google's OAuth metadata can never carry our own referred_by_code

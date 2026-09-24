@@ -6,6 +6,13 @@ import type {
   AdminEarnClaimStatus,
 } from "@/lib/admin/earn-claims/types";
 
+// bonus_amount_usd is a literal USDT amount (column name kept as-is so the
+// API's shared reminder query works across both bonus tables) - genuinely
+// USDT, not a relabeled USD figure.
+function formatUsdt(amount: number): string {
+  return `${Math.round(amount).toLocaleString("en-US")} USDT`;
+}
+
 const STATUS_INFO: Record<
   AdminEarnClaimStatus,
   { label: string; tone: "success" | "neutral" | "error" }
@@ -34,7 +41,7 @@ export function EarnClaimRow({ claim }: { claim: AdminEarnClaimListItem }) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="text-ink text-sm font-medium tabular-nums">
-            {formatMoney(claim.bonus_amount_usd, "USD")}
+            {formatUsdt(claim.bonus_amount_usd)}
           </span>
           <StatusBadge label={label} tone={tone} />
         </div>
@@ -42,15 +49,9 @@ export function EarnClaimRow({ claim }: { claim: AdminEarnClaimListItem }) {
 
       <div className="bg-secondary flex flex-col gap-1 rounded-xl px-3 py-2.5">
         <div className="flex items-center justify-between gap-4">
-          <span className="text-ink/50 text-xs">Required trade volume</span>
+          <span className="text-ink/50 text-xs">Required deposit</span>
           <span className="text-ink text-right text-xs font-medium">
-            {formatMoney(claim.required_trade_volume_usd, "USD")}
-          </span>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-ink/50 text-xs">Expires</span>
-          <span className="text-ink text-right text-xs font-medium">
-            {formatDateTime(claim.expires_at)}
+            {formatMoney(claim.required_deposit_usd, "USD")}
           </span>
         </div>
         {claim.unlocked_at ? (
@@ -69,9 +70,18 @@ export function EarnClaimRow({ claim }: { claim: AdminEarnClaimListItem }) {
             </span>
           </div>
         ) : null}
-        {claim.wallet_transaction_id ? (
+        {claim.crypto_wallet_transaction_id ? (
           <div className="flex items-center justify-between gap-4">
-            <span className="text-ink/50 text-xs">Wallet transaction</span>
+            <span className="text-ink/50 text-xs">USDT credit</span>
+            <span className="text-ink text-right font-mono text-xs font-medium break-all">
+              {claim.crypto_wallet_transaction_id}
+            </span>
+          </div>
+        ) : claim.wallet_transaction_id ? (
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-ink/50 text-xs">
+              Wallet transaction (legacy, pre-USDT fix)
+            </span>
             <span className="text-ink text-right font-mono text-xs font-medium break-all">
               {claim.wallet_transaction_id}
             </span>

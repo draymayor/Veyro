@@ -31,7 +31,8 @@ import {
   ProviderHealthAlert,
   EarnBonusClaimed,
   EarnBonusUnlocked,
-  EarnBonusExpiringSoon,
+  WelcomeBonusCredited,
+  BonusDepositReminder,
   ScoutApplicationApproved,
   ScoutDayApproved,
   type TradeAssetType,
@@ -476,13 +477,13 @@ export class NotificationsService {
     );
   }
 
-  // Sent the instant a user claims an Earn bonus (EarnService.claim).
+  // Sent the instant a user claims an Earn bonus (EarnService.claim). The
+  // bonus is already credited to the wallet at this point.
   async sendEarnBonusClaimedEmail(params: {
     email: string;
     name: string;
     bonusAmount: string;
-    requiredVolume: string;
-    expiryDays: number;
+    requiredDeposit: string;
     referralLink: string;
     referralBonusAmount: string;
     earnUrl: string;
@@ -495,8 +496,11 @@ export class NotificationsService {
     );
   }
 
-  // Sent from EarnService.payOutUnlockedBonus once the claim's required
-  // trade volume is met and the wallet credit has landed.
+  // Sent from EarnService.checkAndUnlockBonus / WelcomeBonusService's
+  // equivalent once the claim's/grant's required deposit is met - the
+  // wallet was already credited at claim/grant time, this just means the
+  // withdrawal-lock floor is lifted. Shared copy across both bonus
+  // programs.
   async sendEarnBonusUnlockedEmail(params: {
     email: string;
     name: string;
@@ -504,27 +508,40 @@ export class NotificationsService {
     walletUrl: string;
   }): Promise<void> {
     const { email, ...props } = params;
-    await this.send(
-      email,
-      'Bonus unlocked and credited',
-      EarnBonusUnlocked(props),
-    );
+    await this.send(email, 'Bonus unlocked', EarnBonusUnlocked(props));
   }
 
-  // Sent by EarnExpiryWarningService's poller, ~1 day before a still-
-  // 'claimed' row's expires_at.
-  async sendEarnBonusExpiringSoonEmail(params: {
+  // Sent the instant signup completes (WelcomeBonusService.grantOnSignupComplete).
+  async sendWelcomeBonusCreditedEmail(params: {
     email: string;
     name: string;
     bonusAmount: string;
-    requiredVolume: string;
-    earnUrl: string;
+    requiredDeposit: string;
+    walletUrl: string;
   }): Promise<void> {
     const { email, ...props } = params;
     await this.send(
       email,
-      `Your ${params.bonusAmount} bonus expires tomorrow`,
-      EarnBonusExpiringSoon(props),
+      `Your ${params.bonusAmount} welcome bonus is here`,
+      WelcomeBonusCredited(props),
+    );
+  }
+
+  // Sent by BonusReminderService's poller, at day 2 and day 4 for a still-
+  // locked Earn pool or welcome bonus claim. Shared across both programs
+  // and both reminder slots; nothing further is sent after the second one.
+  async sendBonusDepositReminderEmail(params: {
+    email: string;
+    name: string;
+    bonusAmount: string;
+    requiredDeposit: string;
+    walletUrl: string;
+  }): Promise<void> {
+    const { email, ...props } = params;
+    await this.send(
+      email,
+      `Your ${params.bonusAmount} bonus is still locked`,
+      BonusDepositReminder(props),
     );
   }
 

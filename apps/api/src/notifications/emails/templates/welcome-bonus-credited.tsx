@@ -3,24 +3,27 @@ import { EmailButton } from '../components/email-button';
 import { EmailLayout } from '../components/email-layout';
 import { emailTheme } from '../components/theme';
 
-export interface EarnBonusUnlockedProps {
+export interface WelcomeBonusCreditedProps {
   name: string;
   bonusAmount: string;
+  requiredDeposit: string;
   walletUrl: string;
 }
 
-// Sent from EarnService.checkAndUnlockBonus / WelcomeBonusService.checkAndUnlockForUser
-// the instant a claimed/granted bonus's required deposit is met - the
-// bonus was already credited to the wallet at claim/grant time, this just
-// means the withdrawal-lock floor has now been lifted. Shared copy across
-// both bonus programs, so it deliberately doesn't name either one.
-export function EarnBonusUnlocked({
+// Sent the instant signup completes (WelcomeBonusService.grantOnSignupComplete,
+// called from AuthService.verifyOtp / bootstrapOAuth). Already credited to
+// the wallet - this just explains the deposit requirement to make it
+// withdrawable, same shape as EarnBonusClaimed.
+export function WelcomeBonusCredited({
   name,
   bonusAmount,
+  requiredDeposit,
   walletUrl,
-}: EarnBonusUnlockedProps) {
+}: WelcomeBonusCreditedProps) {
   return (
-    <EmailLayout previewText="Your bonus is now withdrawable">
+    <EmailLayout
+      previewText={`Your ${bonusAmount} welcome bonus is in your wallet`}
+    >
       <Text
         style={{
           margin: '0 0 24px',
@@ -29,9 +32,9 @@ export function EarnBonusUnlocked({
           color: emailTheme.ink,
         }}
       >
-        Hey {name},
+        Welcome to Veyro, {name}!
         <br />
-        You've met the deposit requirement - your bonus is now withdrawable.
+        Your {bonusAmount} welcome bonus has been credited to your wallet.
       </Text>
 
       <Section
@@ -45,17 +48,17 @@ export function EarnBonusUnlocked({
         <Text
           style={{ margin: '0 0 4px', fontSize: 13, color: emailTheme.muted }}
         >
-          Amount now withdrawable
+          To make it withdrawable
         </Text>
         <Text
           style={{
             margin: 0,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: 700,
-            color: emailTheme.success,
+            color: emailTheme.ink,
           }}
         >
-          {bonusAmount}
+          Deposit crypto worth {requiredDeposit} or more
         </Text>
       </Section>
 
@@ -66,4 +69,4 @@ export function EarnBonusUnlocked({
   );
 }
 
-export default EarnBonusUnlocked;
+export default WelcomeBonusCredited;

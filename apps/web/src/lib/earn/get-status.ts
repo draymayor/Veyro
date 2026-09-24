@@ -7,7 +7,7 @@ export type { EarnStatus, EarnClaim, EarnBonusTier } from "./data";
 const FALLBACK: EarnStatus = {
   claim: null,
   tiers: [],
-  tradeVolumeUsd: null,
+  depositVolumeUsd: null,
   poolTotalUsd: 50000,
   poolRemainingUsd: 50000,
 };
@@ -15,8 +15,8 @@ const FALLBACK: EarnStatus = {
 /**
  * Server-component fetch for GET /earn, the same getSession -> bearer-header
  * sequence get-table.ts uses. Can't be a plain Supabase query the way most
- * other pages' own reads are: computing trade-volume progress needs live FX
- * conversion (trades aren't always in USD), which only the backend can do.
+ * other pages' own reads are: computing deposit-volume progress needs live
+ * crypto-to-USD spot pricing, which only the backend can do.
  * Returns a safe empty status on any failure so the page can still render
  * the claim options rather than throwing during render.
  */

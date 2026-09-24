@@ -24,10 +24,10 @@ function formatUsdt(amount: number): string {
 /**
  * Big terracotta pool card, matching ReferralHeroCard's treatment on the
  * Referrals page, with a single Claim button. The two bonus tiers ($50 /
- * $100) only appear once Claim is pressed, real money only ever moves once
- * the matching trade-volume requirement is met after claiming, never on
- * deposit alone - see docs/database-schema.md's earn_bonus_claims section
- * for why the earlier deposit-triggered design was scrapped.
+ * $100) only appear once Claim is pressed - the bonus is credited to the
+ * wallet immediately on claim, but stays locked until the user deposits
+ * the required amount in real crypto (see docs/database-schema.md's
+ * earn_bonus_claims section).
  */
 export function EarnOptionsCard({
   tiers,
@@ -105,8 +105,8 @@ export function EarnOptionsCard({
                 ${tier.bonusAmountUsd}
               </span>
               <p className="text-ink/50 text-xs">
-                Requires ${tier.requiredTradeVolumeUsd} in real trade volume to
-                unlock
+                Deposit ${tier.requiredDepositUsd} in crypto to make it
+                withdrawable
               </p>
               <span className="text-primary text-sm font-semibold">
                 {pendingAmount === tier.bonusAmountUsd

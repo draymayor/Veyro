@@ -6,6 +6,8 @@ import {
   CryptoWalletResult,
 } from '../crypto-wallet/crypto-wallet.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EarnService } from '../earn/earn.service';
+import { WelcomeBonusService } from '../welcome-bonus/welcome-bonus.service';
 import { TatumChainDataService } from './tatum-chain-data.service';
 import { CHAIN_CONFIGS } from '../crypto-addresses/chain-config';
 import {
@@ -43,6 +45,8 @@ export class DepositConfirmationService {
     private readonly cryptoWalletService: CryptoWalletService,
     private readonly notificationsService: NotificationsService,
     private readonly tatumChainDataService: TatumChainDataService,
+    private readonly earnService: EarnService,
+    private readonly welcomeBonusService: WelcomeBonusService,
   ) {}
 
   @Cron('*/2 * * * *')
@@ -197,6 +201,23 @@ export class DepositConfirmationService {
     }
 
     await this.notifyCredited(row, credit.balanceAfter);
+
+    // This is a real, confirmed on-chain deposit - the only kind that
+    // counts toward the Earn pool / welcome bonus deposit-unlock
+    // requirement (see BonusWithdrawalLockService). Both are cheap no-ops
+    // for a user with no locked claim.
+    try {
+      await this.earnService.checkAndUnlockBonus(client, row.user_id);
+      await this.welcomeBonusService.checkAndUnlockForUser(client, row.user_id);
+    } catch (err) {
+      // The deposit credit above already succeeded and is not rolled back
+      // - a failed bonus-unlock check just means the user's next page
+      // load (getStatus's own check-on-access) or a future deposit
+      // re-evaluates it.
+      this.logger.error(
+        `Bonus unlock check failed for user ${row.user_id} after deposit event ${row.id}: ${(err as Error).message}`,
+      );
+    }
   }
 
   private async notifyCredited(

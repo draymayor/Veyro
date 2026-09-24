@@ -43,13 +43,17 @@ export default async function WithdrawRequestPage() {
   // must stay in the wallet until 30 approved days exist. The real
   // enforcement is server-side (WithdrawalsService.create) regardless of
   // what's shown here - this only makes the lock visible before submit
-  // rather than only as a submit-time error.
+  // rather than only as a submit-time error. Neither bonus program locks
+  // this fiat wallet anymore - both Earn and Welcome bonuses now settle
+  // directly in a real USDT crypto wallet (BonusWithdrawalLockService), so
+  // there's no equivalent bonus lock to show on this fiat withdraw page.
   const scoutLock = user
     ? await getScoutWithdrawalLock(supabase, user.id)
     : null;
-  const availableBalance = scoutLock
-    ? Math.max(walletBalance - scoutLock.lockedAmount, 0)
-    : walletBalance;
+  const availableBalance = Math.max(
+    walletBalance - (scoutLock?.lockedAmount ?? 0),
+    0,
+  );
 
   return (
     <>

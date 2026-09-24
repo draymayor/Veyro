@@ -2,13 +2,13 @@ export type EarnClaimStatus = "claimed" | "unlocked" | "paid" | "expired";
 
 export interface EarnBonusTier {
   bonusAmountUsd: number;
-  requiredTradeVolumeUsd: number;
+  requiredDepositUsd: number;
 }
 
 export interface EarnClaim {
   id: string;
   bonus_amount_usd: number;
-  required_trade_volume_usd: number;
+  required_deposit_usd: number;
   status: EarnClaimStatus;
   claimed_at: string;
   expires_at: string;
@@ -19,9 +19,10 @@ export interface EarnClaim {
 export interface EarnStatus {
   claim: EarnClaim | null;
   tiers: EarnBonusTier[];
-  tradeVolumeUsd: number | null;
+  /** USD value of real crypto deposits made since claim, null once no longer relevant. */
+  depositVolumeUsd: number | null;
   /** Admin-set total pool size in USD, displayed to users as a USDT amount. */
   poolTotalUsd: number;
-  /** poolTotalUsd minus bonuses already paid out, in USD, displayed as USDT. */
+  /** poolTotalUsd minus bonuses already claimed, in USD, displayed as USDT. */
   poolRemainingUsd: number;
 }

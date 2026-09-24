@@ -8,14 +8,14 @@ jest.mock('../notifications/notifications.service', () => ({
 
 import { EarnService } from './earn.service';
 import type { SupabaseService } from '../supabase/supabase.service';
-import type { FxRateService } from '../fx/fx.service';
-import type { WalletService } from '../wallet/wallet.service';
+import type { CryptoWalletService } from '../crypto-wallet/crypto-wallet.service';
 import type { NotificationsService } from '../notifications/notifications.service';
+import type { BonusWithdrawalLockService } from '../bonuses/bonus-withdrawal-lock.service';
 import type { ConfigService } from '@nestjs/config';
 
 // Regression coverage for the admin-editable Earn tiers
-// (platform_settings.earn_tier1_bonus_usd / earn_tier1_required_volume_usd /
-// earn_tier2_bonus_usd / earn_tier2_required_volume_usd): getStatus must
+// (platform_settings.earn_tier1_bonus_usdt / earn_tier1_required_volume_usd /
+// earn_tier2_bonus_usdt / earn_tier2_required_volume_usd): getStatus must
 // read whatever is currently in platform_settings, live, not a hardcoded
 // value - proving the Rate Management edit an admin makes actually reaches
 // the Earn page/claim endpoint.
@@ -51,33 +51,34 @@ describe('EarnService admin-editable tiers', () => {
     const supabaseService = {
       getClient: () => ({ from }),
     } as unknown as SupabaseService;
-    const fxRateService = {} as unknown as FxRateService;
-    const walletService = {} as unknown as WalletService;
+    const cryptoWalletService = {} as unknown as CryptoWalletService;
     const notificationsService = {} as unknown as NotificationsService;
+    const bonusWithdrawalLockService =
+      {} as unknown as BonusWithdrawalLockService;
     const configService = {} as unknown as ConfigService;
 
     return new EarnService(
       supabaseService,
-      fxRateService,
-      walletService,
+      cryptoWalletService,
       notificationsService,
+      bonusWithdrawalLockService,
       configService,
     );
   }
 
   it('reads an admin-changed tier value live from platform_settings', async () => {
     const service = buildService([
-      { key: 'earn_tier1_bonus_usd', value: '75' },
+      { key: 'earn_tier1_bonus_usdt', value: '75' },
       { key: 'earn_tier1_required_volume_usd', value: '100' },
-      { key: 'earn_tier2_bonus_usd', value: '100' },
+      { key: 'earn_tier2_bonus_usdt', value: '100' },
       { key: 'earn_tier2_required_volume_usd', value: '150' },
     ]);
 
     const status = await service.getStatus('user-1');
 
     expect(status.tiers).toEqual([
-      { bonusAmountUsd: 75, requiredTradeVolumeUsd: 100 },
-      { bonusAmountUsd: 100, requiredTradeVolumeUsd: 150 },
+      { bonusAmountUsd: 75, requiredDepositUsd: 100 },
+      { bonusAmountUsd: 100, requiredDepositUsd: 150 },
     ]);
   });
 
@@ -87,8 +88,8 @@ describe('EarnService admin-editable tiers', () => {
     const status = await service.getStatus('user-1');
 
     expect(status.tiers).toEqual([
-      { bonusAmountUsd: 50, requiredTradeVolumeUsd: 100 },
-      { bonusAmountUsd: 100, requiredTradeVolumeUsd: 150 },
+      { bonusAmountUsd: 50, requiredDepositUsd: 100 },
+      { bonusAmountUsd: 100, requiredDepositUsd: 150 },
     ]);
   });
 });

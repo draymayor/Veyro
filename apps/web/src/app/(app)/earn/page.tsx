@@ -11,9 +11,10 @@ export const metadata: Metadata = {
 
 // Main tab page (Home, Leaderboard, Assets, Earn), so it keeps the
 // standard TopBar/BottomNav like the others do, not an InnerPageHeader -
-// see nav-items.ts. Real bonus money only ever moves once a claim's
-// required_trade_volume_usd is met in real trades, see
-// docs/database-schema.md's earn_bonus_claims section.
+// see nav-items.ts. The bonus is credited to the wallet immediately on
+// claim, but stays locked until the claim's required_deposit_usd is met in
+// real crypto deposits, see docs/database-schema.md's earn_bonus_claims
+// section.
 export default async function EarnPage() {
   const supabase = await createClient();
   const status = await getEarnStatus(supabase);
@@ -23,7 +24,7 @@ export default async function EarnPage() {
       <StaggerIn className="flex flex-col gap-6">
         <StaggerItem>
           <h2 className="font-heading text-ink text-xl font-semibold sm:text-2xl">
-            Claim a bonus, unlock it by trading.
+            Claim a bonus, unlock it by depositing.
           </h2>
         </StaggerItem>
 
@@ -31,7 +32,7 @@ export default async function EarnPage() {
           <StaggerItem>
             <EarnClaimedCard
               claim={status.claim}
-              tradeVolumeUsd={status.tradeVolumeUsd}
+              depositVolumeUsd={status.depositVolumeUsd}
             />
           </StaggerItem>
         ) : (
@@ -45,8 +46,9 @@ export default async function EarnPage() {
             </StaggerItem>
             <StaggerItem>
               <p className="text-ink/50 text-center text-xs">
-                One claim per account. Your bonus unlocks once you deposit the
-                equivalent or higher, within 3 days of claiming.
+                One claim per account. Your bonus is credited immediately and
+                becomes withdrawable once you deposit the required amount in
+                crypto.
               </p>
             </StaggerItem>
           </>

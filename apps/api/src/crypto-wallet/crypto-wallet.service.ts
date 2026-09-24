@@ -8,7 +8,8 @@ export type CryptoWalletTransactionType =
   | 'admin_credit'
   | 'admin_debit'
   | 'webhook_deposit'
-  | 'reorg_reversal';
+  | 'reorg_reversal'
+  | 'bonus_credit';
 
 export interface CryptoWalletResult {
   balanceAfter: number;
@@ -54,7 +55,7 @@ export class CryptoWalletService {
     userId: string,
     symbol: string,
     amount: number,
-    type: 'deposit' | 'admin_credit' | 'webhook_deposit',
+    type: 'deposit' | 'admin_credit' | 'webhook_deposit' | 'bonus_credit',
     related?: { tradeId?: string; withdrawalId?: string },
   ): Promise<CryptoWalletResult> {
     const wallet = await this.findOrCreateWallet(client, userId, symbol);

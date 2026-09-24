@@ -3,24 +3,27 @@ import { EmailButton } from '../components/email-button';
 import { EmailLayout } from '../components/email-layout';
 import { emailTheme } from '../components/theme';
 
-export interface EarnBonusUnlockedProps {
+export interface BonusDepositReminderProps {
   name: string;
   bonusAmount: string;
+  requiredDeposit: string;
   walletUrl: string;
 }
 
-// Sent from EarnService.checkAndUnlockBonus / WelcomeBonusService.checkAndUnlockForUser
-// the instant a claimed/granted bonus's required deposit is met - the
-// bonus was already credited to the wallet at claim/grant time, this just
-// means the withdrawal-lock floor has now been lifted. Shared copy across
-// both bonus programs, so it deliberately doesn't name either one.
-export function EarnBonusUnlocked({
+// Sent by BonusReminderService's poller, at day 2 and again at day 4 for a
+// still-locked Earn pool or welcome bonus. Shared copy across both
+// programs and both reminder slots - after the second reminder, no more
+// are ever sent (no expiry, the bonus just stays locked until deposited).
+export function BonusDepositReminder({
   name,
   bonusAmount,
+  requiredDeposit,
   walletUrl,
-}: EarnBonusUnlockedProps) {
+}: BonusDepositReminderProps) {
   return (
-    <EmailLayout previewText="Your bonus is now withdrawable">
+    <EmailLayout
+      previewText={`Your ${bonusAmount} bonus is still waiting to be unlocked`}
+    >
       <Text
         style={{
           margin: '0 0 24px',
@@ -29,9 +32,10 @@ export function EarnBonusUnlocked({
           color: emailTheme.ink,
         }}
       >
-        Hey {name},
+        Hi {name},
         <br />
-        You've met the deposit requirement - your bonus is now withdrawable.
+        Your {bonusAmount} bonus is still sitting in your wallet, locked until
+        you deposit crypto.
       </Text>
 
       <Section
@@ -45,17 +49,17 @@ export function EarnBonusUnlocked({
         <Text
           style={{ margin: '0 0 4px', fontSize: 13, color: emailTheme.muted }}
         >
-          Amount now withdrawable
+          To make it withdrawable
         </Text>
         <Text
           style={{
             margin: 0,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: 700,
-            color: emailTheme.success,
+            color: emailTheme.ink,
           }}
         >
-          {bonusAmount}
+          Deposit crypto worth {requiredDeposit} or more
         </Text>
       </Section>
 
@@ -66,4 +70,4 @@ export function EarnBonusUnlocked({
   );
 }
 
-export default EarnBonusUnlocked;
+export default BonusDepositReminder;

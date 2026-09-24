@@ -6,22 +6,21 @@ import { emailTheme } from '../components/theme';
 export interface EarnBonusClaimedProps {
   name: string;
   bonusAmount: string;
-  requiredVolume: string;
-  expiryDays: number;
+  requiredDeposit: string;
   referralLink: string;
   referralBonusAmount: string;
   earnUrl: string;
 }
 
 // Sent the instant a user claims an Earn bonus option (EarnService.claim).
-// Deliberately does not say the bonus is theirs yet - it only unlocks once
-// they've generated real trade volume, docs/database-schema.md's whole
-// reason this program exists in its current, non-exploitable form.
+// The bonus is already credited to the wallet at this point - it just
+// isn't withdrawable yet, since it only unlocks once the user has
+// deposited real crypto, docs/database-schema.md's whole reason this
+// program exists in its current, non-exploitable form.
 export function EarnBonusClaimed({
   name,
   bonusAmount,
-  requiredVolume,
-  expiryDays,
+  requiredDeposit,
   referralLink,
   referralBonusAmount,
   earnUrl,
@@ -40,7 +39,7 @@ export function EarnBonusClaimed({
       >
         Hi {name},
         <br />
-        You&apos;ve claimed {bonusAmount}!
+        You&apos;ve claimed {bonusAmount}! It's already in your wallet.
       </Text>
 
       <Section
@@ -54,7 +53,7 @@ export function EarnBonusClaimed({
         <Text
           style={{ margin: '0 0 4px', fontSize: 13, color: emailTheme.muted }}
         >
-          To unlock it
+          To make it withdrawable
         </Text>
         <Text
           style={{
@@ -64,12 +63,7 @@ export function EarnBonusClaimed({
             color: emailTheme.ink,
           }}
         >
-          Deposit crypto worth {requiredVolume} to withdraw this bonus
-        </Text>
-        <Text
-          style={{ margin: '8px 0 0', fontSize: 13, color: emailTheme.muted }}
-        >
-          within {expiryDays} days
+          Deposit crypto worth {requiredDeposit} or more
         </Text>
       </Section>
 
