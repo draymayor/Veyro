@@ -50,6 +50,12 @@ export function WithdrawalPinDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // This dialog is also used from inside WithdrawalPinGateDialog, itself
+    // nested (via a portal) inside the withdrawal page's <form> - React
+    // bubbles synthetic events through the component tree, not the DOM
+    // tree, so without this, submitting here would also fire that outer
+    // form's onSubmit and reopen the gate mid-save.
+    e.stopPropagation();
     setError(null);
 
     const newPinCode = newPin.join("");

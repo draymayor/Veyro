@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * platform_settings key `withdrawal_min_<symbol>` (lowercase) - same
  * pattern as the sweeper's sweep_min_threshold_* keys
  * (apps/sweeper/src/thresholds.ts), see
- * supabase/migrations/20260923120000_withdrawal_min_thresholds.sql. This is
+ * supabase/migrations/20260923210246_withdrawal_min_thresholds.sql. This is
  * a DISPLAY-ONLY read (surfaces the requirement before submit) - the real
  * enforcement is server-side in WithdrawalsService.create. Falls back to 0
  * (no minimum) if the setting row is missing, rather than blocking

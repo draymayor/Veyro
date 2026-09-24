@@ -5,6 +5,7 @@ import { WalletService } from '../wallet/wallet.service';
 import { CryptoWalletService } from '../crypto-wallet/crypto-wallet.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ScoutService } from '../scout/scout.service';
+import { BonusWithdrawalLockService } from '../bonuses/bonus-withdrawal-lock.service';
 
 export type WithdrawalMethod = 'bank_transfer' | 'paypal' | 'crypto';
 
@@ -42,6 +43,15 @@ const CRYPTO_APPROVAL_SETTING_KEY = 'crypto_withdrawal_requires_approval';
 // automated once it's proceeding.
 const CRYPTO_SIGNING_MODE_SETTING_KEY = 'crypto_withdrawal_signing_mode';
 
+// platform_settings key prefix (docs/database-schema.md), one row per
+// crypto_wallets symbol e.g. 'withdrawal_min_btc' - the smallest amount a
+// user may request for that asset, admin-tunable same as the sweeper's
+// sweep_min_threshold_* keys (see
+// supabase/migrations/20260923210246_withdrawal_min_thresholds.sql). A
+// user-facing usability floor, distinct from and set higher than the
+// sweep thresholds, which only guard Veyro's own consolidation cost.
+const WITHDRAWAL_MIN_SETTING_PREFIX = 'withdrawal_min_';
+
 // Method-specific payout details, per docs/database-schema.md's withdrawals
 // table (docs/product-rules.md rule 18). No gateway integration in V1: this
 // just records the request for manual admin processing.
@@ -53,6 +63,7 @@ export class WithdrawalsService {
     private readonly cryptoWalletService: CryptoWalletService,
     private readonly notificationsService: NotificationsService,
     private readonly scoutService: ScoutService,
+    private readonly bonusWithdrawalLockService: BonusWithdrawalLockService,
   ) {}
 
   async create(
@@ -136,18 +147,27 @@ export class WithdrawalsService {
       // regular money are otherwise indistinguishable once both land in
       // the same fiat wallet. Only fiat (bank/paypal) is affected - crypto
       // withdrawals debit the separate crypto_wallets ledger entirely,
-      // never touched by Scout payouts.
+      // never touched by Scout payouts. No bonus lock here: both bonus
+      // programs settle straight into the crypto USDT wallet with no FX
+      // conversion (see BonusWithdrawalLockService) and TradesService.sellCrypto
+      // enforces the same crypto-side floor this file's crypto branch
+      // does below, so a still-locked bonus can never actually convert
+      // into fiat in the first place - a fiat-side floor here would only
+      // duplicate that check with no fiat-side provenance to scope it to
+      // (it would incorrectly lock out unrelated real fiat, e.g. gift
+      // card sale proceeds, that happens to coexist with an active bonus
+      // lock). The real check lives in the crypto branch below via
+      // getCryptoBonusWithdrawalLock, and in sellCrypto.
       const scoutLock = await this.scoutService.getWithdrawalLock(
         client,
         user.id,
       );
-      const available = scoutLock
-        ? Math.max(balance - scoutLock.lockedAmount, 0)
-        : balance;
+      const totalLocked = scoutLock?.lockedAmount ?? 0;
+      const available = Math.max(balance - totalLocked, 0);
 
       if (scoutLock && amount > available) {
         throw new BadRequestException(
-          `Your scout earnings become withdrawable once you've completed ${scoutLock.requiredDays} paid days (currently ${scoutLock.approvedDays}/${scoutLock.requiredDays}). You can withdraw up to ${available.toFixed(2)} ${currency} right now.`,
+          `Part of your balance is locked: your scout earnings become withdrawable once you've completed ${scoutLock.requiredDays} paid days (currently ${scoutLock.approvedDays}/${scoutLock.requiredDays}). You can withdraw up to ${available.toFixed(2)} ${currency} right now.`,
         );
       }
 
@@ -203,6 +223,16 @@ export class WithdrawalsService {
         throw new BadRequestException('Enter a destination wallet address.');
       }
 
+      const minWithdrawal = await this.minimumWithdrawalForSymbol(
+        client,
+        symbol,
+      );
+      if (minWithdrawal > 0 && amount < minWithdrawal) {
+        throw new BadRequestException(
+          `You can't withdraw less than ${minWithdrawal} ${symbol}.`,
+        );
+      }
+
       const { data: asset, error } = await client
         .from('crypto_assets')
         .select('id')
@@ -226,6 +256,29 @@ export class WithdrawalsService {
         throw new BadRequestException(
           `Insufficient ${symbol} balance for this withdrawal.`,
         );
+      }
+
+      // Welcome bonus withdrawal lock: a still-'granted' welcome bonus is
+      // credited straight to this same USDT crypto wallet (see
+      // WelcomeBonusService.grantOnSignupComplete), so a portion of this
+      // balance must stay locked here too, same "floor" reasoning as the
+      // fiat-side scout/earn locks above, just against the crypto ledger.
+      const cryptoBonusLock =
+        await this.bonusWithdrawalLockService.getCryptoBonusWithdrawalLock(
+          client,
+          user.id,
+          symbol,
+        );
+      if (cryptoBonusLock) {
+        const availableCrypto = Math.max(
+          cryptoBalance - cryptoBonusLock.lockedAmount,
+          0,
+        );
+        if (amount > availableCrypto) {
+          throw new BadRequestException(
+            `Part of your ${symbol} balance is locked: your bonus becomes withdrawable once you deposit $50 or more worth of crypto.`,
+          );
+        }
       }
 
       cryptoSymbol = symbol;
@@ -371,5 +424,24 @@ export class WithdrawalsService {
       .maybeSingle();
 
     return data?.value === 'automatic' ? 'ready_to_sign' : 'awaiting_approval';
+  }
+
+  // Reads platform_settings['withdrawal_min_<symbol>'] (lowercase), the
+  // real, authoritative floor for this method - the web app's minWithdrawal
+  // prop (get-crypto-withdrawal-minimum.ts) only mirrors this for display
+  // before submit. Returns 0 (no minimum enforced) if an admin hasn't
+  // configured this symbol yet, rather than blocking every withdrawal of an
+  // asset added after the platform_settings seed.
+  private async minimumWithdrawalForSymbol(
+    client: ReturnType<SupabaseService['getClient']>,
+    symbol: string,
+  ): Promise<number> {
+    const { data } = await client
+      .from('platform_settings')
+      .select('value')
+      .eq('key', `${WITHDRAWAL_MIN_SETTING_PREFIX}${symbol.toLowerCase()}`)
+      .maybeSingle();
+
+    return Number(data?.value ?? 0) || 0;
   }
 }

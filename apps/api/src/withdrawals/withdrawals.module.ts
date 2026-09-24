@@ -5,8 +5,8 @@ import { AuthModule } from '../auth/auth.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { CryptoWalletModule } from '../crypto-wallet/crypto-wallet.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { NetworkFeesModule } from '../network-fees/network-fees.module';
 import { ScoutModule } from '../scout/scout.module';
+import { BonusesModule } from '../bonuses/bonuses.module';
 
 @Module({
   imports: [
@@ -14,8 +14,8 @@ import { ScoutModule } from '../scout/scout.module';
     WalletModule,
     CryptoWalletModule,
     NotificationsModule,
-    NetworkFeesModule,
     ScoutModule,
+    BonusesModule,
   ],
   controllers: [WithdrawalsController],
   providers: [WithdrawalsService],

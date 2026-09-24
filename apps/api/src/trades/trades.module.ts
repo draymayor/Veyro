@@ -5,7 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { CryptoWalletModule } from '../crypto-wallet/crypto-wallet.module';
 import { CryptoPriceModule } from '../crypto-price/crypto-price.module';
-import { EarnModule } from '../earn/earn.module';
+import { BonusesModule } from '../bonuses/bonuses.module';
 
 @Module({
   imports: [
@@ -13,7 +13,7 @@ import { EarnModule } from '../earn/earn.module';
     WalletModule,
     CryptoWalletModule,
     CryptoPriceModule,
-    EarnModule,
+    BonusesModule,
   ],
   controllers: [TradesController],
   providers: [TradesService],

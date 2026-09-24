@@ -6,6 +6,7 @@ import { NetworkField } from "@/components/crypto/network-field";
 import { PriceSparkline } from "@/components/crypto/price-sparkline";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/sell/confirmation-dialog";
+import { LockedBalanceDialog } from "@/components/withdraw/locked-balance-dialog";
 import { authFetch } from "@/lib/api-client";
 import {
   networkById,
@@ -67,6 +68,9 @@ export function CryptoAmountForm({
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lockedBalanceMessage, setLockedBalanceMessage] = useState<
+    string | null
+  >(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [lastPayout, setLastPayout] = useState<SellCryptoResponse | null>(null);
   const debouncedAmount = useDebouncedValue(amount, AMOUNT_DEBOUNCE_MS);
@@ -124,6 +128,7 @@ export function CryptoAmountForm({
     if (!canSubmit) return;
 
     setError(null);
+    setLockedBalanceMessage(null);
     setSubmitting(true);
     try {
       const result = await authFetch<SellCryptoResponse>(
@@ -141,7 +146,13 @@ export function CryptoAmountForm({
       setAmount("");
       setConfirmationOpen(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      const message =
+        err instanceof Error ? err.message : "Something went wrong.";
+      if (message.includes("balance is locked")) {
+        setLockedBalanceMessage(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -224,6 +235,14 @@ export function CryptoAmountForm({
             ? `Your wallet has been credited ${formatPayout(lastPayout.payout, lastPayout.currency)}.`
             : "Your wallet has been credited."
         }
+      />
+
+      <LockedBalanceDialog
+        open={lockedBalanceMessage !== null}
+        onOpenChange={(open) => {
+          if (!open) setLockedBalanceMessage(null);
+        }}
+        message={lockedBalanceMessage ?? ""}
       />
     </form>
   );

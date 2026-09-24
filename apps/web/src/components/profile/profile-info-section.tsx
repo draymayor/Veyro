@@ -36,7 +36,6 @@ export function ProfileInfoSection({
       <SettingsRow
         icon={UserIcon}
         label="Name"
-        description="Not editable yet: there's no name field on your account record to save changes to."
         right={
           <span className="text-ink/60 text-sm">{fullName ?? "Not set"}</span>
         }

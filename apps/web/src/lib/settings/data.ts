@@ -8,7 +8,7 @@
  * backend.
  */
 
-export const SAVED_PAYPAL_EMAIL: string | null = "mayowa.trades@gmail.com";
+export const SAVED_PAYPAL_EMAIL: string | null = null;
 
 /** Mirrors notifications.category (docs/database-schema.md). */
 export type NotificationCategory =

@@ -75,6 +75,11 @@ export function ForgotPinDialog({
 
   async function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault();
+    // Also reachable from inside the withdraw page's PIN gate (a portaled
+    // descendant of that page's <form>) - React bubbles synthetic events
+    // through the component tree, not the DOM tree, so without this,
+    // submitting here would also fire that outer form's onSubmit.
+    e.stopPropagation();
     setError(null);
     const code = codeDigits.join("");
     if (code.length !== 6) {
@@ -99,6 +104,7 @@ export function ForgotPinDialog({
 
   async function handleSetNewPin(e: React.FormEvent) {
     e.preventDefault();
+    e.stopPropagation();
     setError(null);
     const pin = newPin.join("");
     const confirm = confirmPin.join("");

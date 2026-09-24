@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Dialog } from "radix-ui";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { authFetch } from "@/lib/api-client";
 import { OtpInput, emptyOtp } from "@/components/auth/otp-input";
 import { Button } from "@/components/ui/button";
 import { ForgotPinDialog } from "@/components/settings/forgot-pin-dialog";
+import { WithdrawalPinDialog } from "@/components/settings/withdrawal-pin-dialog";
 
 interface WithdrawalPinGateDialogProps {
   open: boolean;
@@ -28,17 +29,27 @@ export function WithdrawalPinGateDialog({
   onOpenChange,
   onVerified,
 }: WithdrawalPinGateDialogProps) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("loading");
   const [digits, setDigits] = useState(emptyOtp(4));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
 
   // Only the status fetch itself lives in the effect; the synchronous field
   // resets happen in handleOpenChange below (an event handler, not an
   // effect), so there's no setState-before-await inside the effect body.
+  // `cancelled` guards against a stale response landing after a newer one -
+  // e.g. React Strict Mode double-invoking this effect in dev, or the gate
+  // closing and reopening in quick succession (as it does right after PIN
+  // setup below) can leave two requests in flight, and network responses
+  // aren't guaranteed to resolve in request order. Without this guard, an
+  // older "not set" response arriving after a newer "is set" one would
+  // incorrectly flip the dialog back to the setup step.
   useEffect(() => {
     if (!open) return;
+    let cancelled = false;
 
     async function checkStatus() {
       try {
@@ -46,6 +57,7 @@ export function WithdrawalPinGateDialog({
           isSet: boolean;
           lockedUntil: string | null;
         }>("/withdrawal-pin/status");
+        if (cancelled) return;
         if (!status.isSet) {
           setStep("not-set");
         } else if (status.lockedUntil) {
@@ -54,12 +66,16 @@ export function WithdrawalPinGateDialog({
           setStep("enter");
         }
       } catch (err) {
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : "Something went wrong.");
         setStep("enter");
       }
     }
 
     void checkStatus();
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   function handleOpenChange(next: boolean) {
@@ -73,6 +89,13 @@ export function WithdrawalPinGateDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // Radix portals this form's DOM node outside crypto-withdraw-form.tsx's
+    // <form>, but React's synthetic events bubble through the REACT tree,
+    // not the DOM tree - without this, submitting here would also fire that
+    // outer form's onSubmit (reopening this same gate mid-flow). Same fix
+    // applied in WithdrawalPinDialog and ForgotPinDialog, the other forms
+    // nested inside this gate.
+    e.stopPropagation();
     setError(null);
     const pin = digits.join("");
     if (pin.length !== 4) {
@@ -127,12 +150,18 @@ export function WithdrawalPinGateDialog({
             {step === "not-set" ? (
               <div className="flex flex-col items-center gap-4 py-2 text-center">
                 <p className="text-ink/60 text-sm">
-                  Set a withdrawal PIN in Settings before you can withdraw.
+                  You need a withdrawal PIN before you can withdraw. Set one now
+                  to continue.
                 </p>
-                <Button asChild size="lg" className="w-full">
-                  <Link href="/settings" onClick={() => onOpenChange(false)}>
-                    Go to Settings
-                  </Link>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={() => {
+                    onOpenChange(false);
+                    setSetupOpen(true);
+                  }}
+                >
+                  Set Withdrawal PIN
                 </Button>
               </div>
             ) : null}
@@ -196,6 +225,29 @@ export function WithdrawalPinGateDialog({
         open={forgotOpen}
         onOpenChange={setForgotOpen}
         onReset={() => {}}
+      />
+
+      <WithdrawalPinDialog
+        open={setupOpen}
+        onOpenChange={setSetupOpen}
+        mode="setup"
+        onSaved={() => {
+          // Reopens the gate dialog fresh so checkStatus re-runs, sees the
+          // PIN that was just set, and moves straight to "enter" - the
+          // user still has to type it once to confirm this withdrawal
+          // (rule 18a's per-withdrawal check), just without a detour
+          // through Settings to set it up first.
+          setSetupOpen(false);
+          onOpenChange(true);
+          // Setting the PIN here flips the Home onboarding checklist's
+          // "set_pin" step server-side, but nothing else on this page
+          // depends on that data, so the Router Cache has no reason to
+          // invalidate it - Home would otherwise keep serving the stale
+          // "incomplete" version until something else happened to refresh
+          // it. router.refresh() clears the whole Router Cache so the next
+          // visit to Home re-fetches onboarding status fresh.
+          router.refresh();
+        }}
       />
     </>
   );

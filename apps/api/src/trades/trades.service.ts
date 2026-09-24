@@ -11,7 +11,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { WalletService } from '../wallet/wallet.service';
 import { CryptoWalletService } from '../crypto-wallet/crypto-wallet.service';
 import { CryptoPayoutService } from '../crypto-price/crypto-payout.service';
-import { EarnService } from '../earn/earn.service';
+import { BonusWithdrawalLockService } from '../bonuses/bonus-withdrawal-lock.service';
 
 export type CardType = 'physical' | 'e-code';
 export type TradeFileType = 'card_image' | 'receipt';
@@ -111,7 +111,7 @@ export class TradesService {
     private readonly walletService: WalletService,
     private readonly cryptoWalletService: CryptoWalletService,
     private readonly cryptoPayoutService: CryptoPayoutService,
-    private readonly earnService: EarnService,
+    private readonly bonusWithdrawalLockService: BonusWithdrawalLockService,
   ) {}
 
   // Sell Crypto (docs/product-rules.md rule 6a, REVISED AGAIN): a
@@ -175,6 +175,31 @@ export class TradesService {
       throw new BadRequestException(`Insufficient ${symbol} balance.`);
     }
 
+    // Same bonus-withdrawal floor withdrawals.service.ts enforces on a
+    // direct crypto withdrawal, applied here too: selling is just as much
+    // an exit for a bonus-locked balance as withdrawing is (it converts
+    // straight to a spendable fiat balance with no lock of its own), so
+    // without this check a claimed-but-still-locked bonus could be
+    // laundered into withdrawable fiat via Sell Crypto, completely
+    // bypassing the deposit requirement the lock exists to enforce.
+    const cryptoBonusLock =
+      await this.bonusWithdrawalLockService.getCryptoBonusWithdrawalLock(
+        client,
+        user.id,
+        symbol,
+      );
+    if (cryptoBonusLock) {
+      const availableCrypto = Math.max(
+        cryptoBalance - cryptoBonusLock.lockedAmount,
+        0,
+      );
+      if (amount > availableCrypto) {
+        throw new BadRequestException(
+          `Part of your ${symbol} balance is locked: your bonus becomes sellable once you deposit $50 or more worth of crypto.`,
+        );
+      }
+    }
+
     const quote = await this.cryptoPayoutService.getQuote({
       symbol,
       network,
@@ -230,12 +255,6 @@ export class TradesService {
       undefined,
       trade.id as string,
     );
-
-    // Real trade completion (docs/database-schema.md's earn_bonus_claims
-    // section): a sell conversion counts toward an Earn bonus's required
-    // trade volume exactly like an approved gift card trade does. No-op
-    // for a user with no 'claimed' row.
-    await this.earnService.checkAndUnlockBonus(client, user.id);
 
     return {
       tradeId: trade.id as string,

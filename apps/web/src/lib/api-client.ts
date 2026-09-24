@@ -28,14 +28,27 @@ export async function authFetch<T = unknown>(
   const isFormData =
     typeof FormData !== "undefined" && init?.body instanceof FormData;
 
-  const res = await fetch(`${getApiBaseUrl()}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...init?.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBaseUrl()}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
+        ...init?.headers,
+      },
+    });
+  } catch {
+    // fetch() itself throws (not a non-OK response) when the request never
+    // completes - offline, DNS/connection failure, a CORS preflight
+    // rejection, or the server dropping mid-request (e.g. a dev-server
+    // restart). The native error is a bare "Failed to fetch"/"Load failed"
+    // with no useful detail, so every caller was surfacing that raw string
+    // instead of something a user can act on.
+    throw new Error(
+      "Couldn't reach the server. Check your connection and try again.",
+    );
+  }
 
   const body = await res.json().catch(() => null);
 
