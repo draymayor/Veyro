@@ -21,8 +21,8 @@ export function Welcome({ name, getStartedUrl }: WelcomeProps) {
       >
         Hi {name},
         <br />
-        Your Veyro account is ready. You can now sell gift cards and crypto for
-        instant wallet credit.
+        Your Veyro account is ready. You can now sell crypto for instant
+        wallet credit.
       </Text>
 
       <EmailButton href={getStartedUrl}>Get Started</EmailButton>

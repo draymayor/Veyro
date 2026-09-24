@@ -63,7 +63,7 @@ export function OtpCodeLayout({
         <Text
           style={{
             margin: 0,
-            fontSize: 36,
+            fontSize: 15,
             fontWeight: 700,
             letterSpacing: '0.3em',
             color: emailTheme.primary,
