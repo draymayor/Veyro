@@ -5,6 +5,7 @@ import { CryptoWithdrawForm } from "@/components/withdraw/crypto-withdraw-form";
 import { assetById } from "@/lib/crypto/data";
 import { createClient } from "@/lib/supabase/server";
 import { getCryptoWalletBalance } from "@/lib/dashboard/get-crypto-wallet-balance";
+import { getCryptoWithdrawalMinimum } from "@/lib/withdrawals/get-crypto-withdrawal-minimum";
 
 interface PageProps {
   params: Promise<{ asset: string }>;
@@ -41,6 +42,10 @@ export default async function WithdrawCryptoAssetPage({ params }: PageProps) {
   const availableBalance = user
     ? await getCryptoWalletBalance(supabase, user.id, asset.symbol)
     : 0;
+  const minWithdrawal = await getCryptoWithdrawalMinimum(
+    supabase,
+    asset.symbol,
+  );
 
   return (
     <>
@@ -49,7 +54,11 @@ export default async function WithdrawCryptoAssetPage({ params }: PageProps) {
         backHref="/withdraw/crypto"
       />
       <main className="mx-auto max-w-md px-4 pt-4 pb-16 sm:px-6">
-        <CryptoWithdrawForm asset={asset} availableBalance={availableBalance} />
+        <CryptoWithdrawForm
+          asset={asset}
+          availableBalance={availableBalance}
+          minWithdrawal={minWithdrawal}
+        />
       </main>
     </>
   );

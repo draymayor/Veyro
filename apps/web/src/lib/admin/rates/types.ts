@@ -77,6 +77,21 @@ export const PLATFORM_SETTING_LABELS: Record<string, string> = {
   earn_tier2_required_volume_usd:
     "Earn bonus - Tier 2 required trade volume (USD)",
   deposit_address_mode: "Deposit address mode",
+  withdrawal_min_btc: "Minimum withdrawal - BTC",
+  withdrawal_min_eth: "Minimum withdrawal - ETH",
+  withdrawal_min_usdt: "Minimum withdrawal - USDT",
+  withdrawal_min_bnb: "Minimum withdrawal - BNB",
+  withdrawal_min_doge: "Minimum withdrawal - DOGE",
+  withdrawal_min_pol: "Minimum withdrawal - POL",
+  withdrawal_min_avax: "Minimum withdrawal - AVAX",
+  withdrawal_min_celo: "Minimum withdrawal - CELO",
+  withdrawal_min_flr: "Minimum withdrawal - FLR",
+  withdrawal_min_etc: "Minimum withdrawal - ETC",
+  withdrawal_min_kaia: "Minimum withdrawal - KAIA",
+  withdrawal_min_xdc: "Minimum withdrawal - XDC",
+  withdrawal_min_ltc: "Minimum withdrawal - LTC",
+  withdrawal_min_usdc: "Minimum withdrawal - USDC",
+  withdrawal_min_trx: "Minimum withdrawal - TRX",
 };
 
 // Fallback for any key not in the map above: turn snake_case into Title

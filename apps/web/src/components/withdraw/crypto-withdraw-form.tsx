@@ -13,8 +13,6 @@ import { AssetIcon } from "@/components/crypto/asset-icon";
 import { NetworkField } from "@/components/crypto/network-field";
 import type { CryptoAsset } from "@/lib/crypto/data";
 import { networkById } from "@/lib/crypto/data";
-import { useNetworkFee } from "@/lib/crypto/use-network-fee";
-import { NetworkFeeSummary } from "@/components/withdraw/network-fee-summary";
 import {
   looksLikeValidAddress,
   type CreateWithdrawalPayload,
@@ -27,6 +25,8 @@ interface CryptoWithdrawFormProps {
   asset: CryptoAsset;
   /** The user's real held crypto_wallets balance for this symbol (get-crypto-wallet-balance.ts), in the asset's own units. */
   availableBalance: number;
+  /** Admin-tunable floor from platform_settings (get-crypto-withdrawal-minimum.ts), in the asset's own units. 0 means no minimum is configured. */
+  minWithdrawal: number;
 }
 
 /**
@@ -41,6 +41,7 @@ interface CryptoWithdrawFormProps {
 export function CryptoWithdrawForm({
   asset,
   availableBalance,
+  minWithdrawal,
 }: CryptoWithdrawFormProps) {
   const [networkId, setNetworkId] = useState(asset.networks[0].id);
   const [address, setAddress] = useState("");
@@ -53,9 +54,11 @@ export function CryptoWithdrawForm({
   const [confirmationOpen, setConfirmationOpen] = useState(false);
 
   const network = networkById(asset, networkId);
-  const { fee, loading: feeLoading } = useNetworkFee(network.label);
 
   const availableBalanceText = `${availableBalance.toLocaleString("en-US", {
+    maximumFractionDigits: 8,
+  })} ${asset.symbol}`;
+  const minWithdrawalText = `${minWithdrawal.toLocaleString("en-US", {
     maximumFractionDigits: 8,
   })} ${asset.symbol}`;
 
@@ -63,11 +66,14 @@ export function CryptoWithdrawForm({
   const amountValid =
     amount.trim() !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0;
   const exceedsBalance = amountValid && parsedAmount > availableBalance;
+  const belowMinimum =
+    amountValid && minWithdrawal > 0 && parsedAmount < minWithdrawal;
 
   const addressLooksValid =
     address.trim() === "" || looksLikeValidAddress(network.id, address);
 
-  const canSubmit = address.trim() !== "" && amountValid && !exceedsBalance;
+  const canSubmit =
+    address.trim() !== "" && amountValid && !exceedsBalance && !belowMinimum;
 
   async function handlePaste() {
     try {
@@ -229,20 +235,43 @@ export function CryptoWithdrawForm({
           <span className="text-ink/45 text-xs">
             Available: {availableBalanceText}
           </span>
-          {exceedsBalance ? (
-            <span className="text-error text-xs">
-              More than your available balance.
+          {minWithdrawal > 0 ? (
+            <span className="text-ink/45 text-xs">
+              Minimum withdrawal: {minWithdrawalText}
             </span>
           ) : null}
         </div>
-        {amountValid ? (
-          <NetworkFeeSummary
-            asset={asset}
-            network={network}
-            amount={parsedAmount}
-            fee={fee}
-            loading={feeLoading}
-          />
+        {exceedsBalance ? (
+          <p className="text-error text-xs">
+            More than your available balance.
+          </p>
+        ) : belowMinimum ? (
+          <p className="text-error text-xs">
+            You can&apos;t withdraw less than {minWithdrawalText}.
+          </p>
+        ) : null}
+        {amountValid && !exceedsBalance && !belowMinimum ? (
+          <div className="border-border bg-secondary/40 flex flex-col gap-1.5 rounded-xl border p-3 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-ink/60">Network fee</span>
+              <span className="text-ink font-medium tabular-nums">
+                0.00 {asset.symbol}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-ink/60">You&apos;ll receive</span>
+              <span className="text-ink font-medium tabular-nums">
+                {parsedAmount.toLocaleString("en-US", {
+                  maximumFractionDigits: 8,
+                })}{" "}
+                {asset.symbol}
+              </span>
+            </div>
+            <p className="text-ink/40">
+              Withdrawals are free - Veyro covers the network fee, it&apos;s
+              never deducted from the amount you receive.
+            </p>
+          </div>
         ) : null}
       </div>
 
