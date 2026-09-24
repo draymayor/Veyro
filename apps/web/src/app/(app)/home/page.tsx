@@ -7,7 +7,9 @@ import { getTransactionHistory } from "@/lib/dashboard/get-transaction-history";
 import { getAllCryptoWalletBalances } from "@/lib/dashboard/get-crypto-wallet-balance";
 import { getNotifications } from "@/lib/notifications/get-notifications";
 import { getEarnStatus } from "@/lib/earn/get-status";
+import { getOnboardingStatus } from "@/lib/onboarding/get-status";
 import { BalanceCard } from "@/components/dashboard/balance-card";
+import { OnboardingChecklistCard } from "@/components/dashboard/onboarding-checklist-card";
 import { SellEntryCards } from "@/components/dashboard/sell-entry-cards";
 import { EarnBanner } from "@/components/dashboard/earn-banner";
 import { ScoutBanner } from "@/components/dashboard/scout-banner";
@@ -71,6 +73,7 @@ export default async function HomePage() {
     notifications,
     cryptoBalances,
     earnStatus,
+    onboardingStatus,
   ] = await Promise.all([
     user
       ? getWalletSummary(supabase, user.id, homeCurrency)
@@ -85,7 +88,15 @@ export default async function HomePage() {
     user ? getNotifications(supabase, user.id) : Promise.resolve([]),
     user ? getAllCryptoWalletBalances(supabase, user.id) : Promise.resolve([]),
     getEarnStatus(supabase),
+    getOnboardingStatus(supabase),
   ]);
+
+  // Never shown once every step is complete - computed server-side so the
+  // widget just doesn't render rather than flashing and disappearing
+  // client-side.
+  const showOnboardingChecklist =
+    onboardingStatus.steps.length > 0 &&
+    onboardingStatus.steps.some((step) => !step.completed);
 
   return (
     <main className="mx-auto max-w-7xl px-4 pt-3 pb-6 sm:px-6 lg:px-8 lg:py-8">
@@ -99,6 +110,11 @@ export default async function HomePage() {
               todayPnl={walletSummary.todayPnl}
             />
           </StaggerItem>
+          {showOnboardingChecklist ? (
+            <StaggerItem>
+              <OnboardingChecklistCard steps={onboardingStatus.steps} />
+            </StaggerItem>
+          ) : null}
           <StaggerItem>
             <SellEntryCards />
           </StaggerItem>

@@ -29,6 +29,7 @@ import { BlockWatcherWebhookModule } from './webhooks/block-watcher/block-watche
 import { CryptoDepositEventsModule } from './crypto-deposit-events/crypto-deposit-events.module';
 import { EarnModule } from './earn/earn.module';
 import { ScoutModule } from './scout/scout.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { ScoutModule } from './scout/scout.module';
     CryptoDepositEventsModule,
     EarnModule,
     ScoutModule,
+    OnboardingModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
